@@ -124,15 +124,18 @@ class KpiController extends Controller
      */
     public function getSettings(): JsonResponse
     {
-        $settings = KpiSetting::orderBy('category')->orderByDesc('version')->get();
+        $settings = KpiSetting::with('creator')->orderBy('category')->orderByDesc('version')->get();
+        $teamActive = KpiSetting::getActive('team');
+        $techActive = KpiSetting::getActive('technician');
+        $salesActive = KpiSetting::getActive('sales');
 
         return response()->json([
             'success' => true,
-            'data' => $settings,
+            'data' => \App\Http\Resources\KpiSettingResource::collection($settings),
             'active' => [
-                'team' => KpiSetting::getActive('team'),
-                'technician' => KpiSetting::getActive('technician'),
-                'sales' => KpiSetting::getActive('sales'),
+                'team' => $teamActive ? new \App\Http\Resources\KpiSettingResource($teamActive) : null,
+                'technician' => $techActive ? new \App\Http\Resources\KpiSettingResource($techActive) : null,
+                'sales' => $salesActive ? new \App\Http\Resources\KpiSettingResource($salesActive) : null,
             ],
         ]);
     }
@@ -169,7 +172,7 @@ class KpiController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Pengaturan KPI {$request->category} berhasil diperbarui ke versi {$newVersion->version}.",
-            'data' => $newVersion,
+            'data' => new \App\Http\Resources\KpiSettingResource($newVersion),
         ]);
     }
 

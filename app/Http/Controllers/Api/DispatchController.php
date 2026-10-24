@@ -14,6 +14,8 @@ use App\Models\TicketAttendance;
 use App\Models\TicketEvent;
 use App\Models\User;
 use App\Modules\Dispatch\Services\DispatchService;
+use App\Http\Resources\AssignmentLogResource;
+use App\Http\Resources\DispatchSettingResource;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
@@ -172,7 +174,7 @@ class DispatchController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => DispatchSetting::getEffective(),
+            'data' => new DispatchSettingResource(DispatchSetting::getEffective()),
         ]);
     }
 
@@ -222,7 +224,7 @@ class DispatchController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pengaturan dispatch berhasil diperbarui.',
-            'data' => DispatchSetting::getEffective(),
+            'data' => new DispatchSettingResource(DispatchSetting::getEffective()),
         ]);
     }
 
@@ -288,10 +290,9 @@ class DispatchController extends Controller
 
         $logs = $query->paginate($request->input('per_page', 25));
 
-        return response()->json([
-            'success' => true,
-            'data' => $logs,
-        ]);
+        return AssignmentLogResource::collection($logs)
+            ->additional(['success' => true])
+            ->response();
     }
 
     /**
