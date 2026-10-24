@@ -59,6 +59,14 @@ class Customer extends Model
             if ($customer->isDirty('phone')) {
                 $customer->phone_normalized = self::normalizePhone($customer->phone);
             }
+
+            if (empty($customer->attributes['package'])) {
+                $customer->attributes['package'] = $customer->servicePackage?->name ?? 'Layanan Broadband';
+            }
+
+            if (empty($customer->attributes['odp_code']) && $customer->odp_id) {
+                $customer->attributes['odp_code'] = $customer->odp?->code;
+            }
         });
     }
 
@@ -70,6 +78,41 @@ class Customer extends Model
         }
 
         return str_starts_with($digits, '0') ? '62'.substr($digits, 1) : $digits;
+    }
+
+    /**
+     * NIK bertopeng untuk tampilan umum (contoh: 3507••••••••1234).
+     */
+    public function getMaskedNikAttribute(): ?string
+    {
+        $nik = $this->nik;
+        if (! filled($nik)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $nik);
+        $len = strlen($digits);
+        if ($len >= 8) {
+            return substr($digits, 0, 4).str_repeat('•', max(0, $len - 8)).substr($digits, -4);
+        }
+
+        return str_repeat('•', $len);
+    }
+
+    /**
+     * @deprecated Gunakan package_id dan relasi servicePackage.
+     */
+    public function getPackageAttribute($value): ?string
+    {
+        return $value ?: $this->servicePackage?->name;
+    }
+
+    /**
+     * @deprecated Gunakan odp_id dan relasi odp.
+     */
+    public function getOdpCodeAttribute($value): ?string
+    {
+        return $value ?: $this->odp?->code;
     }
 
     public function getActivitylogOptions(): LogOptions

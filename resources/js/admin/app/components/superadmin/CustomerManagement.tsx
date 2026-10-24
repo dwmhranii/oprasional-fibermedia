@@ -45,10 +45,62 @@ import {
   Filter,
   Trash2,
   AlertTriangle,
+  Download,
+  Upload,
+  Plus,
+  Columns,
+  ArrowUpDown,
+  FileSpreadsheet,
+  CheckSquare,
+  Square,
+  DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient, ApiError, API_BASE_URL, getToken } from '../../lib/api';
 import { formatDate, formatCurrency, formatDateOnly } from '../../lib/formatters';
+import { CustomerFormModal } from './CustomerFormModal';
+
+// List 35 Selectable Columns
+export interface ColumnDef {
+  key: string;
+  label: string;
+  defaultVisible: boolean;
+}
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { key: 'no', label: 'No', defaultVisible: true },
+  { key: 'customer_code', label: 'ID Pelanggan', defaultVisible: true },
+  { key: 'external_ref', label: 'Ref Eksternal', defaultVisible: false },
+  { key: 'name_contact', label: 'Nama & Kontak', defaultVisible: true },
+  { key: 'nik_masked', label: 'NIK (Bertopeng)', defaultVisible: false },
+  { key: 'address', label: 'Alamat Pemasangan', defaultVisible: true },
+  { key: 'coordinates', label: 'Koordinat (GPS)', defaultVisible: false },
+  { key: 'package_price', label: 'Paket & Harga', defaultVisible: true },
+  { key: 'service_type', label: 'Tipe Layanan', defaultVisible: false },
+  { key: 'bras_name', label: 'Server BRAS', defaultVisible: false },
+  { key: 'collector', label: 'Kolektor', defaultVisible: false },
+  { key: 'username', label: 'Username PPPoE', defaultVisible: false },
+  { key: 'local_address', label: 'Local Address', defaultVisible: false },
+  { key: 'remote_address', label: 'Remote Address', defaultVisible: false },
+  { key: 'parent_queue', label: 'Parent Queue', defaultVisible: false },
+  { key: 'rate_limit', label: 'Rate Limit', defaultVisible: false },
+  { key: 'subscribed_at', label: 'Tgl Berlangganan', defaultVisible: false },
+  { key: 'odp', label: 'ODP (Nama & Port)', defaultVisible: true },
+  { key: 'status', label: 'Status Layanan', defaultVisible: true },
+  { key: 'is_online', label: 'Status Online', defaultVisible: false },
+  { key: 'expires_at', label: 'Expired Date', defaultVisible: true },
+  { key: 'debt', label: 'Hutang / Tagihan', defaultVisible: true },
+  { key: 'wilayah', label: 'Wilayah', defaultVisible: false },
+  { key: 'installed_by_team', label: 'Tim Pemasang', defaultVisible: false },
+  { key: 'sales_name', label: 'Sales', defaultVisible: false },
+  { key: 'onu_index', label: 'ONU Index', defaultVisible: false },
+  { key: 'session_uptime', label: 'Session Uptime', defaultVisible: false },
+  { key: 'current_ip', label: 'IP Saat Ini', defaultVisible: false },
+  { key: 'current_mac', label: 'MAC Address', defaultVisible: false },
+  { key: 'last_online_at', label: 'Terakhir Online', defaultVisible: false },
+  { key: 'last_offline_at', label: 'Terakhir Offline', defaultVisible: false },
+  { key: 'notes', label: 'Catatan', defaultVisible: false },
+];
 
 export const CustomerManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -59,32 +111,54 @@ export const CustomerManagement: React.FC = () => {
     user?.roles?.includes('Superadmin') ||
     user?.roles?.includes('superadmin');
 
-  // State filters
+  // Search & Filters State
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [wilayahFilter, setWilayahFilter] = useState<string>('all');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('all');
+  const [packageFilter, setPackageFilter] = useState<string>('all');
+  const [odpFilter, setOdpFilter] = useState<string>('all');
+  const [teamFilter, setTeamFilter] = useState<string>('all');
+  const [salesFilter, setSalesFilter] = useState<string>('all');
+  const [debtOnly, setDebtOnly] = useState<boolean>(false);
+  const [expiresFrom, setExpiresFrom] = useState<string>('');
+  const [expiresTo, setExpiresTo] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('id');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  // Pagination & Display
   const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(15);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Status Change Modal
-  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  // Column Picker State
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(
+    ALL_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.key)
+  );
+  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
+  // Modals
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedCustomerForStatus, setSelectedCustomerForStatus] = useState<any | null>(null);
   const [newStatus, setNewStatus] = useState<string>('active');
   const [statusNotes, setStatusNotes] = useState('');
-
-  // Delete Customer Modal (Superadmin only)
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
-  // Export & Import states
+
+  // Export & Import States
   const [isExporting, setIsExporting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<any | null>(null);
 
+  // Download Blob Helper
   const downloadBlob = async (endpoint: string, defaultFilename: string, params?: Record<string, any>) => {
     let url = `${API_BASE_URL}${endpoint}`;
     if (params) {
       const queryParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined && value !== null && value !== '' && value !== 'all') {
           queryParams.append(key, String(value));
         }
       });
@@ -100,28 +174,29 @@ export const CustomerManagement: React.FC = () => {
       throw new Error('Gagal mengunduh file dari server.');
     }
     const blob = await res.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = defaultFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(downloadUrl);
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = defaultFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
   };
 
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      toast.info('Menyiapkan file export Excel...');
-      const params: Record<string, any> = {};
-      if (statusFilter !== 'all') params.status = statusFilter;
-      if (searchTerm.trim()) params.search = searchTerm.trim();
+      toast.info('Menyiapkan file ekspor 35 kolom data pelanggan...');
+      const params: Record<string, any> = {
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: searchTerm.trim() || undefined,
+      };
       const filename = `data-pelanggan-fibermedia-${new Date().toISOString().slice(0, 10)}.xlsx`;
       await downloadBlob('/admin/customers/export', filename, params);
-      toast.success('Data pelanggan berhasil diunduh ke Excel (.xlsx)');
+      toast.success('Data pelanggan 35 kolom berhasil diekspor ke Excel (.xlsx)');
     } catch (err: any) {
-      toast.error(err.message || 'Gagal mengekspor data ke Excel');
+      toast.error(err.message || 'Gagal mengekspor data');
     } finally {
       setIsExporting(false);
     }
@@ -158,10 +233,10 @@ export const CustomerManagement: React.FC = () => {
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.message || 'Gagal mengimpor file Excel');
+        throw new Error(json.message || 'Gagal memproses file Excel');
       }
 
-      toast.success(json.message || 'Import data pelanggan berhasil');
+      toast.success(json.message || 'Import data pelanggan berhasil diselesaikan');
       setImportSummary(json.data);
       queryClient.invalidateQueries({ queryKey: ['adminCustomers'] });
       refetchStats();
@@ -173,8 +248,8 @@ export const CustomerManagement: React.FC = () => {
     }
   };
 
-  // Fetch stats
-  const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useQuery({
+  // Fetch Stats
+  const { data: statsData, refetch: refetchStats } = useQuery({
     queryKey: ['adminCustomers', 'stats'],
     queryFn: async () => {
       const response = await apiClient.get<any>('/admin/customers/stats');
@@ -182,13 +257,74 @@ export const CustomerManagement: React.FC = () => {
     },
   });
 
-  // Fetch customers list
-  const { data: customersData, isLoading, isError, refetch } = useQuery({
-    queryKey: ['adminCustomers', 'list', page, searchTerm, statusFilter],
+  // Fetch Auxiliary Filter Data (Packages, ODPs, Teams, Users)
+  const { data: packagesData } = useQuery({
+    queryKey: ['packages', 'list'],
     queryFn: async () => {
-      const params: Record<string, any> = { page, per_page: 10 };
+      const res = await apiClient.get<any>('/packages');
+      return res.data || res;
+    },
+  });
+  const packagesList = Array.isArray(packagesData) ? packagesData : packagesData?.data || [];
+
+  const { data: networkSyncData } = useQuery({
+    queryKey: ['network', 'sync', 'list'],
+    queryFn: async () => {
+      const res = await apiClient.get<any>('/network/sync');
+      return res.data || res;
+    },
+  });
+  const odpsList = networkSyncData?.odps || [];
+
+  const { data: teamsData } = useQuery({
+    queryKey: ['adminTeams', 'list'],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get<any>('/admin/teams');
+        return res.data || res;
+      } catch {
+        return [];
+      }
+    },
+  });
+  const teamsList = Array.isArray(teamsData) ? teamsData : teamsData?.data || [];
+
+  // Fetch Customers List with Server-side Filtering & Pagination
+  const { data: customersData, isLoading, isError, refetch } = useQuery({
+    queryKey: [
+      'adminCustomers',
+      'list',
+      page,
+      perPage,
+      searchTerm,
+      statusFilter,
+      wilayahFilter,
+      serviceTypeFilter,
+      packageFilter,
+      odpFilter,
+      teamFilter,
+      salesFilter,
+      debtOnly,
+      expiresFrom,
+      expiresTo,
+      sortBy,
+      sortDir,
+    ],
+    queryFn: async () => {
+      const params: Record<string, any> = { page, per_page: perPage };
       if (searchTerm.trim()) params.search = searchTerm.trim();
       if (statusFilter !== 'all') params.status = statusFilter;
+      if (wilayahFilter !== 'all') params.wilayah = wilayahFilter;
+      if (serviceTypeFilter !== 'all') params.service_type = serviceTypeFilter;
+      if (packageFilter !== 'all') params.package_id = packageFilter;
+      if (odpFilter !== 'all') params.odp_id = odpFilter;
+      if (teamFilter !== 'all') params.installed_by_team_id = teamFilter;
+      if (salesFilter !== 'all') params.sales_id = salesFilter;
+      if (debtOnly) params.has_debt = 'true';
+      if (expiresFrom) params.expires_from = expiresFrom;
+      if (expiresTo) params.expires_to = expiresTo;
+      params.sort_by = sortBy;
+      params.sort_dir = sortDir;
 
       const response = await apiClient.get<any>('/admin/customers', { params });
       return response;
@@ -196,172 +332,149 @@ export const CustomerManagement: React.FC = () => {
   });
 
   const customers = customersData?.data || [];
-  const meta = customersData?.meta || { current_page: 1, last_page: 1, total: customers.length };
+  const meta = customersData?.meta || { current_page: page, last_page: 1, total: customers.length };
 
-  // Status update mutation
+  // Status Update Mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status, notes }: { id: number | string; status: string; notes: string }) => {
       return await apiClient.patch(`/admin/customers/${id}/status`, { status, notes });
     },
     onSuccess: (data: any) => {
       toast.success(data?.message || 'Status pelanggan berhasil diperbarui');
-      setSelectedCustomer(null);
+      setSelectedCustomerForStatus(null);
       setStatusNotes('');
       queryClient.invalidateQueries({ queryKey: ['adminCustomers'] });
+      refetchStats();
     },
     onError: (error) => {
       if (error instanceof ApiError) {
-        toast.error(error.getFirstError() || 'Gagal mengubah status pelanggan');
+        toast.error(error.getFirstError() || 'Gagal mengubah status');
       } else {
         toast.error('Terjadi kesalahan koneksi');
       }
     },
   });
 
-  // Delete Customer mutation (Superadmin only)
-  const deleteCustomerMutation = useMutation({
+  // Delete Mutation
+  const deleteMutation = useMutation({
     mutationFn: async (id: number | string) => {
-      return await apiClient.delete(`/superadmin/customers/${id}`);
+      return await apiClient.delete(`/admin/customers/${id}`);
     },
-    onSuccess: (data: any) => {
-      toast.success(data?.message || 'Data pelanggan berhasil dihapus');
+    onSuccess: () => {
+      toast.success('Data pelanggan berhasil dihapus');
       setCustomerToDelete(null);
       queryClient.invalidateQueries({ queryKey: ['adminCustomers'] });
+      refetchStats();
     },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        toast.error(error.getFirstError() || 'Gagal menghapus pelanggan');
-      } else {
-        toast.error('Terjadi kesalahan koneksi');
-      }
+    onError: (err: any) => {
+      toast.error(err?.message || 'Gagal menghapus pelanggan');
     },
   });
 
-  const handleCopy = (text: string, id: string) => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    toast.success(`Nomor pelanggan disalin: ${text}`);
+    setCopiedId(text);
+    toast.success('ID Pelanggan disalin ke clipboard');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const openStatusModal = (customer: any) => {
-    setSelectedCustomer(customer);
-    setNewStatus(customer.status || 'active');
-    setStatusNotes('');
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
   };
 
-  const handleStatusSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer) return;
-    updateStatusMutation.mutate({
-      id: selectedCustomer.id,
-      status: newStatus,
-      notes: statusNotes,
-    });
+  const resetColumns = () => {
+    setVisibleColumns(ALL_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.key));
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return (
-          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            Aktif
+          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-2 py-0.5 font-semibold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Aktif
           </Badge>
         );
       case 'suspended':
         return (
-          <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            Ditangguhkan (Isolir)
+          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs px-2 py-0.5 font-semibold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Isolir
           </Badge>
         );
       case 'terminated':
         return (
-          <Badge className="bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-            Non-Aktif (Putus)
+          <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-xs px-2 py-0.5 font-semibold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Putus
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="text-xs">{status}</Badge>;
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
-            <Users className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
-            Kelola Pelanggan
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <Users className="w-6 h-6 text-indigo-600" />
+            Kelola Data Pelanggan
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Daftar pelanggan resmi yang telah menyelesaikan pemasangan, aktivasi, dan serah terima (BAST).
+          <p className="text-xs text-slate-500 mt-1">
+            Manajemen 35 kolom data pelanggan, integrasi ODP &amp; ODC, kredensial rahasia, serta ekspor/impor.
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
-          {/* Tombol Export Excel */}
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs font-semibold"
+          >
+            <Plus className="w-4 h-4" /> Tambah Pelanggan
+          </Button>
+
           <Button
             variant="outline"
-            size="sm"
+            onClick={() => setIsColumnPickerOpen(true)}
+            className="flex items-center gap-1.5 text-xs"
+            title="Pilih dari 35 kolom yang ingin ditampilkan"
+          >
+            <Columns className="w-3.5 h-3.5 text-slate-600" />
+            Pilih Kolom ({visibleColumns.length}/35)
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+          >
+            <Upload className="w-3.5 h-3.5" /> Import Excel
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={handleExportExcel}
             disabled={isExporting}
-            className="flex items-center gap-1.5 text-xs h-9 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
           >
-            {isExporting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-            ) : (
-              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-            )}
-            <span>Export Excel</span>
-          </Button>
-
-          {/* Tombol Import Excel */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setImportFile(null);
-              setImportSummary(null);
-              setIsImportModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 text-xs h-9 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 hover:border-indigo-300 transition-colors"
-          >
-            <FileUp className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Import Excel</span>
-          </Button>
-
-          {/* Tombol Muat Ulang */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              refetch();
-              refetchStats();
-            }}
-            className="flex items-center gap-1.5 text-xs h-9"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Muat Ulang
+            {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            Ekspor Excel (35 Kolom)
           </Button>
         </div>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border shadow-xs bg-white">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Pelanggan</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">
-                {isLoadingStats ? '...' : statsData?.total ?? 0}
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Semua data terverifikasi</p>
+              <p className="text-xs font-medium text-slate-500">Total Pelanggan</p>
+              <h3 className="text-2xl font-bold text-slate-800 mt-1">{statsData?.total ?? '-'}</h3>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <Users className="w-6 h-6" />
+            <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+              <Users className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
@@ -369,14 +482,11 @@ export const CustomerManagement: React.FC = () => {
         <Card className="border shadow-xs bg-white">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Pelanggan Aktif</p>
-              <h3 className="text-2xl font-bold text-emerald-700 mt-1">
-                {isLoadingStats ? '...' : statsData?.active ?? 0}
-              </h3>
-              <p className="text-[11px] text-emerald-600/80 mt-0.5">Layanan aktif normal</p>
+              <p className="text-xs font-medium text-slate-500">Pelanggan Aktif</p>
+              <h3 className="text-2xl font-bold text-emerald-600 mt-1">{statsData?.active ?? '-'}</h3>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-              <UserCheck className="w-6 h-6" />
+            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+              <UserCheck className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
@@ -384,14 +494,11 @@ export const CustomerManagement: React.FC = () => {
         <Card className="border shadow-xs bg-white">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Ditangguhkan (Isolir)</p>
-              <h3 className="text-2xl font-bold text-amber-700 mt-1">
-                {isLoadingStats ? '...' : statsData?.suspended ?? 0}
-              </h3>
-              <p className="text-[11px] text-amber-600/80 mt-0.5">Tunggakan / Isolir sementara</p>
+              <p className="text-xs font-medium text-slate-500">Ditangguhkan (Isolir)</p>
+              <h3 className="text-2xl font-bold text-amber-600 mt-1">{statsData?.suspended ?? '-'}</h3>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-              <AlertOctagon className="w-6 h-6" />
+            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
+              <AlertOctagon className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
@@ -399,42 +506,33 @@ export const CustomerManagement: React.FC = () => {
         <Card className="border shadow-xs bg-white">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Non-Aktif / Putus</p>
-              <h3 className="text-2xl font-bold text-rose-700 mt-1">
-                {isLoadingStats ? '...' : statsData?.terminated ?? 0}
-              </h3>
-              <p className="text-[11px] text-rose-600/80 mt-0.5">Berhenti berlangganan</p>
+              <p className="text-xs font-medium text-slate-500">Non-Aktif (Putus)</p>
+              <h3 className="text-2xl font-bold text-rose-600 mt-1">{statsData?.terminated ?? '-'}</h3>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
-              <UserX className="w-6 h-6" />
+            <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600">
+              <UserX className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Table Card */}
-      <Card className="border shadow-xs bg-white">
-        <CardHeader className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            Daftar Data Pelanggan
-          </CardTitle>
+      {/* Search & Advanced Filters Bar */}
+      <Card className="border shadow-xs bg-white p-4 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3 items-center">
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <Input
+              placeholder="Cari nama, ID Pelanggan, telepon, username PPPoE, atau ODP..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9 text-xs"
+            />
+          </div>
 
-          {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Cari ID, Nama, No. HP, ODP..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1);
-                }}
-                className="pl-9 text-xs h-9"
-              />
-            </div>
-
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <Select
               value={statusFilter}
               onValueChange={(val) => {
@@ -442,493 +540,758 @@ export const CustomerManagement: React.FC = () => {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-full sm:w-44 text-xs h-9">
-                <SelectValue placeholder="Semua Status" />
+              <SelectTrigger className="w-[140px] text-xs">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="active">Aktif</SelectItem>
-                <SelectItem value="suspended">Ditangguhkan (Isolir)</SelectItem>
-                <SelectItem value="terminated">Non-Aktif (Putus)</SelectItem>
+                <SelectItem value="suspended">Isolir</SelectItem>
+                <SelectItem value="inactive">Non-Aktif</SelectItem>
+                <SelectItem value="terminated">Putus</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select
+              value={packageFilter}
+              onValueChange={(val) => {
+                setPackageFilter(val);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[160px] text-xs">
+                <SelectValue placeholder="Paket Layanan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Paket</SelectItem>
+                {packagesList.map((pkg) => (
+                  <SelectItem key={pkg.id} value={String(pkg.id)}>
+                    {pkg.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant={debtOnly ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setDebtOnly(!debtOnly);
+                setPage(1);
+              }}
+              className={`text-xs flex items-center gap-1.5 ${
+                debtOnly ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'text-slate-700'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              Hutang &gt; 0
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterDrawerOpen(!isFilterDrawerOpen)}
+              className="text-xs flex items-center gap-1.5 text-slate-600"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              Filter Lanjutan {isFilterDrawerOpen ? '▲' : '▼'}
+            </Button>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 text-slate-600 font-semibold border-b border-slate-100">
+        {/* Collapsible Advanced Filters */}
+        {isFilterDrawerOpen && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-100 text-xs">
+            <div>
+              <Label className="text-[11px] text-slate-500">Tipe Layanan</Label>
+              <Select
+                value={serviceTypeFilter}
+                onValueChange={(val) => {
+                  setServiceTypeFilter(val);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="mt-1 text-xs">
+                  <SelectValue placeholder="Tipe Layanan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Tipe</SelectItem>
+                  <SelectItem value="pppoe">PPPoE</SelectItem>
+                  <SelectItem value="ipoe">IPoE</SelectItem>
+                  <SelectItem value="static">Static IP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-slate-500">Filter ODP</Label>
+              <Select
+                value={odpFilter}
+                onValueChange={(val) => {
+                  setOdpFilter(val);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="mt-1 text-xs">
+                  <SelectValue placeholder="Pilih ODP" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua ODP</SelectItem>
+                  {odpsList.map((odp) => (
+                    <SelectItem key={odp.id} value={String(odp.id)}>
+                      {odp.code} - {odp.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-slate-500">Tim Pemasang</Label>
+              <Select
+                value={teamFilter}
+                onValueChange={(val) => {
+                  setTeamFilter(val);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="mt-1 text-xs">
+                  <SelectValue placeholder="Pilih Tim" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Tim</SelectItem>
+                  {teamsList.map((tm) => (
+                    <SelectItem key={tm.id} value={String(tm.id)}>
+                      {tm.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-slate-500">Urutkan Berdasarkan</Label>
+              <div className="flex gap-2 mt-1">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="text-xs flex-1">
+                    <SelectValue placeholder="Urutan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="id">ID</SelectItem>
+                    <SelectItem value="name">Nama</SelectItem>
+                    <SelectItem value="expires_at">Jatuh Tempo</SelectItem>
+                    <SelectItem value="debt">Hutang</SelectItem>
+                    <SelectItem value="monthly_price">Harga</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
+                  className="px-2"
+                  title="Balik arah urutan"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-slate-500">Expired Mulai Dari</Label>
+              <Input
+                type="date"
+                value={expiresFrom}
+                onChange={(e) => {
+                  setExpiresFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-slate-500">Expired Sampai Dengan</Label>
+              <Input
+                type="date"
+                value={expiresTo}
+                onChange={(e) => {
+                  setExpiresTo(e.target.value);
+                  setPage(1);
+                }}
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-slate-500">Wilayah</Label>
+              <Input
+                placeholder="Ketik nama wilayah..."
+                value={wilayahFilter === 'all' ? '' : wilayahFilter}
+                onChange={(e) => {
+                  setWilayahFilter(e.target.value || 'all');
+                  setPage(1);
+                }}
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setWilayahFilter('all');
+                  setServiceTypeFilter('all');
+                  setPackageFilter('all');
+                  setOdpFilter('all');
+                  setTeamFilter('all');
+                  setDebtOnly(false);
+                  setExpiresFrom('');
+                  setExpiresTo('');
+                  setSearchTerm('');
+                  setPage(1);
+                }}
+                className="text-xs text-slate-500 hover:text-slate-800"
+              >
+                Reset Semua Filter
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Customer Table */}
+      <Card className="border shadow-xs bg-white overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+              <tr>
+                {visibleColumns.includes('no') && <th className="p-3 w-12 text-center">No</th>}
+                {visibleColumns.includes('customer_code') && <th className="p-3">ID Pelanggan</th>}
+                {visibleColumns.includes('external_ref') && <th className="p-3">Ref Eksternal</th>}
+                {visibleColumns.includes('name_contact') && <th className="p-3">Nama &amp; Kontak</th>}
+                {visibleColumns.includes('nik_masked') && <th className="p-3">NIK</th>}
+                {visibleColumns.includes('address') && <th className="p-3 min-w-[200px]">Alamat Lengkap</th>}
+                {visibleColumns.includes('coordinates') && <th className="p-3">Koordinat GPS</th>}
+                {visibleColumns.includes('package_price') && <th className="p-3">Paket &amp; Harga</th>}
+                {visibleColumns.includes('service_type') && <th className="p-3">Tipe Layanan</th>}
+                {visibleColumns.includes('bras_name') && <th className="p-3">Server BRAS</th>}
+                {visibleColumns.includes('collector') && <th className="p-3">Kolektor</th>}
+                {visibleColumns.includes('username') && <th className="p-3">Username PPPoE</th>}
+                {visibleColumns.includes('local_address') && <th className="p-3">Local IP</th>}
+                {visibleColumns.includes('remote_address') && <th className="p-3">Remote IP</th>}
+                {visibleColumns.includes('parent_queue') && <th className="p-3">Parent Queue</th>}
+                {visibleColumns.includes('rate_limit') && <th className="p-3">Rate Limit</th>}
+                {visibleColumns.includes('subscribed_at') && <th className="p-3">Tgl Berlangganan</th>}
+                {visibleColumns.includes('odp') && <th className="p-3">ODP &amp; Port</th>}
+                {visibleColumns.includes('status') && <th className="p-3">Status</th>}
+                {visibleColumns.includes('is_online') && <th className="p-3">Koneksi</th>}
+                {visibleColumns.includes('expires_at') && <th className="p-3">Jatuh Tempo</th>}
+                {visibleColumns.includes('debt') && <th className="p-3">Hutang (Rp)</th>}
+                {visibleColumns.includes('wilayah') && <th className="p-3">Wilayah</th>}
+                {visibleColumns.includes('installed_by_team') && <th className="p-3">Tim Pemasang</th>}
+                {visibleColumns.includes('sales_name') && <th className="p-3">Sales</th>}
+                {visibleColumns.includes('onu_index') && <th className="p-3">ONU Index</th>}
+                {visibleColumns.includes('session_uptime') && <th className="p-3">Session Uptime</th>}
+                {visibleColumns.includes('current_ip') && <th className="p-3">IP Terkini</th>}
+                {visibleColumns.includes('current_mac') && <th className="p-3">MAC Address</th>}
+                {visibleColumns.includes('last_online_at') && <th className="p-3">Terakhir Online</th>}
+                {visibleColumns.includes('last_offline_at') && <th className="p-3">Terakhir Offline</th>}
+                {visibleColumns.includes('notes') && <th className="p-3">Catatan</th>}
+                <th className="p-3 text-center w-28">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {isLoading ? (
                 <tr>
-                  <th className="p-3.5 pl-5">No. Pelanggan</th>
-                  <th className="p-3.5">Nama &amp; Kontak</th>
-                  <th className="p-3.5">Paket &amp; Harga</th>
-                  <th className="p-3.5">ODP &amp; BRAS</th>
-                  <th className="p-3.5 text-center">Status Layanan</th>
-                  <th className="p-3.5 text-center">Jatuh Tempo</th>
-                  <th className="p-3.5 text-right pr-5">Aksi</th>
+                  <td colSpan={visibleColumns.length + 1} className="p-8 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
+                    Memuat data pelanggan...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
-                      <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
-                      Memuat data pelanggan...
-                    </td>
-                  </tr>
-                ) : customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
-                      Tidak ada data pelanggan yang sesuai dengan pencarian.
-                    </td>
-                  </tr>
-                ) : (
-                  customers.map((cust: any) => (
-                    <tr key={cust.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors">
-                      {/* Customer Code */}
-                      <td className="p-3.5 pl-5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-xs">
-                            {cust.customer_code}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(cust.customer_code, String(cust.id))}
-                            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
-                            title="Salin No. Pelanggan"
-                          >
-                            {copiedId === String(cust.id) ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                        {cust.external_ref ? (
-                          <span className="text-[11px] text-slate-400 block font-mono">
-                            Ref: {cust.external_ref}
-                          </span>
-                        ) : cust.service_chain?.submission_number ? (
-                          <span className="text-[11px] text-slate-400 block font-mono">
-                            Ref: {cust.service_chain.submission_number}
-                          </span>
-                        ) : null}
-                      </td>
-
-                      {/* Name & Contact */}
-                      <td className="p-3.5">
-                        <p className="font-bold text-slate-800 text-xs">{cust.name}</p>
-                        <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                          <Phone className="w-3 h-3 text-slate-400" />
-                          {cust.phone}
-                        </p>
-                        {cust.wilayah && (
-                          <span className="text-[10px] text-indigo-600 font-medium bg-indigo-50 px-1.5 py-0.2 rounded mt-0.5 inline-block">
-                            {cust.wilayah}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Package & Price */}
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-1 text-xs font-semibold text-indigo-700">
-                          <Wifi className="w-3.5 h-3.5 text-indigo-500" />
-                          {cust.package || 'Default Package'}
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-700 block mt-0.5">
-                          {formatCurrency(cust.monthly_price)}
-                          <span className="text-[10px] font-normal text-slate-400">/bln</span>
-                        </span>
-                      </td>
-
-                      {/* ODP & BRAS */}
-                      <td className="p-3.5">
-                        <div className="text-xs font-medium text-slate-800 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-amber-500" />
-                          {cust.odp_code || '-'}{cust.odp_port ? ` (P:${cust.odp_port})` : ''}
-                        </div>
-                        <span className="text-[11px] text-slate-500 block font-mono mt-0.5">
-                          BRAS: {cust.bras_name || '-'}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="p-3.5 text-center">
-                        {getStatusBadge(cust.status)}
-                      </td>
-
-                      {/* Jatuh Tempo */}
-                      <td className="p-3.5 text-center">
-                        {cust.expires_at ? (
-                          <div>
-                            <span className="text-xs font-semibold text-slate-700 flex items-center justify-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
-                              {formatDateOnly(cust.expires_at)}
-                            </span>
-                            {cust.debt > 0 && (
-                              <span className="text-[10px] text-rose-600 font-bold block mt-0.5">
-                                Tagihan: {formatCurrency(cust.debt)}
-                              </span>
-                            )}
+              ) : customers.length === 0 ? (
+                <tr>
+                  <td colSpan={visibleColumns.length + 1} className="p-8 text-center text-slate-400">
+                    Tidak ada data pelanggan yang cocok dengan pencarian / filter.
+                  </td>
+                </tr>
+              ) : (
+                customers.map((c: any, idx: number) => {
+                  const rowNumber = (meta.current_page - 1) * perPage + idx + 1;
+                  return (
+                    <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
+                      {visibleColumns.includes('no') && (
+                        <td className="p-3 text-center text-slate-400 font-mono">{rowNumber}</td>
+                      )}
+                      {visibleColumns.includes('customer_code') && (
+                        <td className="p-3 font-mono font-bold text-indigo-600">
+                          <div className="flex items-center gap-1.5">
+                            <span>{c.customer_code}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(c.customer_code)}
+                              className="text-slate-400 hover:text-slate-600"
+                              title="Salin ID"
+                            >
+                              {copiedId === c.customer_code ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
                           </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="p-3.5 text-right pr-5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openStatusModal(cust)}
-                            className="text-xs h-8 px-2.5 font-medium text-slate-700 hover:bg-slate-100"
+                        </td>
+                      )}
+                      {visibleColumns.includes('external_ref') && (
+                        <td className="p-3 font-mono text-slate-600">{c.external_ref || '-'}</td>
+                      )}
+                      {visibleColumns.includes('name_contact') && (
+                        <td className="p-3">
+                          <span className="font-semibold text-slate-800 block text-xs">{c.name}</span>
+                          <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3 text-slate-400" /> {c.phone}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes('nik_masked') && (
+                        <td className="p-3 font-mono text-slate-600">{c.nik_masked || c.nik || '-'}</td>
+                      )}
+                      {visibleColumns.includes('address') && (
+                        <td className="p-3 text-slate-700 text-xs">
+                          <span className="line-clamp-2">{c.address}</span>
+                        </td>
+                      )}
+                      {visibleColumns.includes('coordinates') && (
+                        <td className="p-3 font-mono text-[11px] text-slate-500">
+                          {c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : '-'}
+                        </td>
+                      )}
+                      {visibleColumns.includes('package_price') && (
+                        <td className="p-3">
+                          <span className="font-semibold text-slate-800 block">
+                            {c.package_name || c.package || '-'}
+                          </span>
+                          <span className="text-[11px] text-indigo-600 font-mono">
+                            Rp {Number(c.monthly_price || 0).toLocaleString('id-ID')}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes('service_type') && (
+                        <td className="p-3 uppercase font-mono text-[11px] text-slate-700">
+                          {c.service_type || 'PPPoE'}
+                        </td>
+                      )}
+                      {visibleColumns.includes('bras_name') && (
+                        <td className="p-3 text-slate-600">{c.bras_name || '-'}</td>
+                      )}
+                      {visibleColumns.includes('collector') && (
+                        <td className="p-3 text-slate-600">{c.collector || '-'}</td>
+                      )}
+                      {visibleColumns.includes('username') && (
+                        <td className="p-3 font-mono text-slate-700">{c.username || '-'}</td>
+                      )}
+                      {visibleColumns.includes('local_address') && (
+                        <td className="p-3 font-mono text-slate-600">{c.local_address || '-'}</td>
+                      )}
+                      {visibleColumns.includes('remote_address') && (
+                        <td className="p-3 font-mono text-slate-600">{c.remote_address || '-'}</td>
+                      )}
+                      {visibleColumns.includes('parent_queue') && (
+                        <td className="p-3 text-slate-600">{c.parent_queue || '-'}</td>
+                      )}
+                      {visibleColumns.includes('rate_limit') && (
+                        <td className="p-3 font-mono text-slate-600">{c.rate_limit || '-'}</td>
+                      )}
+                      {visibleColumns.includes('subscribed_at') && (
+                        <td className="p-3 text-slate-600">
+                          {c.subscribed_at ? formatDateOnly(c.subscribed_at) : '-'}
+                        </td>
+                      )}
+                      {visibleColumns.includes('odp') && (
+                        <td className="p-3 font-mono text-xs">
+                          <span className="font-bold text-slate-800 block">
+                            {c.odp?.code || c.odp_code || '-'}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            Port: {c.odp_port || c.odp?.port || '-'}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes('status') && (
+                        <td className="p-3">{getStatusBadge(c.status)}</td>
+                      )}
+                      {visibleColumns.includes('is_online') && (
+                        <td className="p-3">
+                          {c.is_online ? (
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                              Online
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-slate-400 text-[10px]">
+                              Offline
+                            </Badge>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes('expires_at') && (
+                        <td className="p-3 text-xs font-semibold text-slate-700">
+                          {c.expires_at ? formatDateOnly(c.expires_at) : '-'}
+                        </td>
+                      )}
+                      {visibleColumns.includes('debt') && (
+                        <td className="p-3 font-mono">
+                          <span
+                            className={
+                              Number(c.debt || 0) > 0 ? 'text-rose-600 font-bold' : 'text-slate-600'
+                            }
                           >
-                            Ubah Status
+                            Rp {Number(c.debt || 0).toLocaleString('id-ID')}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes('wilayah') && (
+                        <td className="p-3 text-slate-600">{c.wilayah || '-'}</td>
+                      )}
+                      {visibleColumns.includes('installed_by_team') && (
+                        <td className="p-3 text-slate-600">{c.installed_by_team_name || '-'}</td>
+                      )}
+                      {visibleColumns.includes('sales_name') && (
+                        <td className="p-3 text-slate-600">{c.sales_name || '-'}</td>
+                      )}
+                      {visibleColumns.includes('onu_index') && (
+                        <td className="p-3 font-mono text-slate-600">{c.onu_index || '-'}</td>
+                      )}
+                      {visibleColumns.includes('session_uptime') && (
+                        <td className="p-3 text-slate-600">{c.session_uptime || '-'}</td>
+                      )}
+                      {visibleColumns.includes('current_ip') && (
+                        <td className="p-3 font-mono text-slate-600">{c.current_ip_address || '-'}</td>
+                      )}
+                      {visibleColumns.includes('current_mac') && (
+                        <td className="p-3 font-mono text-slate-600">{c.current_mac_address || '-'}</td>
+                      )}
+                      {visibleColumns.includes('last_online_at') && (
+                        <td className="p-3 text-slate-500">
+                          {c.last_online_at ? formatDate(c.last_online_at) : '-'}
+                        </td>
+                      )}
+                      {visibleColumns.includes('last_offline_at') && (
+                        <td className="p-3 text-slate-500">
+                          {c.last_offline_at ? formatDate(c.last_offline_at) : '-'}
+                        </td>
+                      )}
+                      {visibleColumns.includes('notes') && (
+                        <td className="p-3 text-slate-500 max-w-xs truncate">{c.notes || '-'}</td>
+                      )}
+
+                      {/* Aksi */}
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/admin/customers/${c.id}`)}
+                            className="text-indigo-600 hover:text-indigo-800 p-1.5"
+                            title="Buka Detail Pelanggan"
+                          >
+                            <Eye className="w-4 h-4" />
                           </Button>
                           <Button
+                            variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/admin/customers/${cust.id}`)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-2.5 flex items-center gap-1 shadow-xs"
+                            onClick={() => {
+                              setSelectedCustomerForStatus(c);
+                              setNewStatus(c.status || 'active');
+                              setStatusNotes('');
+                            }}
+                            className="text-slate-500 hover:text-slate-800 p-1.5"
+                            title="Ubah Status"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            Detail
+                            <MoreHorizontal className="w-4 h-4" />
                           </Button>
                           {isSuperadmin && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setCustomerToDelete(cust)}
-                              className="text-xs h-8 px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded"
-                              title="Hapus Pelanggan (Superadmin Only)"
+                              onClick={() => setCustomerToDelete(c)}
+                              className="text-rose-500 hover:text-rose-700 p-1.5"
+                              title="Hapus"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Server-Side Pagination Bar */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <span>Baris per halaman:</span>
+            <Select
+              value={String(perPage)}
+              onValueChange={(val) => {
+                setPerPage(Number(val));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-16 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="ml-2 text-slate-500">
+              Total {meta.total} pelanggan (Halaman {meta.current_page} dari {meta.last_page})
+            </span>
           </div>
 
-          {/* Pagination */}
-          {meta.last_page > 1 && (
-            <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>
-                Menampilkan halaman {meta.current_page} dari {meta.last_page} ({meta.total} total data)
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="text-xs h-8"
-                >
-                  Sebelumnya
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= meta.last_page}
-                  onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
-                  className="text-xs h-8"
-                >
-                  Selanjutnya
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="text-xs h-8"
+            >
+              Sebelumnya
+            </Button>
+            <span className="px-2 font-semibold text-slate-800">{page}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= meta.last_page}
+              onClick={() => setPage((p) => p + 1)}
+              className="text-xs h-8"
+            >
+              Selanjutnya
+            </Button>
+          </div>
+        </div>
       </Card>
 
-      {/* Status Change Dialog Modal */}
-      <Dialog open={!!selectedCustomer} onOpenChange={(open) => !open && setSelectedCustomer(null)}>
-        <DialogContent className="max-w-md">
+      {/* 35 Column Picker Modal */}
+      <Dialog open={isColumnPickerOpen} onOpenChange={setIsColumnPickerOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-slate-800 flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-indigo-600" />
-              Ubah Status Pelanggan
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Columns className="w-5 h-5 text-indigo-600" />
+              Pemilih Kolom Tampilan (Semua 35 Kolom)
             </DialogTitle>
-            <DialogDescription>
-              Perbarui status operasional pelanggan <strong>{selectedCustomer?.name}</strong> (
-              <span className="font-mono font-semibold">{selectedCustomer?.customer_code}</span>).
+            <DialogDescription className="text-xs text-slate-500">
+              Centang kolom yang ingin Anda tampilkan pada tabel data pelanggan. Kolom sensitif (NIK mentah dan password) tidak pernah ditampilkan di tabel.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleStatusSubmit} className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Pilih Status Baru</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 py-3">
+            {ALL_COLUMNS.map((col) => {
+              const isChecked = visibleColumns.includes(col.key);
+              return (
+                <button
+                  key={col.key}
+                  type="button"
+                  onClick={() => toggleColumn(col.key)}
+                  className={`flex items-center gap-2 p-2 rounded-lg border text-xs text-left transition-colors ${
+                    isChecked
+                      ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-medium'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {isChecked ? (
+                    <CheckSquare className="w-4 h-4 text-indigo-600 shrink-0" />
+                  ) : (
+                    <Square className="w-4 h-4 text-slate-300 shrink-0" />
+                  )}
+                  <span className="truncate">{col.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="flex justify-between sm:justify-between items-center">
+            <Button variant="ghost" size="sm" onClick={resetColumns} className="text-xs text-slate-500">
+              Reset ke Kolom Default (9 Kolom)
+            </Button>
+            <Button
+              onClick={() => setIsColumnPickerOpen(false)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+            >
+              Terapkan Kolom ({visibleColumns.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Customer Modal */}
+      <CustomerFormModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          refetch();
+          refetchStats();
+        }}
+      />
+
+      {/* Import Modal */}
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-indigo-600">
+              <Upload className="w-5 h-5" /> Import Data Pelanggan (Excel / CSV)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Unggah file spreadsheet 35 kolom data pelanggan. Baris yang memiliki error akan dilaporkan secara terinci.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleImportSubmit} className="space-y-4 pt-2">
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center bg-slate-50/50">
+              <FileSpreadsheet className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+              />
+              <p className="text-[11px] text-slate-400 mt-2">Format didukung: .xlsx, .xls, .csv (Maksimal 10 MB)</p>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="text-xs flex items-center gap-1.5 text-indigo-600 border-indigo-200"
+              >
+                <Download className="w-3.5 h-3.5" /> Unduh Template 35 Kolom
+              </Button>
+            </div>
+
+            {/* Error Report if any */}
+            {importSummary?.errors && importSummary.errors.length > 0 && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg max-h-36 overflow-y-auto space-y-1 text-xs">
+                <p className="font-semibold text-rose-800">Laporan Error Validasi:</p>
+                {importSummary.errors.map((err: string, i: number) => (
+                  <p key={i} className="text-rose-700 text-[11px]">{err}</p>
+                ))}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsImportModalOpen(false)}>
+                Tutup
+              </Button>
+              <Button
+                type="submit"
+                disabled={isImporting || !importFile}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isImporting ? 'Mengimpor...' : 'Mulai Import'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Modal */}
+      <Dialog
+        open={!!selectedCustomerForStatus}
+        onOpenChange={(open) => !open && setSelectedCustomerForStatus(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ubah Status Pelanggan</DialogTitle>
+            <DialogDescription className="text-xs">
+              Ubah status operasional untuk {selectedCustomerForStatus?.name} ({selectedCustomerForStatus?.customer_code}).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-xs">Pilih Status Baru</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger className="text-xs">
+                <SelectTrigger className="mt-1 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">
-                    <span className="text-emerald-700 font-semibold">Aktif</span> — Layanan berjalan normal
-                  </SelectItem>
-                  <SelectItem value="suspended">
-                    <span className="text-amber-700 font-semibold">Ditangguhkan (Isolir)</span> — Isolir sementara
-                  </SelectItem>
-                  <SelectItem value="terminated">
-                    <span className="text-rose-700 font-semibold">Non-Aktif (Putus)</span> — Berhenti berlangganan
-                  </SelectItem>
+                  <SelectItem value="active">Active (Aktif)</SelectItem>
+                  <SelectItem value="suspended">Suspended (Ditangguhkan / Isolir)</SelectItem>
+                  <SelectItem value="inactive">Inactive (Non-Aktif)</SelectItem>
+                  <SelectItem value="terminated">Terminated (Putus)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Catatan / Alasan Perubahan (Opsional)</Label>
+            <div>
+              <Label className="text-xs">Catatan Perubahan</Label>
               <Textarea
-                placeholder="Contoh: Permintaan pelanggan berhenti sementara, atau penunggakan pembayaran..."
+                rows={3}
+                placeholder="Alasan perubahan status..."
                 value={statusNotes}
                 onChange={(e) => setStatusNotes(e.target.value)}
-                rows={3}
-                className="text-xs"
+                className="mt-1 text-xs"
               />
             </div>
+          </div>
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setSelectedCustomer(null)}
-                disabled={updateStatusMutation.isPending}
-                className="text-xs"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                disabled={updateStatusMutation.isPending}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
-              >
-                {updateStatusMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-
-      {/* Import Customers Excel Modal */}
-      <Dialog
-        open={isImportModalOpen}
-        onOpenChange={(open) => {
-          if (!open && !isImporting) {
-            setIsImportModalOpen(false);
-            setImportFile(null);
-            setImportSummary(null);
-          }
-        }}
-      >
-        <DialogContent className="max-w-lg bg-white dark:bg-slate-900">
-          <DialogHeader>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                <FileSpreadsheet className="w-5 h-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-bold text-slate-800 dark:text-white">
-                  Import Data Pelanggan dari Excel
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-                  Unggah file spreadsheet (.xlsx, .xls, .csv) untuk input data pelanggan secara massal.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <form onSubmit={handleImportSubmit} className="space-y-4 pt-1">
-            {/* Step 1: Download Template */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                  Format Template Excel
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadTemplate}
-                  className="h-7 text-[11px] px-2.5 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-indigo-200 hover:bg-indigo-50"
-                >
-                  <Download className="w-3 h-3 mr-1" />
-                  Unduh Template (.xlsx)
-                </Button>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Gunakan format kolom yang sesuai: <strong>Nama Pelanggan</strong>, <strong>No Telepon/WA</strong>, <strong>Alamat Lengkap</strong>, <strong>Paket Layanan</strong>, dan <strong>Kode ODP</strong>. Kolom Kode Pelanggan bersifat opsional (dibuat otomatis jika kosong).
-              </p>
-            </div>
-
-            {/* Step 2: Upload File Picker */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Pilih File Excel / CSV <span className="text-red-500">*</span>
-              </Label>
-              <div
-                className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors ${
-                  importFile
-                    ? 'border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20'
-                    : 'border-slate-300 dark:border-slate-700 hover:border-indigo-400 bg-slate-50/50 dark:bg-slate-800/40'
-                }`}
-                onClick={() => document.getElementById('customer-excel-input')?.click()}
-              >
-                <input
-                  id="customer-excel-input"
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setImportFile(file);
-                      setImportSummary(null);
-                    }
-                  }}
-                />
-                {importFile ? (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                      <FileCheck className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
-                      {importFile.name}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      {(importFile.size / 1024).toFixed(1)} KB &bull; Klik untuk ganti file
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1.5 text-slate-500">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
-                      <Upload className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                      Klik untuk memilih file Excel (.xlsx, .xls, .csv)
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      Maksimal ukuran file 10MB
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Step 3: Hasil Ringkasan Import */}
-            {importSummary && (
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs space-y-1.5">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Hasil Pemrosesan Import:
-                </div>
-                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-                  <div className="bg-white dark:bg-slate-900 p-2 rounded border border-emerald-100 dark:border-emerald-900">
-                    <span className="block text-lg font-bold text-emerald-600">{importSummary.imported}</span>
-                    <span className="text-[10px] text-slate-500">Baru Ditambahkan</span>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 p-2 rounded border border-emerald-100 dark:border-emerald-900">
-                    <span className="block text-lg font-bold text-indigo-600">{importSummary.updated}</span>
-                    <span className="text-[10px] text-slate-500">Data Diperbarui</span>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 p-2 rounded border border-emerald-100 dark:border-emerald-900">
-                    <span className="block text-lg font-bold text-amber-600">{importSummary.skipped}</span>
-                    <span className="text-[10px] text-slate-500">Dilewati / Kosong</span>
-                  </div>
-                </div>
-
-                {importSummary.errors && importSummary.errors.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-emerald-200 text-[11px] text-rose-700 space-y-0.5">
-                    <span className="font-semibold block">Catatan Peringatan:</span>
-                    {importSummary.errors.map((err: string, i: number) => (
-                      <p key={i}>&bull; {err}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsImportModalOpen(false);
-                  setImportFile(null);
-                  setImportSummary(null);
-                }}
-                disabled={isImporting}
-                className="text-xs"
-              >
-                {importSummary ? 'Tutup' : 'Batal'}
-              </Button>
-              <Button
-                type="submit"
-                disabled={!importFile || isImporting}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs min-w-[130px]"
-              >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <FileUp className="w-3.5 h-3.5 mr-1.5" />
-                    Mulai Import
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Customer Confirmation Modal (Superadmin Only) */}
-      <Dialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-rose-600 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-rose-600" />
-              Konfirmasi Hapus Pelanggan
-            </DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus data pelanggan{' '}
-              <strong>{customerToDelete?.name}</strong> (
-              <span className="font-mono font-semibold">{customerToDelete?.customer_code}</span>)?
-              <br />
-              <span className="text-rose-600 font-medium mt-2 block text-xs">
-                Perhatian: Tindakan ini hanya dapat dilakukan oleh Superadmin dan akan menghapus data pelanggan dari database secara permanen.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setCustomerToDelete(null)}
-              disabled={deleteCustomerMutation.isPending}
-              className="text-xs"
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedCustomerForStatus(null)}>
               Batal
             </Button>
             <Button
-              type="button"
-              variant="destructive"
-              onClick={() => customerToDelete && deleteCustomerMutation.mutate(customerToDelete.id)}
-              disabled={deleteCustomerMutation.isPending}
-              className="bg-rose-600 hover:bg-rose-700 text-white text-xs flex items-center gap-1.5"
+              disabled={updateStatusMutation.isPending}
+              onClick={() =>
+                updateStatusMutation.mutate({
+                  id: selectedCustomerForStatus.id,
+                  status: newStatus,
+                  notes: statusNotes,
+                })
+              }
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              {deleteCustomerMutation.isPending ? 'Menghapus...' : 'Ya, Hapus Pelanggan'}
+              {updateStatusMutation.isPending ? 'Menyimpan...' : 'Simpan Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-rose-100 text-rose-600">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <DialogTitle className="text-rose-600">Hapus Pelanggan</DialogTitle>
+            </div>
+            <DialogDescription className="text-xs pt-2">
+              Hapus pelanggan <span className="font-bold text-slate-800">{customerToDelete?.name}</span> ({customerToDelete?.customer_code})?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCustomerToDelete(null)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(customerToDelete.id)}
+            >
+              {deleteMutation.isPending ? 'Menghapus...' : 'Ya, Hapus'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Storage;
 
 class CustomerResource extends JsonResource
 {
+    /**
+     * Transform the resource into an array.
+     * Kolom sensitif (nik dan password) TIDAK PERNAH masuk dalam bentuk mentah ke Resource ini.
+     */
     public function toArray(Request $request): array
     {
         $formatDate = fn ($date) => $date ? Carbon::parse($date)->setTimezone('Asia/Jakarta')->toIso8601String() : null;
@@ -26,24 +30,66 @@ class CustomerResource extends JsonResource
 
         $hasBast = ! empty($signaturePath) || ! empty($evidence?->signature_path) || ($submission && $submission->status === SubmissionStatus::COMPLETED);
 
+        // ODP with parent ODC
+        $odp = $this->relationLoaded('odp') ? $this->odp : $this->odp;
+        $odc = $odp && $odp->relationLoaded('odc') ? $odp->odc : $odp?->odc;
+
+        $odpData = $odp ? [
+            'id' => $odp->id,
+            'code' => $odp->code,
+            'name' => $odp->name,
+            'address' => $odp->address ?? null,
+            'latitude' => $odp->latitude ? (float) $odp->latitude : null,
+            'longitude' => $odp->longitude ? (float) $odp->longitude : null,
+            'port' => $this->odp_port,
+            'notes' => $odp->description ?? $odp->notes ?? null,
+            'odc' => $odc ? [
+                'id' => $odc->id,
+                'code' => $odc->code,
+                'name' => $odc->name,
+                'address' => $odc->address ?? null,
+            ] : null,
+        ] : null;
+
+        // Tickets history
+        $tickets = [];
+        if ($this->relationLoaded('complaints')) {
+            $tickets = $this->complaints->map(fn ($c) => [
+                'id' => $c->id,
+                'ticket_number' => $c->ticket_number ?? 'TKT-'.$c->id,
+                'title' => $c->title ?? $c->description ?? 'Komplain',
+                'status' => is_object($c->status) ? $c->status->value : $c->status,
+                'priority' => $c->priority ?? 'normal',
+                'created_at' => $formatDate($c->created_at),
+            ]);
+        }
+
         return [
+            // Identitas
             'id' => $this->id,
             'customer_code' => $this->customer_code,
             'external_ref' => $this->external_ref,
             'name' => $this->name,
-            'email' => $this->email,
-            'address' => $this->address,
-            'latitude' => $this->latitude,
-            'longitude' => $this->longitude,
+            'nik' => $this->masked_nik, // Bertopeng (contoh: 3507••••••••1234)
+            'nik_masked' => $this->masked_nik,
             'phone' => $this->phone,
             'phone_normalized' => $this->phone_normalized,
+            'email' => $this->email,
+            'address' => $this->address,
+            'latitude' => $this->latitude ? (float) $this->latitude : null,
+            'longitude' => $this->longitude ? (float) $this->longitude : null,
+
+            // Layanan
             'service_type' => $this->service_type ?? 'pppoe',
             'bras_id' => $this->bras_id,
             'bras_name' => $this->bras?->name,
             'collector' => $this->collector,
             'username' => $this->username,
+            // Catatan keamanan: password TIDAK PERNAH dimuat di resource ini.
+            'password_masked' => filled($this->password) ? '••••••••' : null,
             'package_id' => $this->package_id,
             'package' => $this->servicePackage?->name ?? $this->package,
+            'package_name' => $this->servicePackage?->name ?? $this->package,
             'monthly_price' => (float) ($this->monthly_price ?: ($this->servicePackage?->price ?? 0)),
             'local_address' => $this->local_address,
             'remote_address' => $this->remote_address,
@@ -60,10 +106,15 @@ class CustomerResource extends JsonResource
             'session_uptime' => $this->session_uptime,
             'session_id' => $this->session_id,
             'onu_index' => $this->onu_index,
+
+            // Jaringan
             'odp_id' => $this->odp_id,
             'odp_code' => $this->odp?->code ?? $this->odp_code,
             'odp_name' => $this->odp?->name,
             'odp_port' => $this->odp_port,
+            'odp' => $odpData,
+
+            // Penagihan & Penempatan
             'debt' => (float) $this->debt,
             'wilayah' => $this->wilayah ?? $this->area,
             'installed_by_team_id' => $this->installed_by_team_id,
@@ -72,13 +123,15 @@ class CustomerResource extends JsonResource
             'sales_id' => $this->sales_id,
             'sales_name' => $this->sales?->name,
             'notes' => $this->notes,
+
+            // Dokumen & Relasi Terkait
             'has_bast' => $hasBast,
             'signature_url' => $signatureUrl ?? $evidenceSignature,
+            'tickets' => $tickets,
             'submission' => $submission ? [
                 'id' => $submission->id,
                 'submission_number' => $submission->submission_number,
                 'customer_name' => $submission->customer_name,
-                'nik' => $submission->nik,
                 'phone' => $submission->phone,
                 'email' => $submission->email,
                 'address' => $submission->address,

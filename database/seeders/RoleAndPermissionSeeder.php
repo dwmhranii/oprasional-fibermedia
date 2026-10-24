@@ -47,6 +47,7 @@ class RoleAndPermissionSeeder extends Seeder
             // Audit
             'audit.view',
             'audit.export',
+            'customers.view_secret',
         ];
 
         foreach ($permissions as $permission) {

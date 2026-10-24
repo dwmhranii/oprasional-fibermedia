@@ -52,6 +52,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_packages',
             'view_sales_reports',
             'manage_dispatch_settings',
+            'customers.view_secret',
         ];
 
         foreach ($permissions as $permission) {
@@ -93,6 +94,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_packages',
             'view_sales_reports',
             'manage_dispatch_settings',
+            'customers.view_secret',
         ]);
 
         // 3. Sales

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Customer;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -17,15 +18,26 @@ class CustomersExport implements FromCollection, ShouldAutoSize, WithHeadings, W
 
     protected ?string $search;
 
-    public function __construct(?string $status = null, ?string $search = null)
+    protected bool $canViewSecrets;
+
+    private int $rowNumber = 0;
+
+    public function __construct(?string $status = null, ?string $search = null, ?bool $canViewSecrets = null)
     {
         $this->status = $status && $status !== 'all' ? $status : null;
         $this->search = $search ? trim($search) : null;
+
+        if ($canViewSecrets !== null) {
+            $this->canViewSecrets = $canViewSecrets;
+        } else {
+            $user = Auth::user();
+            $this->canViewSecrets = $user && ($user->can('customers.view_secret') || $user->hasRole(['Superadmin', 'superadmin']));
+        }
     }
 
     public function collection()
     {
-        $query = Customer::query()->orderBy('id', 'asc');
+        $query = Customer::query()->with(['servicePackage', 'odp', 'bras', 'installedByTeam', 'sales'])->orderBy('id', 'asc');
 
         if ($this->status) {
             $query->where('status', $this->status);
@@ -37,9 +49,11 @@ class CustomersExport implements FromCollection, ShouldAutoSize, WithHeadings, W
                 $q->where('customer_code', 'like', "%{$s}%")
                     ->orWhere('name', 'like', "%{$s}%")
                     ->orWhere('phone', 'like', "%{$s}%")
+                    ->orWhere('username', 'like', "%{$s}%")
                     ->orWhere('address', 'like', "%{$s}%")
-                    ->orWhere('package', 'like', "%{$s}%")
-                    ->orWhere('odp_code', 'like', "%{$s}%");
+                    ->orWhereHas('odp', function ($oq) use ($s) {
+                        $oq->where('code', 'like', "%{$s}%")->orWhere('name', 'like', "%{$s}%");
+                    });
             });
         }
 
@@ -50,40 +64,98 @@ class CustomersExport implements FromCollection, ShouldAutoSize, WithHeadings, W
     {
         return [
             'No',
-            'Kode Pelanggan',
+            'ID Pelanggan',
+            'Ref Eksternal',
             'Nama Pelanggan',
-            'Nomor Telepon / WhatsApp',
-            'Alamat Lengkap',
+            'NIK',
+            'Nomor Telepon',
+            'Email',
+            'Alamat',
+            'Latitude',
+            'Longitude',
+            'Tipe Layanan',
+            'Server BRAS',
+            'Kolektor',
+            'Username Layanan',
+            'Password Layanan',
             'Paket Layanan',
-            'Kode ODP',
+            'Harga Bulanan',
+            'Local Address',
+            'Remote Address',
+            'Parent Queue',
+            'Rate Limit',
+            'Tanggal Berlangganan',
+            'Tanggal Jatuh Tempo',
             'Status',
-            'Tanggal Terdaftar',
+            'Status Online',
+            'Terakhir Online',
+            'Terakhir Offline',
+            'IP Saat Ini',
+            'MAC Address',
+            'Session Uptime',
+            'ONU Index',
+            'ODP',
+            'Port ODP',
+            'Hutang',
+            'Wilayah',
+            'Tim Pemasang',
+            'Sales',
+            'Catatan',
         ];
     }
-
-    private int $rowNumber = 0;
 
     public function map($customer): array
     {
         $this->rowNumber++;
 
-        $statusLabel = match ($customer->status) {
-            'active' => 'Aktif',
-            'suspended' => 'Ditangguhkan (Isolir)',
-            'terminated' => 'Non-Aktif (Putus)',
-            default => ucfirst($customer->status ?? 'Aktif'),
-        };
+        // Masking NIK dan Password bila tidak memiliki izin khusus
+        $nikValue = $this->canViewSecrets
+            ? $customer->nik
+            : $customer->masked_nik;
+
+        $passwordValue = $this->canViewSecrets
+            ? $customer->password
+            : (filled($customer->password) ? '••••••••' : '-');
 
         return [
             $this->rowNumber,
             $customer->customer_code,
+            $customer->external_ref ?? '-',
             $customer->name,
+            $nikValue ?? '-',
             $customer->phone,
+            $customer->email ?? '-',
             $customer->address,
-            $customer->package,
-            $customer->odp_code ?? '-',
-            $statusLabel,
-            $customer->created_at ? $customer->created_at->format('Y-m-d H:i:s') : '-',
+            $customer->latitude ?? '-',
+            $customer->longitude ?? '-',
+            strtoupper($customer->service_type ?? 'PPPOE'),
+            $customer->bras?->name ?? ($customer->bras_id ? "BRAS #{$customer->bras_id}" : '-'),
+            $customer->collector ?? '-',
+            $customer->username ?? '-',
+            $passwordValue,
+            $customer->servicePackage?->name ?? $customer->package ?? '-',
+            (float) ($customer->monthly_price ?: ($customer->servicePackage?->price ?? 0)),
+            $customer->local_address ?? '-',
+            $customer->remote_address ?? '-',
+            $customer->parent_queue ?? '-',
+            $customer->rate_limit ?? '-',
+            $customer->subscribed_at ? $customer->subscribed_at->format('Y-m-d') : '-',
+            $customer->expires_at ? $customer->expires_at->format('Y-m-d') : '-',
+            ucfirst($customer->status ?? 'active'),
+            $customer->is_online ? 'Online' : 'Offline',
+            $customer->last_online_at ? $customer->last_online_at->format('Y-m-d H:i:s') : '-',
+            $customer->last_offline_at ? $customer->last_offline_at->format('Y-m-d H:i:s') : '-',
+            $customer->current_ip_address ?? '-',
+            $customer->current_mac_address ?? '-',
+            $customer->session_uptime ?? '-',
+            $customer->onu_index ?? '-',
+            $customer->odp?->name ?? $customer->odp?->code ?? $customer->odp_code ?? '-',
+            $customer->odp_port ?? '-',
+            (float) $customer->debt,
+            $customer->wilayah ?? '-',
+            $customer->installedByTeam?->name ?? '-',
+            $customer->sales?->name ?? '-',
+            $customer->notes ?? '-',
         ];
     }
 
@@ -97,7 +169,7 @@ class CustomersExport implements FromCollection, ShouldAutoSize, WithHeadings, W
                 ],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '4F46E5'], // Indigo-600
+                    'startColor' => ['rgb' => '1E293B'], // Slate-800
                 ],
             ],
         ];

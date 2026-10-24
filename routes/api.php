@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Packages Catalog & Promo Validation
     Route::get('/packages', [PackageController::class, 'index']);
     Route::post('/promos/validate', [PromoCodeController::class, 'validateCode']);
+    Route::get('/customers/{customer}/secrets', [CustomerController::class, 'showSecrets']);
 
     // Sales Endpoints
     Route::middleware('role:Sales|Admin|Superadmin')->group(function () {
@@ -131,8 +132,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/customers/import-template', [CustomerController::class, 'importTemplate']);
         Route::post('/admin/customers/import', [CustomerController::class, 'import']);
         Route::get('/admin/customers', [CustomerController::class, 'index']);
+        Route::post('/admin/customers', [CustomerController::class, 'store']);
         Route::get('/admin/customers/stats', [CustomerController::class, 'stats']);
         Route::get('/admin/customers/{customer}', [CustomerController::class, 'show']);
+        Route::get('/admin/customers/{customer}/secrets', [CustomerController::class, 'showSecrets']);
         Route::patch('/admin/customers/{customer}/status', [CustomerController::class, 'updateStatus']);
         Route::put('/admin/customers/{customer}', [CustomerController::class, 'update']);
 

@@ -22,6 +22,8 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use Filterable, HasApiTokens, HasFactory, HasRoles, LogsActivity, Notifiable;
 
+    protected $guard_name = 'web';
+
     protected static function booted(): void
     {
         static::saved(function (User $user) {

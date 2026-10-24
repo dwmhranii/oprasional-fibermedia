@@ -106,10 +106,12 @@ class GenerateApiTypesCommand extends Command
         $types[] = "}";
         $types[] = "";
         $types[] = "export interface CustomerSecretResponse {";
-        $types[] = "  customer_id: number;";
-        $types[] = "  nik: string;";
+        $types[] = "  id: number;";
+        $types[] = "  customer_code: string;";
+        $types[] = "  name: string;";
+        $types[] = "  username?: string | null;";
+        $types[] = "  nik?: string | null;";
         $types[] = "  password?: string | null;";
-        $types[] = "  viewed_at: string;";
         $types[] = "}";
         $types[] = "";
         $types[] = "export interface CustomerFormPayload {";

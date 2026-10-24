@@ -83,10 +83,12 @@ export interface CustomerDetailResponse extends CustomerListRow {
 }
 
 export interface CustomerSecretResponse {
-  customer_id: number;
-  nik: string;
+  id: number;
+  customer_code: string;
+  name: string;
+  username?: string | null;
+  nik?: string | null;
   password?: string | null;
-  viewed_at: string;
 }
 
 export interface CustomerFormPayload {
