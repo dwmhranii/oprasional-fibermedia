@@ -247,42 +247,52 @@ export interface NetworkApprovalsResponse {
 }
 
 // ─── TIM & ABSENSI ──────────────────────────────────────────────────────────
+export interface TeamMemberItem {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  status?: string | null;
+  role?: string | null;
+  joined_at?: string | null;
+}
+
 export interface Team {
   id: number;
   name: string;
-  area?: string | null;
   description?: string | null;
+  order_index: number;
   is_active: boolean;
-  members_count?: number;
+  member_count?: number;
   members?: TeamMemberItem[];
   created_at?: string | null;
   updated_at?: string | null;
 }
 
-export interface TeamMemberItem {
-  id: number;
-  team_id: number;
-  user_id: number;
-  user_name?: string;
-  user_email?: string;
-  role_in_team?: string | null;
-  is_lead?: boolean;
-}
-
 export interface DailyAttendance {
   id: number;
   user_id: number;
-  user_name?: string;
-  date: string;
+  user?: { id: number; name: string; email?: string | null; phone?: string | null; team?: string | null } | null;
+  work_date: string;
+  status: 'hadir' | 'izin' | 'sakit' | 'alpa';
   check_in_at?: string | null;
   check_out_at?: string | null;
   check_in_lat?: number | null;
   check_in_lng?: number | null;
-  check_out_lat?: number | null;
-  check_out_lng?: number | null;
-  geofence_status: 'inside' | 'outside' | 'low_accuracy' | 'unverified';
-  status: 'present' | 'late' | 'absent' | 'excused' | 'leave';
-  notes?: string | null;
+  check_in_accuracy?: number | null;
+  check_in_media_id?: number | null;
+  check_in_photo_url?: string | null;
+  device_id?: number | null;
+  device?: { id: number; device_name?: string; status?: string } | null;
+  is_manual: boolean;
+  set_by?: { id: number; name: string } | null;
+  office_id?: number | null;
+  office?: { id: number; name: string } | null;
+  office_distance_meters?: number | null;
+  late_minutes: number;
+  note?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface OfficeLocation {
@@ -292,17 +302,26 @@ export interface OfficeLocation {
   longitude: number;
   radius_meters: number;
   is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface Device {
   id: number;
   user_id: number;
-  user_name?: string;
+  user?: { id: number; name: string; email?: string | null; team?: string | null } | null;
   device_uuid: string;
+  label?: string | null;
   model?: string | null;
   platform?: string | null;
+  status: 'approved' | 'pending' | 'revoked';
   is_approved: boolean;
-  last_used_at?: string | null;
+  approved_at?: string | null;
+  approved_by?: { id: number; name: string } | null;
+  last_seen_at?: string | null;
+  revoked_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 // ─── TIKET (TASKS & COMPLAINTS) ─────────────────────────────────────────────

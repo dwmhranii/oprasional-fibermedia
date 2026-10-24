@@ -61,6 +61,8 @@ import { NetworkCableManagement } from './components/network/NetworkCableManagem
 import { OdcManagement } from './components/network/OdcManagement';
 import { OdpManagement } from './components/network/OdpManagement';
 import { BrasManagement } from './components/network/BrasManagement';
+import { DeviceManagement } from './components/admin/DeviceManagement';
+import { OfficeLocationManagement } from './components/admin/OfficeLocationManagement';
 
 const ProtectedLayout = () => {
   const { isAuthenticated } = useAuth();
@@ -175,6 +177,8 @@ const AppContent = () => {
         {/* Tim & Absensi (Fase 1) */}
         <Route path="/admin/attendances/daily" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><DailyAttendanceManagement /></RoleRoute>} />
         <Route path="/admin/attendances/recap" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><AttendanceRecapManagement /></RoleRoute>} />
+        <Route path="/admin/devices" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><DeviceManagement /></RoleRoute>} />
+        <Route path="/admin/office-locations" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><OfficeLocationManagement /></RoleRoute>} />
 
         <Route path="/maintenance" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><MaintenanceManagement /></RoleRoute>} />
         

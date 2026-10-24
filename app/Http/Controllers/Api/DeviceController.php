@@ -54,9 +54,9 @@ class DeviceController extends Controller
     /**
      * List devices for admin management.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        $query = Device::with(['user', 'approvedBy'])->latest('last_seen_at');
+        $query = Device::with(['user.currentTeam', 'approvedBy'])->latest('last_seen_at');
 
         if ($request->filled('status')) {
             if ($request->status === 'approved') {
@@ -81,10 +81,7 @@ class DeviceController extends Controller
 
         $devices = $query->paginate($request->integer('per_page', 20));
 
-        return response()->json([
-            'success' => true,
-            'data' => $devices,
-        ]);
+        return \App\Http\Resources\DeviceResource::collection($devices);
     }
 
     /**
@@ -102,7 +99,7 @@ class DeviceController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Perangkat berhasil disetujui.',
-            'data' => $device,
+            'data' => new \App\Http\Resources\DeviceResource($device->fresh(['user', 'approvedBy'])),
         ]);
     }
 
@@ -119,7 +116,7 @@ class DeviceController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Perangkat berhasil dicabut.',
-            'data' => $device,
+            'data' => new \App\Http\Resources\DeviceResource($device->fresh(['user', 'approvedBy'])),
         ]);
     }
 }
