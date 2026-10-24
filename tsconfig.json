@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": false,
+    "noImplicitAny": false,
+    "allowJs": true,
+    "paths": {
+      "@/*": ["./resources/js/admin/*"],
+      "@admin/*": ["./resources/js/admin/*"],
+      "@field/*": ["./resources/js/field/*"],
+      "@shared/*": ["./resources/js/shared/*"]
+    }
+  },
+  "include": ["resources/js", "vite.config.ts"]
+}

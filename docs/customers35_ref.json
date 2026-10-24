@@ -1,0 +1,142 @@
+{
+    "No": {
+        "db_column": "id",
+        "label": "No \/ ID Primer"
+    },
+    "ID User": {
+        "db_column": "customer_code",
+        "label": "ID User \/ Kode Pelanggan"
+    },
+    "ID Pelanggan": {
+        "db_column": "external_ref",
+        "label": "ID Pelanggan (External Ref)"
+    },
+    "Tanggal Dibuat": {
+        "db_column": "created_at",
+        "label": "Tanggal Dibuat (Registrasi)"
+    },
+    "Nama": {
+        "db_column": "name",
+        "label": "Nama Pelanggan"
+    },
+    "NIK": {
+        "db_column": "nik",
+        "label": "NIK (Terenkripsi)"
+    },
+    "Email": {
+        "db_column": "email",
+        "label": "Email"
+    },
+    "Alamat": {
+        "db_column": "address",
+        "label": "Alamat"
+    },
+    "Koordinat": {
+        "db_column": "latitude, longitude",
+        "label": "Koordinat GPS"
+    },
+    "Nomor Telepon": {
+        "db_column": "phone",
+        "label": "Nomor Telepon"
+    },
+    "Tipe": {
+        "db_column": "service_type",
+        "label": "Tipe Layanan (PPPoE\/IPoE)"
+    },
+    "Server": {
+        "db_column": "bras_id",
+        "label": "Server BRAS"
+    },
+    "Collector": {
+        "db_column": "collector",
+        "label": "Collector \/ Penagih"
+    },
+    "Username": {
+        "db_column": "username",
+        "label": "Username PPPoE"
+    },
+    "Password": {
+        "db_column": "password",
+        "label": "Password (Terenkripsi)"
+    },
+    "Paket": {
+        "db_column": "package_id (legacy: package)",
+        "label": "Paket Layanan"
+    },
+    "Harga": {
+        "db_column": "monthly_price",
+        "label": "Harga Bulanan"
+    },
+    "Local Address": {
+        "db_column": "local_address",
+        "label": "Local Address IP"
+    },
+    "Remote Address": {
+        "db_column": "remote_address",
+        "label": "Remote Address IP"
+    },
+    "Parent Queue": {
+        "db_column": "parent_queue",
+        "label": "Parent Queue MikroTik"
+    },
+    "Rate Limit": {
+        "db_column": "rate_limit",
+        "label": "Rate Limit Bandwidth"
+    },
+    "Berlangganan": {
+        "db_column": "subscribed_at",
+        "label": "Tanggal Mulai Berlangganan"
+    },
+    "Expired Date": {
+        "db_column": "expires_at",
+        "label": "Tanggal Jatuh Tempo \/ Expired"
+    },
+    "Status": {
+        "db_column": "status",
+        "label": "Status Layanan"
+    },
+    "ONU Index": {
+        "db_column": "onu_index",
+        "label": "ONU Index GPON"
+    },
+    "Nama ODP": {
+        "db_column": "odp_id (legacy: odp_code)",
+        "label": "Nama \/ Kode ODP"
+    },
+    "Alamat ODP": {
+        "db_column": "odps.address (relasi)",
+        "label": "Alamat ODP"
+    },
+    "Koordinat ODP": {
+        "db_column": "odps.latitude, odps.longitude (relasi)",
+        "label": "Koordinat ODP"
+    },
+    "Port ODP": {
+        "db_column": "odp_port",
+        "label": "Port ODP Terpakai"
+    },
+    "Keterangan ODP": {
+        "db_column": "odps.notes (relasi)",
+        "label": "Keterangan ODP"
+    },
+    "Hutang": {
+        "db_column": "debt",
+        "label": "Hutang \/ Tagihan"
+    },
+    "Wilayah": {
+        "db_column": "wilayah",
+        "label": "Wilayah \/ Area"
+    },
+    "Teknisi": {
+        "db_column": "installed_by_team_id",
+        "label": "Tim Teknisi Pemasang"
+    },
+    "Sales": {
+        "db_column": "sales_id",
+        "label": "Sales Penanggung Jawab"
+    },
+    "Catatan": {
+        "db_column": "notes",
+        "label": "Catatan Tambahan"
+    }
+}

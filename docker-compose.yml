@@ -1,0 +1,99 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: provisioning_app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - LOG_CHANNEL=stderr
+    volumes:
+      - .env:/var/www/html/.env
+      - storage_data:/var/www/html/storage
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    container_name: provisioning_worker
+    restart: unless-stopped
+    command: php artisan horizon
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - LOG_CHANNEL=stderr
+    volumes:
+      - .env:/var/www/html/.env
+      - storage_data:/var/www/html/storage
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  websockets:
+    build:
+      context: .
+      target: runtime
+    container_name: provisioning_websockets
+    restart: unless-stopped
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - LOG_CHANNEL=stderr
+    volumes:
+      - .env:/var/www/html/.env
+      - storage_data:/var/www/html/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  database:
+    image: postgres:16-alpine
+    container_name: provisioning_database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: provisioning
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secure_postgres_password
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgsql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d provisioning"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: provisioning_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  storage_data:
+  pgsql_data:
+  redis_data:

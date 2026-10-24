@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('provisionings', function (Blueprint $table) {
+            $table->string('idempotency_key')->unique()->nullable();
+            $table->text('last_error')->nullable();
+            $table->string('failure_reason')->nullable();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('provisionings', function (Blueprint $table) {
+            $table->dropColumn(['idempotency_key', 'last_error', 'failure_reason']);
+        });
+    }
+};

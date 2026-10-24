@@ -1,0 +1,1268 @@
+{
+    "AssignmentLog": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/AssignmentLog.php",
+        "table": "assignment_logs",
+        "fillable": [
+            "assignable_type",
+            "assignable_id",
+            "ticket_type",
+            "ticket_id",
+            "team_id",
+            "action",
+            "reason",
+            "actor_id",
+            "attempt_no"
+        ],
+        "casts": [],
+        "hidden": [],
+        "relations": [
+            "assignable",
+            "team",
+            "actor"
+        ]
+    },
+    "BrasDevice": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/BrasDevice.php",
+        "table": "bras_devices",
+        "fillable": [
+            "name",
+            "ip_address",
+            "api_port",
+            "username",
+            "password",
+            "use_ssl",
+            "timeout",
+            "location",
+            "notes",
+            "is_active",
+            "last_synced_at",
+            "last_sync_status",
+            "last_sync_error",
+            "active_sessions_count"
+        ],
+        "casts": {
+            "api_port": "integer",
+            "use_ssl": "boolean",
+            "timeout": "integer",
+            "is_active": "boolean",
+            "password": "encrypted",
+            "last_synced_at": "datetime",
+            "active_sessions_count": "integer"
+        },
+        "hidden": [
+            "password"
+        ],
+        "relations": [
+            "customers",
+            "sessionLogs"
+        ]
+    },
+    "BrasSessionLog": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/BrasSessionLog.php",
+        "table": "bras_session_logs",
+        "fillable": [
+            "bras_device_id",
+            "customer_id",
+            "username",
+            "event",
+            "ip_address",
+            "mac_address",
+            "uptime",
+            "source",
+            "details"
+        ],
+        "casts": {
+            "details": "array"
+        },
+        "hidden": [],
+        "relations": [
+            "brasDevice",
+            "customer"
+        ]
+    },
+    "CableTrack": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/CableTrack.php",
+        "table": "cable_tracks",
+        "fillable": [
+            "client_uuid",
+            "name",
+            "coordinates",
+            "raw_points_count",
+            "simplified_points_count",
+            "total_length_meters",
+            "created_by_id",
+            "status",
+            "operational_status",
+            "connected_odc_id",
+            "connected_odp_id",
+            "downstream_odp_ids",
+            "notes"
+        ],
+        "casts": {
+            "coordinates": "array",
+            "downstream_odp_ids": "array",
+            "raw_points_count": "integer",
+            "simplified_points_count": "integer",
+            "total_length_meters": "decimal:2"
+        },
+        "hidden": [],
+        "relations": [
+            "creator",
+            "connectedOdc",
+            "connectedOdp",
+            "getAffectedCustomers"
+        ]
+    },
+    "Complaint": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Complaint.php",
+        "table": "complaints",
+        "fillable": [
+            "ticket_number",
+            "customer_id",
+            "customer_code",
+            "customer_name",
+            "customer_phone",
+            "customer_address",
+            "customer_lat",
+            "customer_lng",
+            "area",
+            "assigned_team",
+            "whatsapp_message",
+            "attachments",
+            "category",
+            "subject",
+            "description",
+            "priority",
+            "phase_1_completed_at",
+            "phase_2_completed_at",
+            "status",
+            "created_by_id",
+            "resolution_type",
+            "resolution_category",
+            "status_reason",
+            "verified_by_id",
+            "verified_at",
+            "verified_notes",
+            "sla_response_due_at",
+            "sla_resolve_due_at",
+            "sla_paused_at",
+            "sla_paused_seconds",
+            "is_sla_breached",
+            "first_response_at",
+            "resolved_at",
+            "closed_at",
+            "assigned_team_id",
+            "assigned_at",
+            "accepted_at",
+            "accepted_by_id",
+            "response_deadline_at",
+            "reassign_count",
+            "unassigned_since",
+            "customer_rating",
+            "rating_note",
+            "rated_at",
+            "rated_by_id",
+            "review_status",
+            "review_flags",
+            "reviewed_by",
+            "reviewed_at",
+            "review_note",
+            "is_mass_outage",
+            "affected_element_type",
+            "affected_element_id"
+        ],
+        "casts": {
+            "attachments": "array",
+            "phase_1_completed_at": "datetime",
+            "phase_2_completed_at": "datetime",
+            "is_sla_breached": "boolean",
+            "is_mass_outage": "boolean",
+            "customer_lat": "float",
+            "customer_lng": "float",
+            "sla_paused_seconds": "integer",
+            "sla_response_due_at": "datetime",
+            "sla_resolve_due_at": "datetime",
+            "sla_paused_at": "datetime",
+            "first_response_at": "datetime",
+            "resolved_at": "datetime",
+            "closed_at": "datetime",
+            "verified_at": "datetime",
+            "assigned_at": "datetime",
+            "accepted_at": "datetime",
+            "response_deadline_at": "datetime",
+            "reviewed_at": "datetime",
+            "review_flags": "array"
+        },
+        "hidden": [],
+        "relations": [
+            "affectedCustomers",
+            "customer",
+            "createdBy",
+            "verifiedBy",
+            "currentAssignment",
+            "assignments",
+            "evidence",
+            "attendances",
+            "logs",
+            "teamMembers",
+            "assignmentLogs",
+            "ticketEvents",
+            "allTeamMembersAttended",
+            "pauseSla",
+            "resumeSla",
+            "assignedTeam",
+            "ticketAttendances",
+            "phase2Requirements",
+            "media"
+        ]
+    },
+    "ComplaintAssignment": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/ComplaintAssignment.php",
+        "table": "complaint_assignments",
+        "fillable": [
+            "complaint_id",
+            "technician_id",
+            "assigned_team",
+            "assigned_by_id",
+            "assigned_by_role",
+            "is_manual_assignment",
+            "status",
+            "scheduled_visit_at",
+            "notes",
+            "assigned_at",
+            "started_at",
+            "resolved_at",
+            "returned_at",
+            "return_reason"
+        ],
+        "casts": {
+            "is_manual_assignment": "boolean",
+            "scheduled_visit_at": "datetime",
+            "assigned_at": "datetime",
+            "started_at": "datetime",
+            "resolved_at": "datetime",
+            "returned_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "complaint",
+            "technician",
+            "assignedBy",
+            "evidence"
+        ]
+    },
+    "ComplaintAttendance": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/ComplaintAttendance.php",
+        "table": "complaint_attendances",
+        "fillable": [
+            "complaint_id",
+            "user_id",
+            "selfie_photo_path",
+            "latitude",
+            "longitude",
+            "accuracy",
+            "distance_meters",
+            "is_within_radius",
+            "clocked_at"
+        ],
+        "casts": {
+            "latitude": "float",
+            "longitude": "float",
+            "accuracy": "float",
+            "distance_meters": "float",
+            "is_within_radius": "boolean",
+            "clocked_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "complaint",
+            "technician"
+        ]
+    },
+    "ComplaintEvidence": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/ComplaintEvidence.php",
+        "table": "complaint_evidences",
+        "fillable": [
+            "complaint_id",
+            "assignment_id",
+            "photos",
+            "description",
+            "resolution_category",
+            "submitted_at"
+        ],
+        "casts": {
+            "photos": "array",
+            "submitted_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "complaint",
+            "assignment"
+        ]
+    },
+    "ComplaintLog": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/ComplaintLog.php",
+        "table": "complaint_logs",
+        "fillable": [
+            "complaint_id",
+            "from_status",
+            "to_status",
+            "action",
+            "actor_id",
+            "actor_role",
+            "notes"
+        ],
+        "casts": [],
+        "hidden": [],
+        "relations": [
+            "complaint",
+            "actor"
+        ]
+    },
+    "ComplaintTicketCounter": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/ComplaintTicketCounter.php",
+        "table": "complaint_ticket_counters",
+        "fillable": [
+            "year",
+            "last_number"
+        ],
+        "casts": {
+            "year": "integer",
+            "last_number": "integer"
+        },
+        "hidden": [],
+        "relations": []
+    },
+    "Customer": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Customer.php",
+        "table": "customers",
+        "fillable": [
+            "customer_code",
+            "external_ref",
+            "name",
+            "nik",
+            "email",
+            "address",
+            "latitude",
+            "longitude",
+            "phone",
+            "service_type",
+            "bras_id",
+            "collector",
+            "username",
+            "password",
+            "package_id",
+            "monthly_price",
+            "local_address",
+            "remote_address",
+            "parent_queue",
+            "rate_limit",
+            "subscribed_at",
+            "expires_at",
+            "status",
+            "is_online",
+            "last_online_at",
+            "last_offline_at",
+            "current_ip_address",
+            "current_mac_address",
+            "session_uptime",
+            "session_id",
+            "onu_index",
+            "odp_id",
+            "odp_port",
+            "debt",
+            "wilayah",
+            "installed_by_team_id",
+            "installed_task_id",
+            "sales_id",
+            "notes",
+            "package",
+            "odp_code"
+        ],
+        "casts": {
+            "nik": "encrypted",
+            "password": "encrypted",
+            "latitude": "decimal:7",
+            "longitude": "decimal:7",
+            "monthly_price": "decimal:2",
+            "debt": "decimal:2",
+            "is_online": "boolean",
+            "last_online_at": "datetime",
+            "last_offline_at": "datetime",
+            "subscribed_at": "date",
+            "expires_at": "date"
+        },
+        "hidden": [
+            "password",
+            "nik",
+            "nik_hash"
+        ],
+        "relations": [
+            "servicePackage",
+            "bras",
+            "odp",
+            "installedByTeam",
+            "installedTask",
+            "sales",
+            "complaints",
+            "submission",
+            "massOutageComplaints",
+            "brasSessionLogs"
+        ]
+    },
+    "DailyAttendance": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/DailyAttendance.php",
+        "table": "daily_attendances",
+        "fillable": [
+            "user_id",
+            "work_date",
+            "status",
+            "check_in_at",
+            "check_in_lat",
+            "check_in_lng",
+            "check_in_accuracy",
+            "check_in_media_id",
+            "check_out_at",
+            "device_id",
+            "set_by_id",
+            "note",
+            "is_manual",
+            "office_id",
+            "office_distance_meters",
+            "late_minutes"
+        ],
+        "casts": {
+            "work_date": "date",
+            "check_in_at": "datetime",
+            "check_out_at": "datetime",
+            "check_in_lat": "float",
+            "check_in_lng": "float",
+            "check_in_accuracy": "float",
+            "office_distance_meters": "float",
+            "is_manual": "boolean",
+            "late_minutes": "integer"
+        },
+        "hidden": [],
+        "relations": [
+            "user",
+            "setBy",
+            "office",
+            "device",
+            "checkInMedia"
+        ]
+    },
+    "Device": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Device.php",
+        "table": "devices",
+        "fillable": [
+            "user_id",
+            "device_uuid",
+            "label",
+            "model",
+            "platform",
+            "approved_at",
+            "approved_by_id",
+            "last_seen_at",
+            "revoked_at"
+        ],
+        "casts": {
+            "approved_at": "datetime",
+            "last_seen_at": "datetime",
+            "revoked_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "user",
+            "approvedBy",
+            "isApproved"
+        ]
+    },
+    "DispatchSetting": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/DispatchSetting.php",
+        "table": "dispatch_settings",
+        "fillable": [
+            "ticket_type",
+            "key",
+            "value",
+            "min_members_present",
+            "accept_timeout_menit",
+            "max_oper"
+        ],
+        "casts": {
+            "value": "array",
+            "min_members_present": "integer",
+            "accept_timeout_menit": "integer",
+            "max_oper": "integer"
+        },
+        "hidden": [],
+        "relations": []
+    },
+    "KpiSetting": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/KpiSetting.php",
+        "table": "kpi_settings",
+        "fillable": [
+            "key",
+            "version",
+            "category",
+            "value",
+            "weights",
+            "targets",
+            "is_active",
+            "read_only_until",
+            "notes",
+            "created_by"
+        ],
+        "casts": {
+            "version": "integer",
+            "value": "array",
+            "weights": "array",
+            "targets": "array",
+            "is_active": "boolean",
+            "read_only_until": "date"
+        },
+        "hidden": [],
+        "relations": [
+            "creator"
+        ]
+    },
+    "KpiSnapshot": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/KpiSnapshot.php",
+        "table": "kpi_snapshots",
+        "fillable": [
+            "period",
+            "subject_type",
+            "subject_id",
+            "metrics",
+            "weights",
+            "score",
+            "settings_version",
+            "is_read_only",
+            "computed_at"
+        ],
+        "casts": {
+            "metrics": "array",
+            "weights": "array",
+            "score": "decimal:2",
+            "settings_version": "integer",
+            "is_read_only": "boolean",
+            "computed_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "team",
+            "user",
+            "getSubjectAttribute"
+        ]
+    },
+    "Media": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Media.php",
+        "table": "media",
+        "fillable": [
+            "mediable_type",
+            "mediable_id",
+            "kind",
+            "disk",
+            "path",
+            "sha256",
+            "size",
+            "mime",
+            "captured_at",
+            "received_at",
+            "selisih_jam",
+            "lat",
+            "lng",
+            "accuracy",
+            "device_id",
+            "uploaded_by_id",
+            "is_anomaly",
+            "anomaly_reasons"
+        ],
+        "casts": {
+            "captured_at": "datetime",
+            "received_at": "datetime",
+            "selisih_jam": "decimal:2",
+            "is_anomaly": "boolean",
+            "anomaly_reasons": "array",
+            "lat": "decimal:7",
+            "lng": "decimal:7",
+            "accuracy": "decimal:2"
+        },
+        "hidden": [],
+        "relations": [
+            "mediable",
+            "uploader"
+        ]
+    },
+    "Odc": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Odc.php",
+        "table": "odcs",
+        "fillable": [
+            "code",
+            "name",
+            "address",
+            "latitude",
+            "longitude",
+            "capacity_odp",
+            "operational_status",
+            "wilayah",
+            "notes"
+        ],
+        "casts": {
+            "latitude": "decimal:7",
+            "longitude": "decimal:7",
+            "capacity_odp": "integer"
+        },
+        "hidden": [],
+        "relations": [
+            "odps",
+            "getAffectedCustomers"
+        ]
+    },
+    "Odp": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Odp.php",
+        "table": "odps",
+        "fillable": [
+            "odc_id",
+            "code",
+            "name",
+            "address",
+            "latitude",
+            "longitude",
+            "port_capacity",
+            "wilayah",
+            "notes",
+            "is_active",
+            "client_uuid",
+            "status",
+            "is_approved",
+            "proposed_latitude",
+            "proposed_longitude",
+            "created_by_id",
+            "operational_status"
+        ],
+        "casts": {
+            "latitude": "decimal:7",
+            "longitude": "decimal:7",
+            "proposed_latitude": "decimal:7",
+            "proposed_longitude": "decimal:7",
+            "port_capacity": "integer",
+            "is_active": "boolean",
+            "is_approved": "boolean"
+        },
+        "hidden": [],
+        "relations": [
+            "odc",
+            "customers",
+            "getAffectedCustomers",
+            "freePorts"
+        ]
+    },
+    "OfficeLocation": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/OfficeLocation.php",
+        "table": "office_locations",
+        "fillable": [
+            "name",
+            "latitude",
+            "longitude",
+            "radius_meters",
+            "is_active"
+        ],
+        "casts": {
+            "latitude": "float",
+            "longitude": "float",
+            "radius_meters": "integer",
+            "is_active": "boolean"
+        },
+        "hidden": [],
+        "relations": [
+            "attendances"
+        ]
+    },
+    "Package": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Package.php",
+        "table": "packages",
+        "fillable": [
+            "code",
+            "name",
+            "speed_mbps",
+            "price",
+            "category",
+            "description",
+            "is_popular",
+            "is_active",
+            "synced_at"
+        ],
+        "casts": {
+            "is_popular": "boolean",
+            "is_active": "boolean",
+            "price": "float",
+            "speed_mbps": "integer",
+            "synced_at": "datetime"
+        },
+        "hidden": [],
+        "relations": []
+    },
+    "Phase2Requirement": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Phase2Requirement.php",
+        "table": "phase2_requirements",
+        "fillable": [
+            "assignable_type",
+            "assignable_id",
+            "user_id",
+            "required_at",
+            "completed_at",
+            "waived_by_id",
+            "waive_reason"
+        ],
+        "casts": {
+            "required_at": "datetime",
+            "completed_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "assignable",
+            "user",
+            "waivedBy",
+            "isCompleted",
+            "isWaived"
+        ]
+    },
+    "PromoCode": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/PromoCode.php",
+        "table": "promo_codes",
+        "fillable": [
+            "code",
+            "name",
+            "description",
+            "type",
+            "value",
+            "min_package_price",
+            "max_uses",
+            "used_count",
+            "valid_from",
+            "valid_until",
+            "status",
+            "created_by"
+        ],
+        "casts": {
+            "value": "float",
+            "min_package_price": "float",
+            "max_uses": "integer",
+            "used_count": "integer",
+            "valid_from": "datetime",
+            "valid_until": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "creator"
+        ]
+    },
+    "Provisioning": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Provisioning.php",
+        "table": "provisionings",
+        "fillable": [
+            "provisioning_number",
+            "submission_id",
+            "admin_id",
+            "bfass_username",
+            "bfass_password",
+            "vlan",
+            "odp",
+            "onu_serial_number",
+            "bfass_account_id",
+            "bfass_status",
+            "service_type",
+            "nas_server",
+            "nas_ip",
+            "ip_address",
+            "ip_pool",
+            "bandwidth_profile",
+            "bandwidth_up",
+            "bandwidth_down",
+            "status",
+            "retry_count",
+            "bfass_response",
+            "error_log",
+            "notes",
+            "completed_at",
+            "provisioned_at",
+            "credentials_saved_at",
+            "assigned_at",
+            "idempotency_key",
+            "last_error",
+            "failure_reason"
+        ],
+        "casts": {
+            "bfass_password": "encrypted",
+            "bfass_response": "array",
+            "error_log": "array",
+            "completed_at": "datetime",
+            "provisioned_at": "datetime",
+            "credentials_saved_at": "datetime",
+            "assigned_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "submission",
+            "admin",
+            "tasks"
+        ]
+    },
+    "PushSubscription": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/PushSubscription.php",
+        "table": "push_subscriptions",
+        "fillable": [
+            "user_id",
+            "endpoint",
+            "public_key",
+            "auth_token",
+            "content_encoding"
+        ],
+        "casts": [],
+        "hidden": [],
+        "relations": [
+            "user"
+        ]
+    },
+    "RoundRobinPointer": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/RoundRobinPointer.php",
+        "table": "round_robin_pointers",
+        "fillable": [
+            "queue_type",
+            "last_team_id"
+        ],
+        "casts": [],
+        "hidden": [],
+        "relations": [
+            "lastTeam"
+        ]
+    },
+    "SlaBreach": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/SlaBreach.php",
+        "table": "sla_breaches",
+        "fillable": [
+            "breach_type",
+            "entity_type",
+            "entity_id",
+            "description",
+            "detected_at",
+            "resolved_at",
+            "metadata"
+        ],
+        "casts": {
+            "detected_at": "datetime",
+            "resolved_at": "datetime",
+            "metadata": "array"
+        },
+        "hidden": [],
+        "relations": [
+            "entity"
+        ]
+    },
+    "Submission": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Submission.php",
+        "table": "submissions",
+        "fillable": [
+            "submission_number",
+            "user_id",
+            "sales_id",
+            "customer_id",
+            "customer_code",
+            "customer_name",
+            "nik",
+            "nik_hash",
+            "phone",
+            "phone_normalized",
+            "email",
+            "address",
+            "district",
+            "city",
+            "province",
+            "village",
+            "postal_code",
+            "lat",
+            "lng",
+            "package_name",
+            "package_speed",
+            "package_price",
+            "installation_fee",
+            "promo_code",
+            "discount",
+            "total_price",
+            "documents",
+            "status",
+            "validated_by",
+            "validated_at",
+            "validation_notes",
+            "rejection_reason",
+            "notes",
+            "duplicate_warnings",
+            "source",
+            "ip_address"
+        ],
+        "casts": {
+            "documents": "array",
+            "notes": "array",
+            "duplicate_warnings": "array",
+            "validated_at": "datetime",
+            "package_price": "decimal:2",
+            "installation_fee": "decimal:2",
+            "discount": "decimal:2",
+            "total_price": "decimal:2",
+            "lat": "float",
+            "lng": "float"
+        },
+        "hidden": [],
+        "relations": [
+            "customer",
+            "user",
+            "sales",
+            "validator",
+            "provisioning",
+            "submissionDocuments",
+            "getServiceChainAttribute",
+            "isEditable",
+            "getNormalizedDocumentsAttribute",
+            "getTimelineArray"
+        ]
+    },
+    "SubmissionDocument": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/SubmissionDocument.php",
+        "table": "submission_documents",
+        "fillable": [
+            "submission_id",
+            "document_type",
+            "original_name",
+            "path",
+            "status",
+            "is_active"
+        ],
+        "casts": {
+            "is_active": "boolean"
+        },
+        "hidden": [],
+        "relations": [
+            "submission",
+            "reviews"
+        ]
+    },
+    "SubmissionDocumentReview": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/SubmissionDocumentReview.php",
+        "table": "submission_document_reviews",
+        "fillable": [
+            "submission_document_id",
+            "status",
+            "review_notes",
+            "reviewed_by",
+            "reviewed_at"
+        ],
+        "casts": {
+            "reviewed_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "document",
+            "reviewer"
+        ]
+    },
+    "Task": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Task.php",
+        "table": "tasks",
+        "fillable": [
+            "task_number",
+            "provisioning_id",
+            "teknisi_id",
+            "assigned_by",
+            "assigned_team",
+            "scheduled_date",
+            "scheduled_start",
+            "scheduled_end",
+            "status",
+            "result",
+            "completion_notes",
+            "customer_rating",
+            "photos",
+            "assigned_at",
+            "departed_at",
+            "arrived_at",
+            "started_at",
+            "completed_at",
+            "completion_latitude",
+            "completion_longitude",
+            "completion_accuracy",
+            "location_captured_at",
+            "customer_signature_path",
+            "signature_uploaded_at",
+            "signature_uploaded_by",
+            "phase_1_submitted_at",
+            "return_count",
+            "assigned_team_id",
+            "accepted_at",
+            "accepted_by_id",
+            "response_deadline_at",
+            "reassign_count",
+            "unassigned_since",
+            "rating_note",
+            "rated_at",
+            "rated_by_id",
+            "review_status",
+            "review_flags",
+            "reviewed_by",
+            "reviewed_at",
+            "review_note",
+            "has_port_conflict",
+            "selected_odp_id",
+            "selected_odp_port"
+        ],
+        "casts": {
+            "scheduled_date": "date",
+            "photos": "array",
+            "assigned_at": "datetime",
+            "departed_at": "datetime",
+            "arrived_at": "datetime",
+            "started_at": "datetime",
+            "phase_1_submitted_at": "datetime",
+            "completed_at": "datetime",
+            "location_captured_at": "datetime",
+            "signature_uploaded_at": "datetime",
+            "accepted_at": "datetime",
+            "response_deadline_at": "datetime",
+            "reviewed_at": "datetime",
+            "review_flags": "array",
+            "has_port_conflict": "boolean"
+        },
+        "hidden": [],
+        "relations": [
+            "provisioning",
+            "checklistItems",
+            "teknisi",
+            "assigner",
+            "assignments",
+            "assignedTeam",
+            "ticketAttendances",
+            "phase2Requirements",
+            "media",
+            "assignmentLogs",
+            "ticketEvents",
+            "isLegacyWorkflow"
+        ]
+    },
+    "TaskAssignment": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TaskAssignment.php",
+        "table": "task_assignments",
+        "fillable": [
+            "task_id",
+            "user_id",
+            "status",
+            "assigned_at",
+            "started_at",
+            "submitted_at",
+            "completed_at",
+            "approved_at",
+            "approved_by",
+            "notes",
+            "phase_2_submitted_at"
+        ],
+        "casts": {
+            "assigned_at": "datetime",
+            "started_at": "datetime",
+            "submitted_at": "datetime",
+            "phase_2_submitted_at": "datetime",
+            "completed_at": "datetime",
+            "approved_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "task",
+            "user",
+            "evidence",
+            "completionEvidence",
+            "approvedBy"
+        ]
+    },
+    "TaskChecklistItem": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TaskChecklistItem.php",
+        "table": "task_checklist_items",
+        "fillable": [
+            "task_id",
+            "item_name",
+            "is_completed"
+        ],
+        "casts": {
+            "is_completed": "boolean"
+        },
+        "hidden": [],
+        "relations": [
+            "task"
+        ]
+    },
+    "TaskCompletionEvidence": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TaskCompletionEvidence.php",
+        "table": "task_completion_evidences",
+        "fillable": [
+            "task_assignment_id",
+            "latitude",
+            "longitude",
+            "accuracy",
+            "signature_path",
+            "photo_before",
+            "photo_after",
+            "attendance_photo_path",
+            "checklist_result",
+            "notes",
+            "submitted_at",
+            "status"
+        ],
+        "casts": {
+            "checklist_result": "array",
+            "submitted_at": "datetime",
+            "latitude": "decimal:8",
+            "longitude": "decimal:8",
+            "accuracy": "decimal:2"
+        },
+        "hidden": [],
+        "relations": [
+            "assignment"
+        ]
+    },
+    "Team": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/Team.php",
+        "table": "teams",
+        "fillable": [
+            "name",
+            "description",
+            "order_index",
+            "is_active"
+        ],
+        "casts": {
+            "is_active": "boolean",
+            "order_index": "integer"
+        },
+        "hidden": [],
+        "relations": [
+            "members",
+            "activeMembers",
+            "users",
+            "activeUsers",
+            "tasks",
+            "complaints"
+        ]
+    },
+    "TeamAssignmentSetting": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TeamAssignmentSetting.php",
+        "table": "team_assignment_settings",
+        "fillable": [
+            "current_team"
+        ],
+        "casts": [],
+        "hidden": [],
+        "relations": []
+    },
+    "TeamMember": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TeamMember.php",
+        "table": "team_members",
+        "fillable": [
+            "team_id",
+            "user_id",
+            "joined_at",
+            "left_at"
+        ],
+        "casts": {
+            "joined_at": "datetime",
+            "left_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "team",
+            "user"
+        ]
+    },
+    "TicketAttendance": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TicketAttendance.php",
+        "table": "ticket_attendances",
+        "fillable": [
+            "attendable_type",
+            "attendable_id",
+            "user_id",
+            "selfie_media_id",
+            "lat",
+            "lng",
+            "accuracy",
+            "distance_meters",
+            "geofence_status",
+            "captured_at",
+            "received_at",
+            "device_id"
+        ],
+        "casts": {
+            "lat": "decimal:7",
+            "lng": "decimal:7",
+            "accuracy": "decimal:2",
+            "distance_meters": "decimal:2",
+            "captured_at": "datetime",
+            "received_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "attendable",
+            "user",
+            "selfieMedia",
+            "device"
+        ]
+    },
+    "TicketEvent": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/TicketEvent.php",
+        "table": "ticket_events",
+        "fillable": [
+            "eventable_type",
+            "eventable_id",
+            "actor_id",
+            "event",
+            "from_status",
+            "to_status",
+            "payload",
+            "occurred_at"
+        ],
+        "casts": {
+            "payload": "array",
+            "occurred_at": "datetime"
+        },
+        "hidden": [],
+        "relations": [
+            "eventable",
+            "actor"
+        ]
+    },
+    "User": {
+        "file": "d:\/Project\/FIbermedia Project\/Fibermedia-Ops\/app\/Models\/User.php",
+        "table": "users",
+        "fillable": [
+            "name",
+            "email",
+            "password",
+            "phone",
+            "status",
+            "team",
+            "notification_settings",
+            "coverage_areas",
+            "max_active_complaints",
+            "availability",
+            "last_complaint_assigned_at"
+        ],
+        "casts": [],
+        "hidden": [
+            "password",
+            "remember_token"
+        ],
+        "relations": [
+            "pushSubscriptions",
+            "complaintAssignments",
+            "teamMembers",
+            "activeTeamMember",
+            "currentTeam",
+            "teams",
+            "attendances",
+            "devices"
+        ]
+    }
+}
