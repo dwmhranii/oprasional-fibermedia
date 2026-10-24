@@ -55,20 +55,23 @@ Terdapat beberapa kolom transisi dari sistem lama yang masih ada di skema databa
 
 ### 2.3 Tabel Baru Tanpa Halaman Frontend
 Berdasarkan inspeksi rute `App.tsx` dan komponen `resources/js/admin` serta `resources/js/field`:
-| Tabel di Database | Status Model & API | Status Halaman Frontend (Admin / Field) | Evaluasi Kebutuhan UI |
+| Tabel di Database | Status Model & API | Status Halaman Frontend (Admin / Field) | Evaluasi Kebutuhan UI & Status Sinkronisasi |
 |---|---|---|---|
-| `olts` | **BELUM ADA DI DB** (disebut pada permintaan, namun skema OLT belum dibuat di migrasi). | Belum ada halaman. | Buat migrasi OLT jika diperlukan inventaris perangkat pusat sebelum ODC. |
-| `network_cables` | **TIDAK ADA NAMA INI** (tabel riil bernama `cable_tracks`). | Sudah ada `CableRouteDrawer` dan `NetworkCableManagement` (`/admin/network/cables`). | Selaraskan dokumentasi bahwa tabel kabel adalah `cable_tracks`. |
-| `network_status_logs` | **BELUM ADA DI DB** (log kabel menggunakan `ticket_events` dan `bras_session_logs`). | Belum ada halaman terpisah. | Log status operasional saat ini terangkum di `ticket_events` dan `bras_session_logs`. |
-| `odcs` | Model `Odc.php` ada; relasi ke ODP & Mass Outage ada. | Belum ada halaman CRUD master ODC mandiri di admin (hanya tampil di drawer/selector). | Perlu dibuatkan halaman Master ODC (`/admin/network/odcs`). |
-| `daily_attendances` | Model `DailyAttendance.php` ada; API di `AttendanceController`. | Sudah ada halaman `DailyAttendanceManagement` dan `AttendanceRecapManagement`. | **LENGKAP**. |
-| `office_locations` | Model `OfficeLocation.php` ada; API di `routes/api.php`. | Belum ada menu UI terdedikasi untuk edit koordinat kantor & radius geofence (diinput via Postman/Seed). | Perlu dibuatkan modal / tab pengaturan lokasi kantor di Pengaturan Admin. |
-| `devices` | Model `Device.php` ada; API approve/revoke ada. | Sudah ada komponen `DeviceManagement` di Admin. | **LENGKAP**. |
-| `dispatch_settings` | Model `DispatchSetting.php` ada; API ada. | Pengaturan terintegrasi di modal `DispatchManagement`. | **LENGKAP**. |
-| `assignment_logs` | Model `AssignmentLog.php` ada; API ada. | Tampil di tab riwayat pada `DispatchManagement`. | **LENGKAP**. |
-| `ticket_events` | Model `TicketEvent.php` ada; API timeline ada. | Tampil pada timeline riwayat di detail tiket. | **LENGKAP**. |
-| `media` | Model `Media.php` ada; API serve/upload privat ada. | Tampil sebagai galeri foto bukti pada `TicketEvidenceReview`. | **LENGKAP**. |
-| `kpi_settings` & `kpi_snapshots` | Model ada; controller `KpiController` ada. | Sudah ada dashboard `KpiDashboard` (`/admin/kpi`). | **LENGKAP**. |
+| `olts` | **BELUM ADA DI DB** (disebut pada permintaan, namun skema OLT belum dibuat di migrasi). | **DITUNDA** (Menunggu migrasi fisik jika diperlukan pada fase berikutnya). | **DITUNDA** |
+| `network_cables` | Tabel riil di database bernama `cable_tracks`. Model `CableTrack.php`, Resource `CableTrackResource.php`. | Halaman `NetworkCableManagement` (`/admin/network/cables`) lengkap dengan tab Undrawn (`undrawn=1`), switcher status operasional, dan modal approval. | **SINKRON** |
+| `network_status_logs` | Diimplementasikan via Spatie Activitylog (`log_name = 'network'`), `NetworkStatusLogResource.php`, serta riwayat `ticket_events` & `bras_session_logs`. | Ditampilkan pada tab Riwayat Status Jaringan. | **SINKRON** |
+| `odcs` | Model `Odc.php`, FormRequest `StoreOdcRequest`/`UpdateOdcRequest`, Resource `OdcResource.php`. | Halaman `OdcManagement` (`/admin/network/odcs`) dengan form CRUD, koordinat, dan daftar ODP bawahan. | **SINKRON** |
+| `odps` | Model `Odp.php`, Resource `OdpResource.php` dengan ports array 1..port_capacity. | Halaman `OdpManagement` (`/admin/network/odps`) dengan visualisasi kotak port interaktif (hijau/merah) dan modal approval pergeseran koordinat. | **SINKRON** |
+| `daily_attendances` | Model `DailyAttendance.php`, Resource `DailyAttendanceResource.php`. Validasi alasan wajib untuk input manual. | Halaman `DailyAttendanceManagement` dan `AttendanceRecapManagement`. | **SINKRON** |
+| `office_locations` | Model `OfficeLocation.php`, Resource `OfficeLocationResource.php`. | Halaman `OfficeLocationManagement` (`/admin/office-locations`) untuk kelola titik kantor dan radius geofence (meter). | **SINKRON** |
+| `devices` | Model `Device.php`, Resource `DeviceResource.php`. | Halaman `DeviceManagement` (`/admin/devices`) dengan aksi approve dan revoke device token. | **SINKRON** |
+| `dispatch_settings` | Model `DispatchSetting.php`, Resource `DispatchSettingResource.php`. | Terintegrasi di tab Pengaturan pada `DispatchManagement` (`/admin/dispatch`). | **SINKRON** |
+| `assignment_logs` | Model `AssignmentLog.php`, Resource `AssignmentLogResource.php`. | Ditampilkan di tab Log Penugasan pada `DispatchManagement` dan tab Penugasan di Detail Tiket. | **SINKRON** |
+| `ticket_events` | Model `TicketEvent.php`, tersaji via `UnifiedTicketDetailResource.php`. | Ditampilkan di tab Riwayat pada Detail Tiket Terpadu 5 Tab. | **SINKRON** |
+| `media` | Model `Media.php`, tersaji via `UnifiedTicketDetailResource.php`. | Ditampilkan di tab Bukti pada `UnifiedTicketDetailModal` dan `TicketEvidenceReview`. | **SINKRON** |
+| `kpi_settings` & `kpi_snapshots` | Model `KpiSetting.php`, `KpiSnapshot.php`, Resource `KpiSettingResource.php`, `KpiSnapshotResource.php`. | Dashboard `KpiDashboard` (`/admin/kpi`) dengan bobot terversi, rating WhatsApp, dan pemicu snapshot. | **SINKRON** |
+| `customers` | Model `Customer.php` (35 kolom), Resource `CustomerResource.php`, `CustomerSecretResource.php`. | Halaman `CustomerManagement.tsx` dengan CRUD 35 kolom, NIK bertopeng, modal kredensial rahasia, dan Excel import/export. | **SINKRON** |
+| `teams` & `team_members` | Model `Team.php`, `TeamMember.php`, Resource `TeamResource.php`. Seluruh anggota tim setara (tanpa ketua). | Halaman `TeamManagement.tsx` dan `TeamAttendanceRecap.tsx` berbasis relasi pivot `team_members`. | **SINKRON** |
 
 ### 2.4 Panggilan Endpoint FE Tanpa Handler / Field Mismatch
 1. **Endpoint Status / Reassign Task**: Komponen `AdminTaskDetail` memanggil `PATCH /api/admin/tasks/{id}/reassign` &mdash; endpoint ini tersedia di `ProvisioningController::reassignTask`.

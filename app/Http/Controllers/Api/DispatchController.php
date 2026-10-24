@@ -482,7 +482,7 @@ class DispatchController extends Controller
         $reviewer = $ticket->reviewed_by ? User::find($ticket->reviewed_by) : null;
         $statusStr = (string) ($ticket->status instanceof \BackedEnum ? $ticket->status->value : $ticket->status);
 
-        return new \App\Http\Resources\UnifiedTicketDetailResource([
+        return (new \App\Http\Resources\UnifiedTicketDetailResource([
             'ticket_number' => $number,
             'ticket' => [
                 'id' => $ticket->id,
@@ -538,6 +538,6 @@ class DispatchController extends Controller
                     'phase2_requirements' => $phase2Requirements,
                     'has_anomalies' => $mediaList->contains('is_anomaly', true),
                 ],
-            ]);
+            ]))->additional(['success' => true]);
     }
 }

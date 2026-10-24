@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\BrasDevice;
+use App\Models\CableTrack;
 use App\Models\Customer;
+use App\Models\Odc;
 use App\Models\Odp;
 use App\Models\OfficeLocation;
 use App\Models\Package;
@@ -58,7 +60,21 @@ class OperationSeeder extends Seeder
             ]);
         }
 
-        // 4. Sample Master ODP
+        // 4. Sample Master ODC
+        $odc = Odc::firstOrCreate([
+            'code' => 'ODC-BLW-01',
+        ], [
+            'name' => 'ODC Bululawang Sentral',
+            'address' => 'Jl. Raya Bululawang No. 100',
+            'latitude' => -8.1130000,
+            'longitude' => 112.6410000,
+            'capacity_odp' => 16,
+            'operational_status' => 'normal',
+            'wilayah' => 'Bululawang',
+            'notes' => 'ODC Feeder Utama Area Bululawang',
+        ]);
+
+        // 5. Sample Master ODP
         $odpModels = [];
         for ($i = 1; $i <= 5; $i++) {
             $code = sprintf('ODP-BLW-%02d', $i);
@@ -66,6 +82,7 @@ class OperationSeeder extends Seeder
                 'code' => $code,
             ], [
                 'name' => "ODP Bululawang {$i}",
+                'odc_id' => $odc->id,
                 'address' => "Jl. Raya Bululawang No. {$i}",
                 'latitude' => -8.1132000 + ($i * 0.001),
                 'longitude' => 112.6415000 + ($i * 0.001),
@@ -75,6 +92,41 @@ class OperationSeeder extends Seeder
                 'is_active' => true,
             ]);
         }
+
+        // 6. Sample Cable Tracks (Drawn & Undrawn)
+        CableTrack::firstOrCreate([
+            'client_uuid' => 'CABLE-BLW-FEEDER-01',
+        ], [
+            'name' => 'Kabel Feeder ODC Sentral ke ODP-01',
+            'status' => 'approved',
+            'operational_status' => 'normal',
+            'connected_odc_id' => $odc->id,
+            'connected_odp_id' => $odpModels[0]->id,
+            'downstream_odp_ids' => [$odpModels[0]->id, $odpModels[1]->id],
+            'raw_points_count' => 3,
+            'simplified_points_count' => 3,
+            'total_length_meters' => 450.50,
+            'coordinates' => [
+                ['lat' => -8.1130000, 'lng' => 112.6410000],
+                ['lat' => -8.1131000, 'lng' => 112.6412000],
+                ['lat' => -8.1132000 + 0.001, 'lng' => 112.6415000 + 0.001],
+            ],
+            'notes' => 'Feeder 24 core normal',
+        ]);
+
+        CableTrack::firstOrCreate([
+            'client_uuid' => 'CABLE-BLW-DRAFT-01',
+        ], [
+            'name' => 'Distribusi Jalur Barat (Belum Digambar)',
+            'status' => 'draft',
+            'operational_status' => 'normal',
+            'connected_odc_id' => $odc->id,
+            'raw_points_count' => 0,
+            'simplified_points_count' => 0,
+            'total_length_meters' => 0,
+            'coordinates' => [],
+            'notes' => 'Survey pending',
+        ]);
 
         // 5. 4 Tim Teknisi Lapangan (2 Anggota Tiap Tim, Tanpa Ketua) per PRD
         $teamsData = [

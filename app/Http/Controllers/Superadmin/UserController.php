@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use App\Http\Resources\UserResource;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -19,26 +20,31 @@ class UserController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', User::class);
 
-        $query = User::query()->with('roles');
+        $query = User::query()->with(['roles', 'currentTeam']);
 
         if ($request->has('role')) {
             $query->role($request->input('role'));
         }
 
-        if ($request->has('team')) {
-            $query->where('team', $request->input('team'));
+        if ($request->filled('team')) {
+            $teamVal = $request->input('team');
+            $query->where(function ($q) use ($teamVal) {
+                $q->whereHas('currentTeam', function ($tq) use ($teamVal) {
+                    $tq->where('teams.id', $teamVal)->orWhere('teams.name', $teamVal);
+                })->orWhere('team', $teamVal);
+            });
         }
 
-        $query->filterAndSort($request, ['name', 'email', 'phone', 'team']);
+        $query->filterAndSort($request, ['name', 'email', 'phone']);
 
-        return response()->json($query->paginate($request->input('per_page', 15)));
+        return UserResource::collection($query->paginate($request->input('per_page', 15)));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $this->authorize('create', User::class);
 
@@ -70,23 +76,20 @@ class UserController extends Controller
 
         activity()->causedBy($request->user())->log("User {$user->name} created by {$request->user()->name}");
 
-        return response()->json([
-            'message' => 'User created successfully',
-            'data' => $user->load('roles'),
-        ], 201);
+        return (new UserResource($user->load(['roles', 'currentTeam'])))
+            ->additional(['message' => 'User created successfully'])
+            ->response()
+            ->setStatusCode(201);
     }
 
-    public function show(User $user): JsonResponse
+    public function show(User $user)
     {
         $this->authorize('view', $user);
 
-        $userData = $user->load('roles')->toArray();
-        $userData['permissions'] = $user->getAllPermissions()->pluck('name');
-
-        return response()->json($userData);
+        return new UserResource($user->load(['roles', 'currentTeam', 'permissions']));
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function update(Request $request, User $user)
     {
         $this->authorize('update', $user);
 
@@ -143,10 +146,9 @@ class UserController extends Controller
 
         activity()->causedBy($request->user())->log("User {$user->name} updated by {$request->user()->name}");
 
-        return response()->json([
-            'message' => 'User updated successfully',
-            'data' => $user->load('roles'),
-        ]);
+        return (new UserResource($user->load(['roles', 'currentTeam'])))
+            ->additional(['message' => 'User updated successfully'])
+            ->response();
     }
 
     public function destroy(User $user): JsonResponse

@@ -27,7 +27,7 @@ class BrasDeviceController extends Controller
             ->orderBy('name')
             ->get();
 
-        return BrasDeviceResource::collection($devices);
+        return BrasDeviceResource::collection($devices)->additional(['success' => true]);
     }
 
     /**
@@ -45,6 +45,7 @@ class BrasDeviceController extends Controller
         $device = BrasDevice::create($validated);
 
         return (new BrasDeviceResource($device))
+            ->additional(['success' => true])
             ->response()
             ->setStatusCode(201);
     }
@@ -52,17 +53,17 @@ class BrasDeviceController extends Controller
     /**
      * Detail satu perangkat BRAS.
      */
-    public function show(BrasDevice $brasDevice): BrasDeviceResource
+    public function show(BrasDevice $brasDevice)
     {
         $brasDevice->loadCount(['customers', 'sessionLogs']);
 
-        return new BrasDeviceResource($brasDevice);
+        return (new BrasDeviceResource($brasDevice))->additional(['success' => true]);
     }
 
     /**
      * Perbarui konfigurasi perangkat BRAS.
      */
-    public function update(\App\Http\Requests\Network\BrasDeviceRequest $request, BrasDevice $brasDevice): BrasDeviceResource
+    public function update(\App\Http\Requests\Network\BrasDeviceRequest $request, BrasDevice $brasDevice)
     {
         $validated = $request->validated();
 
@@ -73,7 +74,7 @@ class BrasDeviceController extends Controller
 
         $brasDevice->update($validated);
 
-        return new BrasDeviceResource($brasDevice);
+        return (new BrasDeviceResource($brasDevice))->additional(['success' => true]);
     }
 
     /**
