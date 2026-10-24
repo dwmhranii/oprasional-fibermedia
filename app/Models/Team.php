@@ -24,6 +24,15 @@ class Team extends Model
         'order_index' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Team $team) {
+            if ($team->order_index === null) {
+                $team->order_index = ((int) static::max('order_index')) + 1;
+            }
+        });
+    }
+
     public function members(): HasMany
     {
         return $this->hasMany(TeamMember::class);

@@ -351,37 +351,38 @@ class DispatchController extends Controller
      * GET /api/admin/dispatch/tickets/{type}/{id}/unified-detail
      * Mengembalikan detail terpadu tiket dengan tab Ringkasan, Penugasan (riwayat assignment_logs), dan Riwayat (ticket_events).
      */
-    public function unifiedDetail(string $type, int $id): JsonResponse
+    public function unifiedDetail(string $type, int $id): \App\Http\Resources\UnifiedTicketDetailResource
     {
-        $ticket = $type === 'psb'
+        $isTask = in_array(strtolower($type), ['task', 'psb', 'provisioning']);
+        $ticket = $isTask
             ? Task::with(['provisioning.submission', 'assignedTeam.activeUsers'])->findOrFail($id)
             : Complaint::with(['customer', 'assignedTeam.activeUsers'])->findOrFail($id);
 
-        $number = $type === 'psb'
+        $number = $isTask
             ? ($ticket->task_number ?? 'TSK-'.$ticket->id)
             : ($ticket->ticket_number ?? 'CMP-'.$ticket->id);
 
-        $customerName = $type === 'psb'
+        $customerName = $isTask
             ? ($ticket->provisioning?->submission?->customer_name ?? 'Pelanggan PSB')
             : ($ticket->customer_name ?? $ticket->customer?->name ?? 'Pelanggan Gangguan');
 
-        $phone = $type === 'psb'
+        $phone = $isTask
             ? ($ticket->provisioning?->submission?->phone ?? $ticket->provisioning?->submission?->customer_phone ?? '-')
             : ($ticket->customer_phone ?? $ticket->customer?->phone ?? '-');
 
-        $address = $type === 'psb'
+        $address = $isTask
             ? ($ticket->provisioning?->submission?->address ?? '-')
             : ($ticket->customer_address ?? $ticket->customer?->address ?? '-');
 
-        $area = $type === 'psb'
+        $area = $isTask
             ? ($ticket->provisioning?->submission?->area ?? '-')
             : ($ticket->area ?? '-');
 
         $coordinates = [
-            'lat' => $type === 'psb'
+            'lat' => $isTask
                 ? ($ticket->provisioning?->submission?->lat ? (float) $ticket->provisioning->submission->lat : null)
                 : ($ticket->customer_lat ? (float) $ticket->customer_lat : null),
-            'lng' => $type === 'psb'
+            'lng' => $isTask
                 ? ($ticket->provisioning?->submission?->lng ? (float) $ticket->provisioning->submission->lng : null)
                 : ($ticket->customer_lng ? (float) $ticket->customer_lng : null),
         ];
@@ -480,16 +481,15 @@ class DispatchController extends Controller
         $reviewer = $ticket->reviewed_by ? User::find($ticket->reviewed_by) : null;
         $statusStr = (string) ($ticket->status instanceof \BackedEnum ? $ticket->status->value : $ticket->status);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
+        return new \App\Http\Resources\UnifiedTicketDetailResource([
+            'ticket_number' => $number,
+            'ticket' => [
+                'id' => $ticket->id,
+                'type' => $type,
+                'type_label' => $isTask ? 'Pasang Baru (PSB)' : 'Gangguan (Komplain)',
+                'number' => $number,
                 'ticket_number' => $number,
-                'ticket' => [
-                    'id' => $ticket->id,
-                    'type' => $type,
-                    'type_label' => $type === 'psb' ? 'Pasang Baru (PSB)' : 'Gangguan (Komplain)',
-                    'number' => $number,
-                    'ticket_number' => $number,
+                'task_number' => $number,
                     'status' => $statusStr,
                     'customer_name' => $customerName,
                     'phone' => $phone,
@@ -537,7 +537,6 @@ class DispatchController extends Controller
                     'phase2_requirements' => $phase2Requirements,
                     'has_anomalies' => $mediaList->contains('is_anomaly', true),
                 ],
-            ],
-        ]);
+            ]);
     }
 }
