@@ -138,8 +138,20 @@ export interface Odc {
   wilayah?: string | null;
   notes?: string | null;
   odps_count?: number;
+  odps?: Odp[];
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface OdpPortItem {
+  port_number: number;
+  is_occupied: boolean;
+  customer?: {
+    id: number;
+    customer_code: string;
+    name: string;
+    status: string;
+  } | null;
 }
 
 export interface Odp {
@@ -150,13 +162,20 @@ export interface Odp {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  proposed_latitude?: number | null;
+  proposed_longitude?: number | null;
+  has_pending_relocation?: boolean;
   port_capacity: number;
+  occupied_ports_count?: number;
+  available_ports_count?: number;
   operational_status: OperationalStatus;
   wilayah?: string | null;
   notes?: string | null;
   is_approved: boolean;
   is_active: boolean;
-  used_ports?: number[];
+  status?: string | null;
+  client_uuid?: string | null;
+  ports?: OdpPortItem[];
   odc?: Odc | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -167,14 +186,18 @@ export interface CableTrack {
   client_uuid?: string | null;
   name: string;
   coordinates: [number, number][]; // [lng, lat] pairs
-  raw_points_count?: number;
-  simplified_points_count?: number;
+  coordinates_count?: number;
+  is_drawn?: boolean;
   total_length_meters: number;
+  status?: string;
   operational_status: OperationalStatus;
+  is_approved?: boolean;
   connected_odc_id?: number | null;
+  connected_odc?: { id: number; code: string; name: string } | null;
   connected_odp_id?: number | null;
+  connected_odp?: { id: number; code: string; name: string } | null;
   downstream_odp_ids?: number[] | null;
-  created_by_id?: number | null;
+  creator?: { id: number; name: string } | null;
   notes?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -186,32 +209,41 @@ export interface BrasDevice {
   ip_address: string;
   api_port: number;
   username?: string | null;
-  use_ssl: boolean;
-  timeout: number;
+  has_password?: boolean;
   location?: string | null;
   notes?: string | null;
   is_active: boolean;
-  last_synced_at?: string | null;
-  last_sync_status?: 'success' | 'failed' | null;
-  last_sync_error?: string | null;
-  active_sessions_count: number;
+  status?: string;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+  total_active_sessions?: number;
+  cpu_load?: number | null;
+  free_memory?: number | null;
+  uptime?: string | null;
   customers_count?: number;
   created_at?: string | null;
   updated_at?: string | null;
 }
 
-export interface BrasSessionLog {
+export interface NetworkStatusLog {
   id: number;
-  bras_device_id: number;
-  customer_id?: number | null;
-  username: string;
-  event: 'online' | 'offline' | 'heartbeat' | 'unmapped_session';
-  ip_address?: string | null;
-  mac_address?: string | null;
-  uptime?: string | null;
-  source: string; // 'bras'
-  details?: Record<string, any> | null;
+  log_name: string;
+  description: string;
+  subject_type: string;
+  subject_id?: number | null;
+  element_code?: string | null;
+  previous_status?: string | null;
+  new_status?: string | null;
+  reason?: string | null;
+  notes?: string | null;
+  affected_customers_count?: number;
+  causer?: { id: number; name: string } | null;
   created_at?: string | null;
+}
+
+export interface NetworkApprovalsResponse {
+  pending_odps: Odp[];
+  pending_cable_tracks: CableTrack[];
 }
 
 // ─── TIM & ABSENSI ──────────────────────────────────────────────────────────

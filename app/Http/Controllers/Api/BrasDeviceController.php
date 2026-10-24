@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\BrasDeviceResource;
 use App\Models\BrasDevice;
 use App\Models\BrasSessionLog;
 use App\Services\Mikrotik\BrasSyncService;
@@ -20,35 +21,21 @@ class BrasDeviceController extends Controller
     /**
      * Daftar semua perangkat BRAS MikroTik.
      */
-    public function index(): JsonResponse
+    public function index()
     {
         $devices = BrasDevice::withCount(['customers', 'sessionLogs'])
             ->orderBy('name')
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $devices,
-        ]);
+        return BrasDeviceResource::collection($devices);
     }
 
     /**
      * Tambah konfigurasi perangkat BRAS baru.
      */
-    public function store(Request $request): JsonResponse
+    public function store(\App\Http\Requests\Network\BrasDeviceRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:100|unique:bras_devices,name',
-            'ip_address' => 'required|string|max:45',
-            'api_port' => 'nullable|integer|between:1,65535',
-            'username' => 'nullable|string|max:100',
-            'password' => 'nullable|string',
-            'use_ssl' => 'nullable|boolean',
-            'timeout' => 'nullable|integer|min:1|max:60',
-            'location' => 'nullable|string|max:150',
-            'notes' => 'nullable|string',
-            'is_active' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         $validated['api_port'] = $validated['api_port'] ?? 8728;
         $validated['timeout'] = $validated['timeout'] ?? 5;
@@ -57,43 +44,27 @@ class BrasDeviceController extends Controller
 
         $device = BrasDevice::create($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Perangkat BRAS berhasil ditambahkan.',
-            'data' => $device,
-        ], 201);
+        return (new BrasDeviceResource($device))
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
      * Detail satu perangkat BRAS.
      */
-    public function show(BrasDevice $brasDevice): JsonResponse
+    public function show(BrasDevice $brasDevice): BrasDeviceResource
     {
         $brasDevice->loadCount(['customers', 'sessionLogs']);
 
-        return response()->json([
-            'success' => true,
-            'data' => $brasDevice,
-        ]);
+        return new BrasDeviceResource($brasDevice);
     }
 
     /**
      * Perbarui konfigurasi perangkat BRAS.
      */
-    public function update(Request $request, BrasDevice $brasDevice): JsonResponse
+    public function update(\App\Http\Requests\Network\BrasDeviceRequest $request, BrasDevice $brasDevice): BrasDeviceResource
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:100|unique:bras_devices,name,'.$brasDevice->id,
-            'ip_address' => 'sometimes|string|max:45',
-            'api_port' => 'nullable|integer|between:1,65535',
-            'username' => 'nullable|string|max:100',
-            'password' => 'nullable|string',
-            'use_ssl' => 'nullable|boolean',
-            'timeout' => 'nullable|integer|min:1|max:60',
-            'location' => 'nullable|string|max:150',
-            'notes' => 'nullable|string',
-            'is_active' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         // Jangan timpa password jika tidak diisi saat update
         if (array_key_exists('password', $validated) && empty($validated['password'])) {
@@ -102,11 +73,7 @@ class BrasDeviceController extends Controller
 
         $brasDevice->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Konfigurasi BRAS berhasil diperbarui.',
-            'data' => $brasDevice,
-        ]);
+        return new BrasDeviceResource($brasDevice);
     }
 
     /**

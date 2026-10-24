@@ -3,10 +3,14 @@
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BfassHealthController;
+use App\Http\Controllers\Admin\CableTrackController;
 use App\Http\Controllers\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\FleetTrackingController;
 use App\Http\Controllers\Admin\KpiController;
+use App\Http\Controllers\Admin\NetworkManagementController;
+use App\Http\Controllers\Admin\OdcController;
+use App\Http\Controllers\Admin\OdpController;
 use App\Http\Controllers\Admin\PromoCodeController;
 use App\Http\Controllers\Admin\ProvisioningController;
 use App\Http\Controllers\Admin\ReportController;
@@ -335,6 +339,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/network/bras-devices/{brasDevice}/sync', [BrasDeviceController::class, 'sync']);
         Route::get('/admin/network/bras-devices/{brasDevice}/sessions', [BrasDeviceController::class, 'sessions']);
         Route::get('/admin/network/bras-devices/{brasDevice}/logs', [BrasDeviceController::class, 'logs']);
+
+        // Jaringan: ODC, ODP, Cable Tracks, Approvals, & Logs
+        Route::get('/admin/network/logs', [NetworkManagementController::class, 'logs']);
+        Route::get('/admin/network/approvals', [NetworkManagementController::class, 'approvals']);
+
+        Route::apiResource('/admin/odcs', OdcController::class);
+
+        Route::post('/admin/odps/{odp}/approve', [OdpController::class, 'approve']);
+        Route::apiResource('/admin/odps', OdpController::class);
+
+        Route::post('/admin/cable-tracks/{cableTrack}/approve', [CableTrackController::class, 'approve']);
+        Route::get('/admin/cable-tracks/{cableTrack}/affected-customers', [CableTrackController::class, 'affectedCustomers']);
+        Route::apiResource('/admin/cable-tracks', CableTrackController::class);
 
         // Phase 2 Waiver / Pembebasan (Aturan 6 & Tambahan Peninjauan Bukti)
         Route::put('/admin/tickets/{type}/{id}/phase-2-waive', [TicketReviewController::class, 'waive']);

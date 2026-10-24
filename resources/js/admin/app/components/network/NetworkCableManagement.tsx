@@ -20,16 +20,35 @@ import {
 } from 'lucide-react';
 
 export const NetworkCableManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'draw' | 'list'>('draw');
+  const [activeTab, setActiveTab] = useState<'draw' | 'list' | 'undrawn'>('draw');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
 
   const { data: cableTracks, isLoading, refetch } = useQuery({
-    queryKey: ['cableTracks'],
+    queryKey: ['cableTracks', activeTab],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/cable-tracks');
+      const endpoint = activeTab === 'undrawn' ? '/admin/cable-tracks?undrawn=1' : '/admin/cable-tracks';
+      const res = await apiClient.get<any>(endpoint);
       return res?.data || (Array.isArray(res) ? res : []);
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiClient.post(`/admin/cable-tracks/${id}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cableTracks'] });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      return await apiClient.put(`/admin/cable-tracks/${id}`, { operational_status: status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cableTracks'] });
     },
   });
 
@@ -67,7 +86,7 @@ export const NetworkCableManagement: React.FC = () => {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Kanvas Gambar Kabel
+            Kanvas Gambar
           </button>
           <button
             type="button"
@@ -78,7 +97,18 @@ export const NetworkCableManagement: React.FC = () => {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Daftar Jalur Kabel ({cableTracks?.length || 0})
+            Semua Jalur Kabel
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('undrawn')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              activeTab === 'undrawn'
+                ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            Jalur Belum Digambar
           </button>
         </div>
       </div>
@@ -200,6 +230,50 @@ export const NetworkCableManagement: React.FC = () => {
                         "{track.notes}"
                       </p>
                     )}
+
+                    {/* Actions: Approve & Operational Status */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => updateStatusMutation.mutate({ id: track.id, status: 'normal' })}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            status === 'normal' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Normal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateStatusMutation.mutate({ id: track.id, status: 'disrupted' })}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            status === 'disrupted' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Gangguan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateStatusMutation.mutate({ id: track.id, status: 'cut' })}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            status === 'cut' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Cut
+                        </button>
+                      </div>
+
+                      {track.status === 'proposed' && (
+                        <Button
+                          size="sm"
+                          onClick={() => approveMutation.mutate(track.id)}
+                          disabled={approveMutation.isPending}
+                          className="h-6 px-2 text-[10px] bg-indigo-600 text-white hover:bg-indigo-700"
+                        >
+                          Setujui Jalur
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );

@@ -58,6 +58,9 @@ import { DailyAttendanceManagement } from './components/admin/DailyAttendanceMan
 import { AttendanceRecapManagement } from './components/admin/AttendanceRecapManagement';
 import { KpiDashboard } from './components/admin/KpiDashboard';
 import { NetworkCableManagement } from './components/network/NetworkCableManagement';
+import { OdcManagement } from './components/network/OdcManagement';
+import { OdpManagement } from './components/network/OdpManagement';
+import { BrasManagement } from './components/network/BrasManagement';
 
 const ProtectedLayout = () => {
   const { isAuthenticated } = useAuth();
@@ -165,6 +168,9 @@ const AppContent = () => {
         <Route path="/admin/dispatch" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><DispatchManagement /></RoleRoute>} />
         <Route path="/admin/evidence-review" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><TicketEvidenceReview /></RoleRoute>} />
         <Route path="/admin/network/cables" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><NetworkCableManagement /></RoleRoute>} />
+        <Route path="/admin/network/odcs" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><OdcManagement /></RoleRoute>} />
+        <Route path="/admin/network/odps" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><OdpManagement /></RoleRoute>} />
+        <Route path="/admin/network/bras" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><BrasManagement /></RoleRoute>} />
 
         {/* Tim & Absensi (Fase 1) */}
         <Route path="/admin/attendances/daily" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><DailyAttendanceManagement /></RoleRoute>} />
