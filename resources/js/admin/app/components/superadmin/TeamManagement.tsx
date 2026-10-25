@@ -60,6 +60,8 @@ import {
 } from '../ui/alert-dialog';
 import { Skeleton } from '../ui/skeleton';
 import { teamService, Team, TeamMember } from '../../lib/teamService';
+import { PageHeader, StatCards, StatusBadge } from '@/../../shared/ui';
+import { formatPhone } from '@/../../shared/lib/formatters';
 
 export const TeamManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -276,28 +278,17 @@ export const TeamManagement: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Top Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-rose-950 rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 flex items-center justify-end pr-8 pointer-events-none">
-          <Wrench className="w-56 h-56" />
-        </div>
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-300 text-xs font-semibold uppercase tracking-wider">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Superadmin Control Center
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-              Manajemen Tim Teknisi Lapangan
-            </h1>
-            <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-              Atur komposisi grup teknisi fisik, alokasikan personil, dan monitor pembagian tiket pengaduan
-              dengan algoritma otomatis <em>Least-Loaded Round Robin</em>.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
+      {/* Page Header */}
+      <PageHeader
+        title="Manajemen Tim"
+        description="Atur komposisi tim teknisi lapangan, alokasikan personil, dan monitor pembagian tiket pengaduan."
+        breadcrumb={[
+          { label: 'Admin', href: '#' },
+          { label: 'Superadmin', href: '#' },
+          { label: 'Manajemen Tim' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -306,97 +297,57 @@ export const TeamManagement: React.FC = () => {
                 refetchTechnicians();
               }}
               disabled={isTeamsLoading || isRefetching}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs font-semibold h-10 px-4"
+              className="text-xs font-semibold h-9 px-3"
             >
-              <RefreshCw className={`w-3.5 h-3.5 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              Muat Ulang
             </Button>
             <Button
               onClick={handleOpenCreate}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-900/40 h-10 px-5"
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 px-4"
             >
               <Plus className="w-4 h-4 mr-1.5" />
-              Tambah Tim Baru
+              Tambah Tim
             </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Total Tim Lapangan
-              </p>
-              <h3 className="text-2xl font-black text-slate-800 mt-1">
-                {isTeamsLoading ? <Skeleton className="h-7 w-12" /> : stats.total}
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Semua grup terdaftar</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-slate-100 text-slate-700">
-              <Users className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Tim Siap Tugas
-              </p>
-              <h3 className="text-2xl font-black text-emerald-600 mt-1">
-                {isTeamsLoading ? <Skeleton className="h-7 w-12" /> : stats.active}
-              </h3>
-              <p className="text-xs text-emerald-600 font-medium mt-0.5">Status Aktif & Siap</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Teknisi Terpetakan
-              </p>
-              <h3 className="text-2xl font-black text-blue-600 mt-1">
-                {isTeamsLoading ? <Skeleton className="h-7 w-12" /> : stats.totalMembersAssigned}
-              </h3>
-              <p className="text-xs text-blue-600 font-medium mt-0.5">
-                Dari total {allTechnicians.length} teknisi
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
-              <UserCheck className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Beban Tiket Aktif
-              </p>
-              <h3 className="text-2xl font-black text-amber-600 mt-1">
-                {isTeamsLoading ? <Skeleton className="h-7 w-12" /> : stats.totalActiveTickets}
-              </h3>
-              <p className="text-xs text-amber-600 font-medium mt-0.5">Dalam penanganan</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-amber-50 text-amber-600">
-              <Activity className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <StatCards
+        loading={isTeamsLoading}
+        stats={[
+          {
+            title: 'Total Tim Lapangan',
+            value: stats.total,
+            description: 'Semua tim terdaftar',
+            icon: Users,
+          },
+          {
+            title: 'Tim Siap Tugas',
+            value: stats.active,
+            description: 'Status Aktif & Siap',
+            icon: CheckCircle2,
+            trend: { value: 100, label: 'Siap tugas', isPositive: true },
+          },
+          {
+            title: 'Teknisi Terpetakan',
+            value: stats.totalMembersAssigned,
+            description: `Dari total ${allTechnicians.length} teknisi`,
+            icon: UserCheck,
+          },
+          {
+            title: 'Beban Tiket Aktif',
+            value: stats.totalActiveTickets,
+            description: 'Dalam penanganan',
+            icon: Activity,
+          },
+        ]}
+      />
 
       {/* Filter and Search Bar */}
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -405,7 +356,7 @@ export const TeamManagement: React.FC = () => {
               placeholder="Cari nama tim, deskripsi, atau nama personil..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 text-xs md:text-sm bg-slate-50/50 border-slate-200 focus:bg-white"
+              className="pl-9 h-10 text-xs md:text-sm bg-slate-50/50 border-border focus:bg-white"
             />
           </div>
 
@@ -415,7 +366,7 @@ export const TeamManagement: React.FC = () => {
                 value={statusFilter}
                 onValueChange={(val: any) => setStatusFilter(val)}
               >
-                <SelectTrigger className="h-10 text-xs bg-slate-50/50 border-slate-200">
+                <SelectTrigger className="h-10 text-xs bg-slate-50/50 border-border">
                   <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -447,7 +398,7 @@ export const TeamManagement: React.FC = () => {
       {isTeamsLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="border-slate-200 shadow-sm overflow-hidden">
+            <Card key={i} className="border-border shadow-sm overflow-hidden">
               <div className="p-6 space-y-4">
                 <div className="flex justify-between items-start">
                   <Skeleton className="h-6 w-32" />
@@ -496,8 +447,8 @@ export const TeamManagement: React.FC = () => {
                 key={team.id}
                 className={`border transition-all duration-200 overflow-hidden flex flex-col justify-between ${
                   team.is_active
-                    ? 'border-slate-200/90 hover:border-indigo-300 hover:shadow-lg shadow-sm bg-white'
-                    : 'border-slate-200 bg-slate-50/70 opacity-80'
+                    ? 'border-border/90 hover:border-indigo-300 hover:shadow-lg shadow-sm bg-white'
+                    : 'border-border bg-slate-50/70 opacity-80'
                 }`}
               >
                 <div>
@@ -509,15 +460,7 @@ export const TeamManagement: React.FC = () => {
                           <h3 className="text-lg font-black text-slate-900 tracking-tight">
                             {team.name}
                           </h3>
-                          {team.is_active ? (
-                            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200 text-[10px] font-bold">
-                              AKTIF
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-slate-200 text-slate-700 hover:bg-slate-200 border-slate-300 text-[10px] font-bold">
-                              NON-AKTIF
-                            </Badge>
-                          )}
+                          <StatusBadge status={team.is_active ? 'active' : 'inactive'} />
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                           {team.description || 'Tidak ada deskripsi wilayah atau catatan operasional.'}
@@ -545,7 +488,7 @@ export const TeamManagement: React.FC = () => {
 
                     {/* Workload Indicator (Least-Loaded indicator) */}
                     <div className="mt-4 grid grid-cols-2 gap-2">
-                      <div className="bg-white rounded-xl p-2.5 border border-slate-200/80 flex items-center gap-2.5">
+                      <div className="bg-white rounded-xl p-2.5 border border-border/80 flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                           <Users className="w-4 h-4" />
                         </div>
@@ -609,7 +552,7 @@ export const TeamManagement: React.FC = () => {
                     </div>
 
                     {memberCount === 0 ? (
-                      <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center space-y-1.5">
+                      <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-border text-center space-y-1.5">
                         <UserX className="w-5 h-5 mx-auto text-slate-400" />
                         <p className="text-xs font-semibold text-slate-600">Belum ada personil</p>
                         <p className="text-[11px] text-slate-400">
@@ -632,7 +575,7 @@ export const TeamManagement: React.FC = () => {
                             className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 border border-slate-100 hover:bg-slate-100/80 transition-colors"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <Avatar className="w-7 h-7 border border-slate-200 shrink-0">
+                              <Avatar className="w-7 h-7 border border-border shrink-0">
                                 <AvatarFallback className="bg-slate-800 text-white font-bold text-[10px]">
                                   {getInitials(member.name)}
                                 </AvatarFallback>
@@ -644,7 +587,7 @@ export const TeamManagement: React.FC = () => {
                                 {member.phone ? (
                                   <p className="text-[10px] text-slate-500 flex items-center gap-1">
                                     <Phone className="w-2.5 h-2.5" />
-                                    {member.phone}
+                                    {formatPhone(member.phone)}
                                   </p>
                                 ) : (
                                   <p className="text-[10px] text-slate-400">Teknisi Lapangan</p>
@@ -667,10 +610,10 @@ export const TeamManagement: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleOpenEdit(team)}
-                    className="flex-1 text-xs font-semibold h-8 border-slate-200 hover:bg-white text-slate-700"
+                    className="flex-1 text-xs font-semibold h-8 border-border hover:bg-white text-slate-700"
                   >
                     <Edit2 className="w-3.5 h-3.5 mr-1" />
-                    Edit Tim
+                    Ubah
                   </Button>
                   <Button
                     variant="outline"
@@ -739,7 +682,7 @@ export const TeamManagement: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-border">
               <div className="space-y-0.5">
                 <Label htmlFor="team-active" className="text-xs font-bold text-slate-800">
                   Status Tim Aktif
@@ -836,7 +779,7 @@ export const TeamManagement: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-border">
               <div className="space-y-0.5">
                 <Label htmlFor="edit-team-active" className="text-xs font-bold text-slate-800">
                   Status Tim Aktif
@@ -875,7 +818,7 @@ export const TeamManagement: React.FC = () => {
                     Menyimpan...
                   </>
                 ) : (
-                  'Simpan Perubahan'
+                  'Simpan'
                 )}
               </Button>
             </DialogFooter>
@@ -915,7 +858,7 @@ export const TeamManagement: React.FC = () => {
               )}
             </div>
 
-            <div className="min-h-12 max-h-24 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap gap-1.5">
+            <div className="min-h-12 max-h-24 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-border flex flex-wrap gap-1.5">
               {selectedMemberIds.length === 0 ? (
                 <p className="text-xs text-slate-400 italic self-center">
                   Belum ada personil yang dipilih untuk tim ini.
@@ -957,7 +900,7 @@ export const TeamManagement: React.FC = () => {
           </div>
 
           {/* Technicians Selection List */}
-          <div className="flex-1 overflow-y-auto min-h-48 max-h-64 border rounded-xl border-slate-200 p-2 space-y-1.5 mt-2">
+          <div className="flex-1 overflow-y-auto min-h-48 max-h-64 border rounded-xl border-border p-2 space-y-1.5 mt-2">
             {isTechLoading ? (
               <div className="p-4 space-y-2">
                 {[1, 2, 3].map((i) => (
@@ -988,11 +931,11 @@ export const TeamManagement: React.FC = () => {
                       className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${
                         isSelected
                           ? 'bg-blue-50/80 border-blue-300'
-                          : 'bg-white border-slate-200/70 hover:bg-slate-50'
+                          : 'bg-white border-border/70 hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="w-8 h-8 border border-slate-200 shrink-0">
+                        <Avatar className="w-8 h-8 border border-border shrink-0">
                           <AvatarFallback className="bg-slate-800 text-white font-bold text-xs">
                             {getInitials(tech.name)}
                           </AvatarFallback>
@@ -1009,7 +952,7 @@ export const TeamManagement: React.FC = () => {
                             )}
                           </div>
                           <span className="text-[11px] text-slate-500 block truncate">
-                            {tech.phone || tech.email || 'Tanpa no. telepon'}
+                            {tech.phone ? formatPhone(tech.phone) : (tech.email || 'Tanpa no. telepon')}
                           </span>
                         </div>
                       </div>
@@ -1025,7 +968,7 @@ export const TeamManagement: React.FC = () => {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 text-[11px] text-slate-600 border-slate-200 hover:border-blue-400"
+                            className="h-7 text-[11px] text-slate-600 border-border hover:border-blue-400"
                           >
                             Pilih
                           </Button>
