@@ -32,6 +32,7 @@ import {
 import { SalesSubmissionsView } from './SalesSubmissionsView';
 import { TechnicianWorkOrdersView } from './TechnicianWorkOrdersView';
 import { NetworkMapOfflineView } from './NetworkMapOfflineView';
+import { formatCoordinate, formatDistance, formatDate } from '@shared/lib/formatters';
 
 interface OfficeLocation {
   id: number;
@@ -877,13 +878,13 @@ export const FieldApp: React.FC = () => {
             <div className="flex justify-between text-slate-400">
               <span>Koordinat Anda:</span>
               <span className="text-slate-300 font-mono">
-                {currentCoords ? `${currentCoords.lat.toFixed(5)}, ${currentCoords.lng.toFixed(5)}` : '-'}
+                {currentCoords ? formatCoordinate(currentCoords.lat, currentCoords.lng) : '-'}
               </span>
             </div>
             {currentCoords?.accuracy && (
               <div className="flex justify-between text-slate-400">
                 <span>Akurasi GPS:</span>
-                <span className="text-slate-300">± {Math.round(currentCoords.accuracy)} meter</span>
+                <span className="text-slate-300">± {formatDistance(Math.round(currentCoords.accuracy))}</span>
               </div>
             )}
           </div>
@@ -899,7 +900,7 @@ export const FieldApp: React.FC = () => {
         <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-indigo-400" />
-            Kehadiran Hari Ini ({new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })})
+            Kehadiran Hari Ini ({formatDate(new Date())})
           </h3>
 
           <div className="grid grid-cols-2 gap-3">
@@ -913,7 +914,7 @@ export const FieldApp: React.FC = () => {
                   </span>
                   <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                     <CheckCircle className="w-3 h-3 text-emerald-500" />
-                    Tercatat ({attendance.office_distance_meters || 0}m)
+                    Tercatat ({formatDistance(attendance.office_distance_meters || 0)})
                   </span>
                 </div>
               ) : (

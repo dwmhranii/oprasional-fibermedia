@@ -22,6 +22,7 @@ import {
   captureAndCompressFromVideo,
   getServerTimeIso,
 } from '../shared';
+import { formatCoordinate, formatDistance } from '@shared/lib/formatters';
 
 interface TicketFieldWorkModalProps {
   open: boolean;
@@ -117,7 +118,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
   const takePhoto = async () => {
     if (!videoRef.current) return;
     try {
-      const watermarkText = `GPS: ${currentCoords ? `${currentCoords.lat.toFixed(5)}, ${currentCoords.lng.toFixed(5)}` : 'N/A'} | ${new Date().toLocaleTimeString('id-ID')} WIB | Tiket: ${ticket.ticket_number}`;
+      const watermarkText = `GPS: ${currentCoords ? formatCoordinate(currentCoords.lat, currentCoords.lng) : 'N/A'} | ${new Date().toLocaleTimeString('id-ID')} WIB | Tiket: ${ticket.ticket_number}`;
       const compressedBase64 = await captureAndCompressFromVideo(
         videoRef.current,
         400, // max 400 KB
@@ -169,7 +170,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
           payload,
           token
         );
-        setStatusMessage('Fase 1 berhasil disimpan di HP (offline) & masuk antrean sinkronisasi.');
+        setStatusMessage('Tahap 1: Pengerjaan berhasil disimpan di HP (offline) & masuk antrean sinkronisasi.');
         setActiveStep('phase2');
       } else {
         const res = await fetch(`/api/field/tickets/${ticket.type}/${ticket.raw_id}/phase-1`, {
@@ -183,10 +184,10 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
         });
         const json = await res.json();
         if (json.success) {
-          setStatusMessage(json.message || 'Fase 1 berhasil dikirim!');
+          setStatusMessage(json.message || 'Tahap 1: Pengerjaan berhasil dikirim!');
           setActiveStep('phase2');
         } else {
-          setStatusMessage(json.message || 'Gagal mengirim Fase 1.');
+          setStatusMessage(json.message || 'Gagal mengirim Tahap 1: Pengerjaan.');
         }
       }
     } catch (err: any) {
@@ -197,7 +198,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
         {},
         token
       );
-      setStatusMessage('Fase 1 tersimpan di antrean offline.');
+      setStatusMessage('Tahap 1: Pengerjaan tersimpan di antrean offline.');
       setActiveStep('phase2');
     } finally {
       setIsSubmitting(false);
@@ -233,7 +234,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
           payload,
           token
         );
-        setStatusMessage('Absensi Fase 2 tersimpan di antrean offline HP!');
+        setStatusMessage('Tahap 2: Absensi di Lokasi tersimpan di antrean offline HP!');
         if (onSuccess) onSuccess();
         setTimeout(onClose, 1500);
       } else {
@@ -251,12 +252,12 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
         );
         const json = await res.json();
         if (json.success) {
-          setStatusMessage(json.message || 'Absensi Fase 2 berhasil dicatat.');
+          setStatusMessage(json.message || 'Tahap 2: Absensi di Lokasi berhasil dicatat.');
           setGeofenceResult(json.data?.geofence_status || 'inside');
           if (onSuccess) onSuccess();
           setTimeout(onClose, 1500);
         } else {
-          setStatusMessage(json.message || 'Gagal merekam absensi Fase 2.');
+          setStatusMessage(json.message || 'Gagal merekam Tahap 2: Absensi di Lokasi.');
         }
       }
     } catch (err: any) {
@@ -301,7 +302,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
             }`}
           >
             <Wrench className="w-3.5 h-3.5" />
-            1. Data Teknis &amp; Bukti
+            Tahap 1: Pengerjaan
           </button>
           <button
             onClick={() => setActiveStep('phase2')}
@@ -312,7 +313,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            2. Absensi Tim di Lokasi
+            Tahap 2: Absensi di Lokasi
           </button>
         </div>
 
@@ -509,16 +510,16 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
               className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
             >
               {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Kirim Bukti Fase 1 &amp; Lanjut Absensi
+              Kirim Bukti Tahap 1 &amp; Lanjut Absensi
             </button>
           </div>
         )}
 
-        {/* STEP 2: FASE 2 (ABSENSI TIM DI LOKASI) */}
+        {/* STEP 2: TAHAP 2 (ABSENSI TIM DI LOKASI) */}
         {activeStep === 'phase2' && (
           <div className="space-y-4 text-xs">
             <div className="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-300">
-              <span className="font-bold block mb-1">Absensi Tiap Anggota Tim (Fase 2)</span>
+              <span className="font-bold block mb-1">Tahap 2: Absensi di Lokasi</span>
               Setiap personil yang hadir di lokasi wajib mengambil foto selfie dengan koordinat GPS. Geofence hanya menandai posisi tanpa menolak kiriman.
             </div>
 
@@ -552,7 +553,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
               <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Lokasi GPS Terdeteksi</span>
               <p className="font-mono text-emerald-400">
                 {currentCoords
-                  ? `${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)} (akurasi ±${Math.round(currentCoords.accuracy || 0)}m)`
+                  ? `${formatCoordinate(currentCoords.lat, currentCoords.lng)} (akurasi ±${formatDistance(Math.round(currentCoords.accuracy || 0))})`
                   : 'Mencari sinyal GPS...'}
               </p>
             </div>

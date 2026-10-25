@@ -14,6 +14,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { TicketFieldWorkModal } from './TicketFieldWorkModal';
+import { formatPhone } from '@shared/lib/formatters';
 
 interface TicketItem {
   id: string; // e.g. "WO-TSK-1" or "WO-CMP-2"
@@ -271,7 +272,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
           className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium"
         >
           <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
+          <span>Muat Ulang</span>
         </button>
       </div>
 
@@ -308,7 +309,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
                       }`}
                     >
                       {isPsb ? <Wrench className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                      {isPsb ? 'PSB' : 'Komplain'}
+                      {isPsb ? 'Pemasangan (PSB)' : 'Pengaduan'}
                     </span>
                     <span className="font-mono text-xs font-bold text-white">
                       {ticket.ticket_number}
@@ -325,9 +326,9 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
                     }`}
                   >
                     {activeTab === 'new'
-                      ? 'Menunggu Terima'
+                      ? 'Menunggu Diterima'
                       : activeTab === 'in_progress'
-                      ? 'Sedang Dikerjakan'
+                      ? 'Dikerjakan'
                       : 'Selesai'}
                   </span>
                 </div>
@@ -340,7 +341,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
                   {ticket.customer_phone && (
                     <div className="flex items-center gap-1.5 text-slate-400 font-mono">
                       <Phone className="w-3 h-3 text-emerald-400" />
-                      <span>{ticket.customer_phone}</span>
+                      <span>{formatPhone(ticket.customer_phone)}</span>
                     </div>
                   )}
                   <div className="flex items-start gap-1.5 text-slate-300 pt-0.5">
@@ -369,7 +370,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
                       className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
                     >
                       <CheckCircle className="w-4 h-4" />
-                      TERIMA TIKET
+                      Terima
                     </button>
                     <button
                       type="button"
@@ -381,7 +382,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
                       className="px-4 py-2.5 bg-slate-800 hover:bg-rose-900/40 border border-rose-500/40 text-rose-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                     >
                       <XCircle className="w-4 h-4 text-rose-400" />
-                      TOLAK
+                      Tolak
                     </button>
                   </div>
                 )}
@@ -399,7 +400,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
                       className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30 transition-all active:scale-[0.99]"
                     >
                       <Wrench className="w-4 h-4" />
-                      Buka Form Pengerjaan Lapangan (Fase 1 &amp; 2)
+                      Buka Form Pengerjaan Lapangan (Tahap 1 &amp; 2)
                     </button>
                   </div>
                 )}
@@ -409,7 +410,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
         </div>
       )}
 
-      {/* Modal Pengerjaan Lapangan (Fase 1 & 2) */}
+      {/* Modal Pengerjaan Lapangan (Tahap 1 & 2) */}
       {workingTicket && (
         <TicketFieldWorkModal
           open={!!workingTicket}
