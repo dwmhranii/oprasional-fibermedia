@@ -35,7 +35,8 @@ import {
   Eye,
   Calendar as CalendarIcon
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { PageHeader, StatCards, StatusBadge } from '@/../../shared/ui';
+import { formatDateTime } from '@/../../shared/lib/formatters';
 
 export const SlaDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -115,67 +116,75 @@ export const SlaDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">SLA Monitoring</h1>
-        <p className="text-gray-500 dark:text-slate-400">Pantau pelanggaran Service Level Agreement (SLA) pada setiap tahapan operasional.</p>
-      </div>
+      {/* Page Header */}
+      <PageHeader
+        title="Pemantauan SLA"
+        description="Pantau pelanggaran Service Level Agreement (SLA) pada setiap tahapan operasional."
+        breadcrumb={[
+          { label: 'Admin', href: '#' },
+          { label: 'Pemantauan SLA' },
+        ]}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchSummary();
+              refetchList();
+            }}
+            disabled={isSummaryLoading || isListFetching}
+            className="text-xs font-semibold h-9 px-3"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isListFetching ? 'animate-spin' : ''}`} />
+            Muat Ulang
+          </Button>
+        }
+      />
 
       {/* SLA Summary Section */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Summary Breaches</h2>
-          {isSummaryError && (
-            <Button variant="ghost" size="sm" onClick={() => refetchSummary()} className="text-red-600">
-              <RefreshCw className="w-4 h-4 mr-2" /> Gagal memuat summary
-            </Button>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="bg-red-50 border-red-100">
-            <CardContent className="p-4 flex flex-col justify-center items-center h-24">
-              <p className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-1">Total Open</p>
-              {isSummaryLoading ? <Skeleton className="h-8 w-16 bg-red-200" /> : <p className="text-3xl font-bold text-red-700">{summaryData?.open_count || 0}</p>}
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-green-50 border-green-100">
-            <CardContent className="p-4 flex flex-col justify-center items-center h-24">
-              <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Resolved</p>
-              {isSummaryLoading ? <Skeleton className="h-8 w-16 bg-green-200" /> : <p className="text-3xl font-bold text-green-700">{summaryData?.resolved_count || 0}</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 flex flex-col justify-center items-center h-24">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 text-center">Validasi<br/>Terlambat</p>
-              {isSummaryLoading ? <Skeleton className="h-8 w-12" /> : <p className="text-2xl font-bold text-gray-900">{summaryData?.pending_validation_count || 0}</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 flex flex-col justify-center items-center h-24">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 text-center">Gagal<br/>Provisioning</p>
-              {isSummaryLoading ? <Skeleton className="h-8 w-12" /> : <p className="text-2xl font-bold text-gray-900">{summaryData?.provisioning_failure_count || 0}</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 flex flex-col justify-center items-center h-24">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 text-center">Instalasi<br/>Terlambat</p>
-              {isSummaryLoading ? <Skeleton className="h-8 w-12" /> : <p className="text-2xl font-bold text-gray-900">{summaryData?.delayed_installation_count || 0}</p>}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <StatCards
+        loading={isSummaryLoading}
+        stats={[
+          {
+            title: 'Pelanggaran Terbuka',
+            value: summaryData?.open_count || 0,
+            description: 'Perlu penanganan segera',
+            icon: AlertTriangle,
+          },
+          {
+            title: 'Selesai Ditangani',
+            value: summaryData?.resolved_count || 0,
+            description: 'Telah diselesaikan',
+            icon: CheckCircle2,
+            trend: { value: 100, label: 'Tuntas', isPositive: true },
+          },
+          {
+            title: 'Validasi Terlambat',
+            value: summaryData?.pending_validation_count || 0,
+            description: 'Tahap verifikasi',
+            icon: FileX,
+          },
+          {
+            title: 'Gagal Provisioning',
+            value: summaryData?.provisioning_failure_count || 0,
+            description: 'Kendala teknis OLT/BRAS',
+            icon: ServerCrash,
+          },
+          {
+            title: 'Instalasi Terlambat',
+            value: summaryData?.delayed_installation_count || 0,
+            description: 'Pemasangan lapangan',
+            icon: Clock,
+          },
+        ]}
+      />
 
       {/* Filter Section */}
       <Card className="shadow-sm">
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
             <div className="space-y-1">
-              <Label className="text-xs text-gray-500">Tipe Pelanggaran</Label>
+              <Label className="text-xs text-muted-foreground">Tipe Pelanggaran</Label>
               <Select value={breachType} onValueChange={(val) => { setBreachType(val); setPage(1); }}>
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
@@ -190,7 +199,7 @@ export const SlaDashboard: React.FC = () => {
             </div>
             
             <div className="space-y-1">
-              <Label className="text-xs text-gray-500">Status Penyelesaian</Label>
+              <Label className="text-xs text-muted-foreground">Status Penyelesaian</Label>
               <Select value={resolved} onValueChange={(val) => { setResolved(val); setPage(1); }}>
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
@@ -204,9 +213,9 @@ export const SlaDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-gray-500">Tanggal Mulai (Deteksi)</Label>
+              <Label className="text-xs text-muted-foreground">Tanggal Mulai (Deteksi)</Label>
               <div className="relative">
-                <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   type="date" 
                   value={startDate} 
@@ -217,9 +226,9 @@ export const SlaDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-gray-500">Tanggal Akhir (Deteksi)</Label>
+              <Label className="text-xs text-muted-foreground">Tanggal Akhir (Deteksi)</Label>
               <div className="relative">
-                <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   type="date" 
                   value={endDate} 
@@ -258,7 +267,7 @@ export const SlaDashboard: React.FC = () => {
           </div>
         )}
         <Table>
-          <TableHeader className="bg-gray-50">
+          <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead className="w-[100px]">ID</TableHead>
               <TableHead>Tipe Pelanggaran</TableHead>
@@ -282,7 +291,7 @@ export const SlaDashboard: React.FC = () => {
               ))
             ) : listData?.data?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-gray-500">
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center justify-center">
                     <CheckCircle2 className="w-8 h-8 text-green-400 mb-2" />
                     <p>Tidak ada pelanggaran SLA yang ditemukan.</p>
@@ -292,20 +301,20 @@ export const SlaDashboard: React.FC = () => {
             ) : (
               listData?.data?.map((breach: any) => (
                 <TableRow key={breach.id} className={!breach.resolved_at ? 'bg-red-50/30' : ''}>
-                  <TableCell className="font-medium text-gray-900">#{breach.id}</TableCell>
+                  <TableCell className="font-medium text-foreground">#{breach.id}</TableCell>
                   <TableCell>{getBreachTypeBadge(breach.breach_type)}</TableCell>
                   <TableCell>
                     {breach.resolved_at ? (
-                      <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">Resolved</Badge>
+                      <StatusBadge status="completed" label="Selesai" />
                     ) : (
-                      <Badge variant="outline" className="text-red-700 border-red-200 bg-red-50">Open</Badge>
+                      <StatusBadge status="rejected" label="Belum Selesai" />
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {breach.detected_at ? format(new Date(breach.detected_at), 'dd MMM yyyy, HH:mm') : '-'}
+                  <TableCell className="text-sm text-muted-foreground">
+                    {breach.detected_at ? formatDateTime(breach.detected_at) : '-'}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {breach.resolved_at ? format(new Date(breach.resolved_at), 'dd MMM yyyy, HH:mm') : <span className="text-red-500 text-xs italic">Menunggu...</span>}
+                  <TableCell className="text-sm text-muted-foreground">
+                    {breach.resolved_at ? formatDateTime(breach.resolved_at) : <span className="text-destructive text-xs italic">Menunggu...</span>}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button 
@@ -324,8 +333,8 @@ export const SlaDashboard: React.FC = () => {
         
         {/* Pagination */}
         {listData && listData.last_page > 1 && (
-          <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+          <div className="p-4 border-t border-border flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
               Menampilkan {((listData.current_page - 1) * 15) + 1} - {Math.min(listData.current_page * 15, listData.total)} dari {listData.total} data
             </p>
             <div className="flex gap-2">
