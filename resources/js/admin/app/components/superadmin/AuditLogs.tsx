@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
@@ -12,34 +11,24 @@ import {
   SelectValue,
 } from '../ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/table';
-import {
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
   Clock,
-  Calendar,
-  Loader2,
-  Users,
-  Activity,
-  Database,
-  RefreshCw
+  RefreshCw,
+  AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { toast } from 'sonner';
-import { Skeleton } from '../ui/skeleton';
 import { apiClient } from '../../lib/api';
 import { userToFrontend } from '../../lib/mappers';
 import { useDebounce } from '../../hooks/useDebounce';
+import { 
+  PageHeader, 
+  FilterBar, 
+  DataTable, 
+  ColumnDef 
+} from '@shared/ui';
+import { ACTIONS, TERMS, MESSAGES } from '@shared/i18n/id';
+import { formatDateTime } from '@shared/lib/formatters';
 
-import { formatDate } from '../../lib/formatters';
 export const AuditLogs: React.FC = () => {
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,141 +75,174 @@ export const AuditLogs: React.FC = () => {
     },
   });
 
-  const getRoleBadgeColor = (role: string) => {
-    const colors: Record<string, string> = {
-      sales: '#3b82f6',
-      admin: '#10b981',
-      teknisi: '#f59e0b',
-      superadmin: '#ef4444',
-    };
-    return colors[role] || '#6b7280';
-  };
-
   const getRoleBadge = (role: string) => {
-    const color = getRoleBadgeColor(role);
+    const roleConfig: Record<string, { label: string; badgeClass: string }> = {
+      sales: { label: 'Sales', badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
+      admin: { label: 'Admin', badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
+      teknisi: { label: 'Teknisi', badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
+      superadmin: { label: 'Superadmin', badgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800' },
+    };
+
+    const normRole = (role || '').toLowerCase();
+    const config = roleConfig[normRole] || { label: role || 'Pengguna', badgeClass: 'bg-slate-50 text-slate-700 dark:bg-slate-900/40 dark:text-slate-400 border-slate-200 dark:border-slate-800' };
+
     return (
-      <Badge style={{ backgroundColor: `${color}20`, color: color }}>
-        {role?.toUpperCase()}
-      </Badge>
+      <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-medium border ${config.badgeClass}`}>
+        {config.label}
+      </span>
     );
   };
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= (data?.meta?.last_page || 1)) {
-      setPage(newPage);
-    }
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setUserFilter('all');
+    setEventFilter('all');
+    setModelFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setSortBy('created_at');
+    setSortOrder('desc');
+    setPage(1);
   };
 
-  const handleSortChange = (value: string) => { setSortBy(value); setPage(1); };
-  const handleOrderChange = (value: string) => { setSortOrder(value); setPage(1); };
-  const handleDateFromChange = (e: React.ChangeEvent<HTMLInputElement>) => { setDateFrom(e.target.value); setPage(1); };
-  const handleDateToChange = (e: React.ChangeEvent<HTMLInputElement>) => { setDateTo(e.target.value); setPage(1); };
-
-  const filteredLogs = data?.logs || [];
+  const columns: ColumnDef<any>[] = [
+    {
+      key: 'causer',
+      header: 'Aktor / Staf',
+      render: (log) => (
+        <div className="space-y-1">
+          <p className="font-semibold text-sm text-foreground">
+            {log.causer?.name || 'Sistem'}
+          </p>
+          {log.causer?.roles?.[0] && (
+            <div>{getRoleBadge(log.causer.roles[0])}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'description',
+      header: 'Deskripsi Perubahan',
+      render: (log) => (
+        <span className="font-medium text-sm text-foreground">
+          {log.description}
+        </span>
+      ),
+    },
+    {
+      key: 'subject',
+      header: 'Model Subject Data',
+      render: (log) => (
+        log.subject_type ? (
+          <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border inline-block">
+            {log.subject_type.split('\\').pop()} #{log.subject_id}
+          </span>
+        ) : '-'
+      ),
+    },
+    {
+      key: 'event',
+      header: 'Kategori Aksi',
+      render: (log) => (
+        <Badge variant="outline" className="font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+          {log.event || log.log_name || 'default'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Waktu Log',
+      render: (log) => (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="w-3.5 h-3.5 opacity-60" />
+          <span>{formatDateTime(log.created_at)}</span>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
-          Log Audit Perubahan Sistem
-        </h1>
-        <p className="text-gray-500 dark:text-slate-400">
-          Jejak audit trail terpusat atas aktivitas modifikasi database, validasi, dan penyelesaian instalasi.
-        </p>
-      </div>
+      {/* Standard Page Header */}
+      <PageHeader
+        title="Log Audit Perubahan Sistem"
+        description="Jejak audit trail terpusat atas aktivitas modifikasi database, validasi, dan penyelesaian instalasi sistem Fibermedia-Ops."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="text-xs"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {ACTIONS.reload}
+          </Button>
+        }
+      />
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row gap-3">
-              {/* Search Input */}
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Cari deskripsi aktivitas atau model ID..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                  className="pl-10"
-                />
-              </div>
+      {/* Filter Bar */}
+      <FilterBar
+        searchQuery={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
+        searchPlaceholder="Cari deskripsi aktivitas atau model ID..."
+        onReset={handleResetFilters}
+      >
+        <Input 
+          type="date" 
+          value={dateFrom} 
+          onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} 
+          className="w-36 text-xs" 
+          title="Dari Tanggal" 
+        />
+        <Input 
+          type="date" 
+          value={dateTo} 
+          onChange={(e) => { setDateTo(e.target.value); setPage(1); }} 
+          className="w-36 text-xs" 
+          title="Sampai Tanggal" 
+        />
+        
+        <Select value={userFilter} onValueChange={(val) => { setUserFilter(val); setPage(1); }}>
+          <SelectTrigger className="w-44 text-xs">
+            <SelectValue placeholder="Pilih Aktor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Aktor</SelectItem>
+            {users.map((u: any) => (
+              <SelectItem key={u.id} value={String(u.id)}>
+                {u.nama_lengkap || u.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-              <div className="flex flex-wrap gap-2">
-                <Input type="date" value={dateFrom} onChange={handleDateFromChange} className="w-36" title="Dari Tanggal" />
-                <Input type="date" value={dateTo} onChange={handleDateToChange} className="w-36" title="Sampai Tanggal" />
-                
-                <Select value={sortBy} onValueChange={handleSortChange}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder="Urutkan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="created_at">Tanggal Dibuat</SelectItem>
-                    <SelectItem value="event">Jenis Aksi</SelectItem>
-                  </SelectContent>
-                </Select>
+        <Select value={eventFilter} onValueChange={(val) => { setEventFilter(val); setPage(1); }}>
+          <SelectTrigger className="w-32 text-xs">
+            <SelectValue placeholder="Semua Aksi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Aksi</SelectItem>
+            <SelectItem value="created">Dibuat</SelectItem>
+            <SelectItem value="updated">Diperbarui</SelectItem>
+            <SelectItem value="deleted">Dihapus</SelectItem>
+            <SelectItem value="login">Login</SelectItem>
+            <SelectItem value="logout">Logout</SelectItem>
+          </SelectContent>
+        </Select>
 
-                <Select value={sortOrder} onValueChange={handleOrderChange}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue placeholder="Arah" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="desc">Terbaru</SelectItem>
-                    <SelectItem value="asc">Terlama</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-3">
-              {/* Filter by User */}
-              <Select value={userFilter} onValueChange={(val) => { setUserFilter(val); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Pilih Aktor (User)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Aktor</SelectItem>
-                  {users.map((u: any) => (
-                    <SelectItem key={u.id} value={String(u.id)}>
-                      {u.nama_lengkap || u.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Filter by Log Group Event */}
-              <Select value={eventFilter} onValueChange={(val) => { setEventFilter(val); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-36">
-                  <SelectValue placeholder="Jenis Aksi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Aksi</SelectItem>
-                  <SelectItem value="created">Dibuat</SelectItem>
-                  <SelectItem value="updated">Diperbarui</SelectItem>
-                  <SelectItem value="deleted">Dihapus</SelectItem>
-                  <SelectItem value="login">Login</SelectItem>
-                  <SelectItem value="logout">Logout</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Filter by Database Model Subject Type */}
-              <Select value={modelFilter} onValueChange={(val) => { setModelFilter(val); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Modul Sistem" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Modul</SelectItem>
-                  <SelectItem value="App\Models\User">Pengguna (User)</SelectItem>
-                  <SelectItem value="App\Models\Submission">Pengajuan (Submission)</SelectItem>
-                  <SelectItem value="App\Models\Provisioning">Provisi (Provisioning)</SelectItem>
-                  <SelectItem value="App\Models\Task">Tugas (Task)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <Select value={modelFilter} onValueChange={(val) => { setModelFilter(val); setPage(1); }}>
+          <SelectTrigger className="w-44 text-xs">
+            <SelectValue placeholder="Semua Modul" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Modul</SelectItem>
+            <SelectItem value="App\Models\User">Pengguna (User)</SelectItem>
+            <SelectItem value="App\Models\Submission">Pengajuan (Submission)</SelectItem>
+            <SelectItem value="App\Models\Provisioning">Work Order (Provisioning)</SelectItem>
+            <SelectItem value="App\Models\Task">Work Order (Task)</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
       {/* Error Alert */}
       {isError && (
@@ -230,111 +252,31 @@ export const AuditLogs: React.FC = () => {
           <AlertDescription className="flex flex-col gap-3 items-start mt-2">
             <p>{error instanceof Error ? error.message : 'Gagal terhubung dengan server logs.'}</p>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="w-4 h-4 mr-2" /> Coba Lagi
+              <RefreshCw className="w-4 h-4 mr-2" /> {ACTIONS.reload}
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">
-              <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-xl font-medium">Log Aktivitas Kosong</p>
-              <p className="text-sm text-gray-400 mt-1">Tidak ada catatan audit yang cocok dengan filter aktif.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Aktor / Staf</TableHead>
-                    <TableHead>Deskripsi Perubahan</TableHead>
-                    <TableHead>Model Subject Data</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Tanggal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLogs.map((log: any) => (
-                    <TableRow key={log.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors">
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-semibold text-gray-800 dark:text-slate-100">
-                            {log.causer?.name || 'Sistem'}
-                          </p>
-                          {log.causer?.roles?.[0] && (
-                            <p className="text-xs">{getRoleBadge(log.causer.roles[0])}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium text-gray-700">
-                        {log.description}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-gray-500">
-                        {log.subject_type ? (
-                          <span className="bg-gray-100 border px-2 py-1 rounded text-gray-700 block w-max">
-                            {log.subject_type.split('\\').pop()} #{log.subject_id}
-                          </span>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-semibold uppercase tracking-wider text-[10px] text-gray-500">
-                          {log.event || log.log_name || 'default'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500 flex items-center gap-1.5 pt-4">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        {formatDate(log.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pagination Controls */}
-      {data && data.meta && data.meta.last_page > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between bg-white border rounded-lg p-4 gap-4">
-          <div className="text-sm text-gray-500">
-            Menampilkan halaman <span className="font-semibold">{page}</span> dari{' '}
-            <span className="font-semibold">{data.meta.last_page}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-sm">
-              Halaman <span className="font-semibold">{page}</span> dari{' '}
-              <span className="font-semibold">{data.meta.last_page}</span>
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === data.meta.last_page}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Audit Logs Data Table */}
+      <DataTable
+        data={data?.logs || []}
+        columns={columns}
+        keyExtractor={(log, idx) => log.id || idx}
+        isLoading={isLoading}
+        onReload={() => refetch()}
+        emptyTitle="Log Aktivitas Kosong"
+        emptyDescription="Tidak ada catatan audit yang cocok dengan kriteria filter saat ini."
+        pagination={{
+          currentPage: page,
+          totalPages: data?.meta?.last_page || 1,
+          totalItems: data?.meta?.total || 0,
+          perPage: 15,
+          onPageChange: setPage,
+        }}
+      />
     </div>
   );
 };
+
+export default AuditLogs;
