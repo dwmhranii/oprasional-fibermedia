@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 import {
-  FileText,
   TrendingUp,
-  DollarSign,
-  Users,
-  Calendar,
-  Download,
-  Filter,
   Search,
   Loader2,
   AlertCircle,
   RefreshCw,
   FileSpreadsheet,
+  Award,
+  DollarSign,
+  Users,
 } from 'lucide-react';
-import { StatsCard } from '../dashboard/StatsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -28,16 +24,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api';
 import { reportService } from '../../lib/reportService';
-import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/table';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import {
   LineChart,
@@ -54,12 +41,25 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { 
+  PageHeader, 
+  StatCards, 
+  DataTable, 
+  ColumnDef, 
+  showToast 
+} from '@shared/ui';
+import { ACTIONS, TERMS, MESSAGES } from '@shared/i18n/id';
+import { formatCurrency, formatNumber } from '@shared/lib/formatters';
 
 export const SalesReport: React.FC = () => {
   const [dateRange, setDateRange] = useState('30days');
   const [selectedSales, setSelectedSales] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortColumn, setSortColumn] = useState('revenue');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Fetch submissions dataset for sales reporting
   const { data: submissionsData, isLoading, isError, error, refetch } = useQuery({
@@ -70,8 +70,8 @@ export const SalesReport: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <p className="text-gray-500 text-sm">Memuat data laporan penjualan...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground text-sm">Memuat data laporan penjualan...</p>
       </div>
     );
   }
@@ -84,7 +84,7 @@ export const SalesReport: React.FC = () => {
         <AlertDescription className="flex flex-col gap-3 items-start mt-2">
           <p>{error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat data.'}</p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Coba Lagi
+            <RefreshCw className="w-4 h-4 mr-2" /> {ACTIONS.reload}
           </Button>
         </AlertDescription>
       </Alert>
@@ -93,7 +93,7 @@ export const SalesReport: React.FC = () => {
 
   const items = submissionsData?.data || (Array.isArray(submissionsData) ? submissionsData : []);
 
-  // Aggregate data by sales user with robust name fallbacks
+  // Aggregate data by sales user
   const salesMap: Record<string, any> = {};
 
   items.forEach((sub: any) => {
@@ -119,33 +119,32 @@ export const SalesReport: React.FC = () => {
     let salesName = (
       rawSalesName && rawSalesName !== 'unknown' && rawSalesName !== 'Unknown Sales'
         ? rawSalesName
-        : (sub.user?.name || (sub.sales_id ? `Sales #${sub.sales_id}` : 'Sales Agent (Utama)'))
+        : `Sales #${salesId.slice(0, 6)}`
     ).trim();
+
+    const price = Number(sub.package_price || sub.packagePrice || sub.price || 0);
 
     if (!salesMap[salesId]) {
       salesMap[salesId] = {
         id: salesId,
         name: salesName,
-        avatar: salesName.substring(0, 2).toUpperCase(),
         submissions: 0,
         approved: 0,
         rejected: 0,
         pending: 0,
         revenue: 0,
-        conversionRate: 0,
-        avgResponseTime: '15 mnt',
-        trend: 'up',
+        avgResponseTime: '15m',
+        avatar: salesName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'SP',
       };
     }
 
     salesMap[salesId].submissions++;
 
-    const statusLower = String(sub.status || '').toLowerCase();
-    if (['approved', 'provisioning', 'provisioned', 'completed'].includes(statusLower)) {
+    const status = String(sub.status || '').toLowerCase();
+    if (['approved', 'completed', 'active', 'installed', 'verified'].includes(status)) {
       salesMap[salesId].approved++;
-      const rawPrice = sub.package?.price ?? sub.package_price ?? 0;
-      salesMap[salesId].revenue += parseFloat(String(rawPrice)) || 0;
-    } else if (statusLower === 'rejected') {
+      salesMap[salesId].revenue += price;
+    } else if (['rejected', 'cancelled', 'batal', 'gagal'].includes(status)) {
       salesMap[salesId].rejected++;
     } else {
       salesMap[salesId].pending++;
@@ -165,6 +164,18 @@ export const SalesReport: React.FC = () => {
     return matchesSales && matchesSearch;
   });
 
+  // Sort list
+  filteredSalesPerformance.sort((a: any, b: any) => {
+    const valA = a[sortColumn];
+    const valB = b[sortColumn];
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      return sortDirection === 'asc' ? valA - valB : valB - valA;
+    }
+    return sortDirection === 'asc' 
+      ? String(valA).localeCompare(String(valB)) 
+      : String(valB).localeCompare(String(valA));
+  });
+
   // Calculate filtered stats
   const targetSalesList = selectedSales === 'all'
     ? salesPerformance
@@ -175,7 +186,6 @@ export const SalesReport: React.FC = () => {
   const ditolak = targetSalesList.reduce((acc: number, curr: any) => acc + curr.rejected, 0);
   const totalRevenue = targetSalesList.reduce((acc: number, curr: any) => acc + curr.revenue, 0);
   const convRate = totalPengajuan > 0 ? Math.round((disetujui / totalPengajuan) * 100) : 0;
-  const totalSubmissions = totalPengajuan;
 
   const revenueTrend = [
     { month: 'Jan', revenue: Math.floor(totalRevenue * 0.1) },
@@ -206,197 +216,255 @@ export const SalesReport: React.FC = () => {
     { day: 'Min', approved: Math.floor(disetujui * 0.05), rejected: Math.floor(ditolak * 0.05) },
   ];
 
-  const getTrendIcon = () => {
-    return <TrendingUp className="w-4 h-4 text-emerald-500 mx-auto" />;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const handleExportExcel = async () => {
     try {
       setIsExportingExcel(true);
-      toast.info('Menyiapkan Laporan Excel...', { description: 'Mengunduh data pengajuan dari server...' });
+      showToast.info('Menyiapkan Laporan Excel...', 'Mengunduh data pengajuan dari server...');
       await reportService.exportSubmissionsExcel();
-      toast.success('Ekspor Excel Berhasil', { description: 'File Laporan_Pengajuan.xlsx telah diunduh.' });
+      showToast.success('Ekspor Excel Berhasil', 'Berkas laporan telah diunduh.');
     } catch (err: any) {
-      toast.error('Ekspor Excel Gagal', { description: err?.message || 'Terjadi kesalahan sistem.' });
+      showToast.error('Ekspor Excel Gagal', err?.message || 'Terjadi kesalahan sistem.');
     } finally {
       setIsExportingExcel(false);
     }
   };
 
+  const handleSort = (columnKey: string) => {
+    if (sortColumn === columnKey) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(columnKey);
+      setSortDirection('desc');
+    }
+  };
+
+  // Table Columns Definition
+  const columns: ColumnDef<any>[] = [
+    {
+      key: 'name',
+      header: 'Nama Sales',
+      sortable: true,
+      render: (sales) => (
+        <div className="flex items-center space-x-3">
+          <Avatar className="w-8 h-8 border border-border">
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+              {sales.avatar}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-semibold text-sm text-foreground">{sales.name}</p>
+            <p className="text-xs text-muted-foreground font-mono">ID: {sales.id}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'submissions',
+      header: 'Pengajuan',
+      align: 'center',
+      sortable: true,
+      render: (sales) => (
+        <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-bold">
+          {sales.submissions}
+        </Badge>
+      ),
+    },
+    {
+      key: 'approved',
+      header: 'Disetujui',
+      align: 'center',
+      sortable: true,
+      render: (sales) => (
+        <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 font-bold">
+          {sales.approved}
+        </Badge>
+      ),
+    },
+    {
+      key: 'rejected',
+      header: 'Ditolak',
+      align: 'center',
+      sortable: true,
+      render: (sales) => (
+        <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800 font-bold">
+          {sales.rejected}
+        </Badge>
+      ),
+    },
+    {
+      key: 'pending',
+      header: 'Menunggu',
+      align: 'center',
+      sortable: true,
+      render: (sales) => (
+        <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800 font-bold">
+          {sales.pending}
+        </Badge>
+      ),
+    },
+    {
+      key: 'revenue',
+      header: 'Pendapatan',
+      align: 'right',
+      sortable: true,
+      render: (sales) => (
+        <span className="font-semibold text-xs text-foreground">
+          {formatCurrency(sales.revenue)}
+        </span>
+      ),
+    },
+    {
+      key: 'conversionRate',
+      header: 'Konversi',
+      align: 'center',
+      sortable: true,
+      render: (sales) => (
+        <div className="flex flex-col items-center">
+          <span className="font-bold text-xs text-foreground">
+            {sales.conversionRate}%
+          </span>
+          <div className="w-full max-w-[70px] bg-muted rounded-full h-1.5 mt-1 overflow-hidden">
+            <div
+              className={`h-1.5 rounded-full ${
+                sales.conversionRate >= 80
+                  ? 'bg-emerald-500'
+                  : sales.conversionRate >= 50
+                  ? 'bg-amber-500'
+                  : 'bg-rose-500'
+              }`}
+              style={{ width: `${sales.conversionRate}%` }}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'avgResponseTime',
+      header: 'Rata-rata Respon',
+      align: 'center',
+      render: (sales) => (
+        <span className="text-xs text-muted-foreground font-medium">
+          {sales.avgResponseTime}
+        </span>
+      ),
+    },
+  ];
+
+  // Paged slice of data
+  const pagedData = filteredSalesPerformance.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Laporan Penjualan Sales</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Analisis performa tim sales, persentase konversi, dan pendapatan paket internet.
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-40 text-xs bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">7 Hari Terakhir</SelectItem>
-              <SelectItem value="30days">30 Hari Terakhir</SelectItem>
-              <SelectItem value="90days">90 Hari Terakhir</SelectItem>
-              <SelectItem value="1year">Tahun Lalu</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Standard Page Header */}
+      <PageHeader
+        title="Laporan Penjualan Sales"
+        description="Analisis performa tim sales, persentase konversi pendaftaran pelanggan, dan pendapatan paket internet."
+        actions={
+          <div className="flex items-center space-x-2">
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-40 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7days">7 Hari Terakhir</SelectItem>
+                <SelectItem value="30days">30 Hari Terakhir</SelectItem>
+                <SelectItem value="90days">3 Bulan Terakhir</SelectItem>
+                <SelectItem value="1year">1 Tahun Terakhir</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* Excel Export Button for Admin/Superadmin */}
-          <Button
-            onClick={handleExportExcel}
-            disabled={isExportingExcel}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm"
-          >
-            {isExportingExcel ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Mengunduh...
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Ekspor Excel (.xlsx)
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+            <Button
+              onClick={handleExportExcel}
+              disabled={isExportingExcel}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-xs"
+            >
+              {isExportingExcel ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+              )}
+              {ACTIONS.exportExcel}
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          label="Total Pengajuan"
-          value={totalPengajuan}
-          change={selectedSales === 'all' ? 'Seluruh tim sales' : 'Filtered sales agent'}
-          trend="neutral"
-          icon={FileText}
-          color="#3b82f6"
-        />
-        <StatsCard
-          label="Tingkat Konversi"
-          value={`${convRate}%`}
-          change="Rata-rata disetujui"
-          trend={convRate >= 50 ? 'up' : 'down'}
-          icon={TrendingUp}
-          color="#10b981"
-        />
-        <StatsCard
-          label="Total Estimasi Pendapatan"
-          value={`Rp ${(totalRevenue / 1000000).toFixed(1)}jt`}
-          change="Berdasarkan harga paket"
-          trend="up"
-          icon={DollarSign}
-          color="#667eea"
-        />
-        <StatsCard
-          label="Sales Aktif"
-          value={targetSalesList.length}
-          change="Sales terdaftar"
-          trend="neutral"
-          icon={Users}
-          color="#f59e0b"
-        />
-      </div>
+      {/* KPI Stat Cards with Standard Currency & Numbers */}
+      <StatCards
+        columns={4}
+        items={[
+          {
+            title: 'Total Pengajuan',
+            value: formatNumber(totalPengajuan),
+            subtitle: 'Seluruh berkas masuk',
+            variant: 'info',
+            icon: Users,
+          },
+          {
+            title: 'Pengajuan Disetujui',
+            value: formatNumber(disetujui),
+            subtitle: `${convRate}% tingkat konversi`,
+            variant: 'success',
+            icon: TrendingUp,
+          },
+          {
+            title: 'Estimasi Pendapatan',
+            value: formatCurrency(totalRevenue),
+            subtitle: 'Nilai paket aktif',
+            variant: 'success',
+            icon: DollarSign,
+          },
+          {
+            title: 'Rata-rata Konversi',
+            value: `${convRate}%`,
+            subtitle: 'Target efektivitas sales',
+            variant: convRate >= 70 ? 'success' : 'warning',
+            icon: Award,
+          },
+        ]}
+      />
 
-      {/* Charts Section */}
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Trend */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-            <CardTitle className="text-base font-bold text-gray-900">
-              Tren Pendapatan (6 Bulan)
-            </CardTitle>
+        {/* Revenue Trend Chart */}
+        <Card className="shadow-xs border-border bg-card">
+          <CardHeader className="border-b border-border bg-muted/40 p-4">
+            <CardTitle className="text-sm font-bold text-foreground">📈 Tren Pendapatan Penjualan</CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
-            <div className="h-64 w-full">
+          <CardContent className="p-4 pt-6">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={revenueTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b7280" fontSize={11} />
-                  <YAxis stroke="#6b7280" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-xs text-muted-foreground" fontSize={11} />
+                  <YAxis className="text-xs text-muted-foreground" fontSize={11} tickFormatter={(v) => `Rp ${v / 1000}k`} />
                   <Tooltip
-                    formatter={(value: any) =>
-                      typeof value === 'number' ? formatCurrency(value) : value
-                    }
+                    formatter={(val: number) => [formatCurrency(val), 'Pendapatan']}
+                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '0.75rem' }}
                   />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    dot={{ fill: '#10b981', r: 4 }}
-                    name="Pendapatan (IDR)"
-                  />
+                  <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* Package Distribution */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-            <CardTitle className="text-base font-bold text-gray-900">
-              Distribusi Status Pengajuan
-            </CardTitle>
+        {/* Daily Submissions Chart */}
+        <Card className="shadow-xs border-border bg-card">
+          <CardHeader className="border-b border-border bg-muted/40 p-4">
+            <CardTitle className="text-sm font-bold text-foreground">📊 Distribusi Harian</CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={packageDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {packageDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Daily Submissions */}
-        <Card className="lg:col-span-2 shadow-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-            <CardTitle className="text-base font-bold text-gray-900">
-              Pengajuan Harian (7 Hari Terakhir)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="h-64 w-full">
+          <CardContent className="p-4 pt-6">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailySubmissions}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" stroke="#6b7280" fontSize={11} />
-                  <YAxis stroke="#6b7280" fontSize={11} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="day" className="text-xs text-muted-foreground" fontSize={11} />
+                  <YAxis className="text-xs text-muted-foreground" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '0.75rem' }} />
                   <Legend />
-                  <Bar dataKey="approved" fill="#10b981" name="Disetujui" />
-                  <Bar dataKey="rejected" fill="#ef4444" name="Ditolak" />
+                  <Bar dataKey="approved" name="Disetujui" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="rejected" name="Ditolak" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -404,254 +472,64 @@ export const SalesReport: React.FC = () => {
         </Card>
       </div>
 
-      {/* Sales Performance Table & Interactive Filters */}
-      <Card className="shadow-sm border-gray-200 overflow-hidden">
-        <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg font-bold text-gray-900">
-                Performa Penjualan Sales Agent
-              </CardTitle>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Pilih sales agent untuk memantau performa pengajuan secara individual.
-              </p>
+      {/* Sales Performance Data Table */}
+      <Card className="shadow-xs border-border bg-card">
+        <CardHeader className="border-b border-border bg-muted/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base font-bold text-foreground">
+              Tabel Performa Anggota Tim Sales
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Rincian hasil pengajuan dan kontribusi pendapatan per staf sales.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-48">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Cari sales..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                className="pl-8 text-xs h-8"
+              />
             </div>
 
-            <div className="flex items-center space-x-3">
-              {/* Search Box */}
-              <div className="relative w-56">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Cari nama sales..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 text-xs h-9 bg-white"
-                />
-              </div>
-
-              {/* Dynamic Sales Filter Select */}
-              <Select value={selectedSales} onValueChange={setSelectedSales}>
-                <SelectTrigger className="w-56 text-xs bg-white font-medium border-gray-200">
-                  <SelectValue placeholder="Pilih Sales" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Tim Sales ({salesPerformance.length})</SelectItem>
-                  {salesPerformance.map((sales: any) => (
-                    <SelectItem key={sales.id} value={sales.id}>
-                      {sales.name} ({sales.submissions} pengajuan)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedSales} onValueChange={(val) => { setSelectedSales(val); setPage(1); }}>
+              <SelectTrigger className="w-36 text-xs h-8">
+                <SelectValue placeholder="Semua Sales" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Sales</SelectItem>
+                {salesPerformance.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table className="w-full">
-              <TableHeader className="bg-slate-100/80 border-b border-slate-200">
-                <TableRow>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase">Sales Person</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Pengajuan</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Disetujui</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Ditolak</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Menunggu</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-right">Pendapatan</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Konversi</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Rata-rata Respon</TableHead>
-                  <TableHead className="px-4 py-3.5 text-xs font-bold text-slate-700 uppercase text-center">Tren</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-slate-100">
-                {filteredSalesPerformance.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10 text-gray-500 text-xs font-medium">
-                      Tidak ada data sales yang cocok dengan pencarian / filter.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredSalesPerformance.map((sales: any) => (
-                    <TableRow key={sales.id} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/60 transition-colors">
-                      <TableCell className="px-4 py-3.5 align-middle">
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="w-9 h-9 border border-gray-200">
-                            <AvatarFallback className="bg-blue-600 text-white font-bold text-xs">
-                              {sales.avatar}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-bold text-sm text-gray-900">{sales.name}</p>
-                            <p className="text-xs text-gray-400 font-mono">ID: {sales.id}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center">
-                        <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-bold">
-                          {sales.submissions}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center">
-                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold">
-                          {sales.approved}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center">
-                        <Badge className="bg-red-50 text-red-700 border-red-200 font-bold">
-                          {sales.rejected}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center">
-                        <Badge className="bg-amber-50 text-amber-700 border-amber-200 font-bold">
-                          {sales.pending}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-right font-semibold text-xs text-gray-900">
-                        {formatCurrency(sales.revenue)}
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="font-bold text-xs text-gray-900">
-                            {sales.conversionRate}%
-                          </span>
-                          <div className="w-full max-w-[70px] bg-gray-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div
-                              className="h-1.5 rounded-full"
-                              style={{
-                                width: `${sales.conversionRate}%`,
-                                backgroundColor:
-                                  sales.conversionRate >= 80
-                                    ? '#10b981'
-                                    : sales.conversionRate >= 50
-                                      ? '#f59e0b'
-                                      : '#ef4444',
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center text-xs text-gray-500 font-medium">
-                        {sales.avgResponseTime}
-                      </TableCell>
-                      <TableCell className="px-4 py-3.5 align-middle text-center">
-                        {getTrendIcon()}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="p-4">
+          <DataTable
+            data={pagedData}
+            columns={columns}
+            keyExtractor={(s) => s.id}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            pagination={{
+              currentPage: page,
+              totalPages: Math.ceil(filteredSalesPerformance.length / pageSize) || 1,
+              totalItems: filteredSalesPerformance.length,
+              perPage: pageSize,
+              onPageChange: setPage,
+            }}
+          />
         </CardContent>
       </Card>
-
-      {/* Additional Analytics: Top Performers & Revenue Leaders */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Performers */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-            <CardTitle className="text-sm font-bold text-gray-900">🏆 Performa Konversi Terbaik</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-3">
-            {salesPerformance
-              .sort((a, b) => b.conversionRate - a.conversionRate)
-              .slice(0, 3)
-              .map((sales, index) => (
-                <div
-                  key={sales.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-2xs"
-                      style={{
-                        backgroundColor:
-                          index === 0
-                            ? '#f59e0b'
-                            : index === 1
-                              ? '#94a3b8'
-                              : '#b45309',
-                      }}
-                    >
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">{sales.name}</p>
-                      <p className="text-[11px] text-gray-500">{sales.conversionRate}% konversi</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-xs">
-                    {sales.approved} disetujui
-                  </Badge>
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-
-        {/* Revenue Leaders */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-            <CardTitle className="text-sm font-bold text-gray-900">💰 Pemimpin Estimasi Pendapatan</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-3">
-            {salesPerformance
-              .sort((a, b) => b.revenue - a.revenue)
-              .slice(0, 3)
-              .map((sales, index) => (
-                <div
-                  key={sales.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">{sales.name}</p>
-                      <p className="text-[11px] text-emerald-600 font-semibold">{formatCurrency(sales.revenue)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-            <CardTitle className="text-sm font-bold text-gray-900">📊 Ringkasan Statistik Sales</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-2.5">
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-              <span className="text-gray-500 font-medium">Tim Sales Terdaftar</span>
-              <span className="font-bold text-gray-900">{salesPerformance.length}</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-              <span className="text-gray-500 font-medium">Rata-rata Pengajuan/Orang</span>
-              <span className="font-bold text-gray-900">
-                {salesPerformance.length > 0
-                  ? (totalSubmissions / salesPerformance.length).toFixed(1)
-                  : '0'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-              <span className="text-gray-500 font-medium">Rata-rata Pendapatan/Orang</span>
-              <span className="font-bold text-gray-900">
-                {formatCurrency(salesPerformance.length > 0 ? totalRevenue / salesPerformance.length : 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-              <span className="text-gray-500 font-medium">Konversi Tertinggi</span>
-              <span className="font-bold text-emerald-600">
-                {salesPerformance.length > 0
-                  ? Math.max(...salesPerformance.map((s) => s.conversionRate))
-                  : 0}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };
+
+export default SalesReport;
