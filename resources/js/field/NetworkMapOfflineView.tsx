@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { formatCoordinate, formatDistance } from '@shared/lib/formatters';
 import {
   Download,
   MapPin,
@@ -404,7 +405,7 @@ export const NetworkMapOfflineView: React.FC<NetworkMapOfflineViewProps> = ({
                     <div className="text-right">
                       {odp.distance_meters !== undefined && (
                         <span className="font-semibold text-blue-600 block">
-                          &plusmn;{odp.distance_meters} meter
+                          ±{formatDistance(odp.distance_meters)}
                         </span>
                       )}
                       <span
@@ -522,9 +523,7 @@ export const NetworkMapOfflineView: React.FC<NetworkMapOfflineViewProps> = ({
                   </button>
                 </div>
                 <div className="p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-800 text-mono text-[11px] text-slate-700 dark:text-slate-300">
-                  {newOdpCoords
-                    ? `${newOdpCoords.lat.toFixed(6)}, ${newOdpCoords.lng.toFixed(6)}`
-                    : 'Belum ditentukan'}
+                  {newOdpCoords ? formatCoordinate(newOdpCoords.lat, newOdpCoords.lng) : 'Belum ditentukan'}
                 </div>
               </div>
 

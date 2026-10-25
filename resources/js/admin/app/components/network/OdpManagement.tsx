@@ -22,6 +22,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import type { Odp, Odc, OperationalStatus, OdpPortItem } from '../../../shared/types/api.generated';
+import { formatCoordinate } from '@/../../shared/lib/formatters';
 
 export const OdpManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -267,7 +268,7 @@ export const OdpManagement: React.FC = () => {
             >
               <option value="all">Semua Status</option>
               <option value="normal">Normal</option>
-              <option value="disrupted">Terganggu</option>
+              <option value="disrupted">Gangguan</option>
               <option value="cut">Putus</option>
             </select>
 
@@ -592,20 +593,20 @@ export const OdpManagement: React.FC = () => {
                 <div>
                   <span className="text-slate-500 font-semibold block mb-1">Koordinat Saat Ini</span>
                   <p className="font-mono text-slate-800 dark:text-slate-200">
-                    Lat: {odpForApproval.latitude ?? '-'}
+                    Lat: {odpForApproval.latitude ? Number(odpForApproval.latitude).toFixed(6) : '-'}
                   </p>
                   <p className="font-mono text-slate-800 dark:text-slate-200">
-                    Lng: {odpForApproval.longitude ?? '-'}
+                    Lng: {odpForApproval.longitude ? Number(odpForApproval.longitude).toFixed(6) : '-'}
                   </p>
                 </div>
 
                 <div className="border-l border-slate-200 dark:border-slate-700 pl-3">
                   <span className="text-amber-600 font-semibold block mb-1">Koordinat Usulan</span>
                   <p className="font-mono font-bold text-amber-700 dark:text-amber-400">
-                    Lat: {odpForApproval.proposed_latitude ?? '-'}
+                    Lat: {odpForApproval.proposed_latitude ? Number(odpForApproval.proposed_latitude).toFixed(6) : '-'}
                   </p>
                   <p className="font-mono font-bold text-amber-700 dark:text-amber-400">
-                    Lng: {odpForApproval.proposed_longitude ?? '-'}
+                    Lng: {odpForApproval.proposed_longitude ? Number(odpForApproval.proposed_longitude).toFixed(6) : '-'}
                   </p>
                 </div>
               </div>
