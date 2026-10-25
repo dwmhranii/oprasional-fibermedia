@@ -257,7 +257,7 @@ export const TaskComplete: React.FC = () => {
 
               <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl p-4 mb-6 text-left space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-gray-500">No. SPK</span>
+                  <span className="text-gray-500">No. Work Order</span>
                   <span className="font-mono font-bold text-indigo-700">{task.task_number || `TSK-${task.id}`}</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">

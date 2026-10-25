@@ -342,7 +342,7 @@ export const CustomerDetail: React.FC = () => {
             onClick={() => setShowSpkModal(true)}
             className="text-xs flex items-center gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
           >
-            <FileText className="w-3.5 h-3.5" /> Cetak SPK
+            <FileText className="w-3.5 h-3.5" /> Cetak Work Order
           </Button>
 
           <Button
@@ -899,7 +899,7 @@ export const CustomerDetail: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* SPK Modal */}
+      {/* Work Order Modal */}
       <PrintableSpkModal
         isOpen={showSpkModal}
         onClose={() => setShowSpkModal(false)}

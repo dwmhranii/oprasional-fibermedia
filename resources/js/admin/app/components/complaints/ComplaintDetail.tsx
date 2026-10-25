@@ -427,7 +427,7 @@ export const ComplaintDetail: React.FC = () => {
                   disabled={teknisiPhase1Mutation.isPending || teknisiResolveMutation.isPending}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                  Fase 1: Selesai Teknis
+                  Tahap 1: Selesai Teknis
                 </Button>
 
                 <Button
@@ -436,7 +436,7 @@ export const ComplaintDetail: React.FC = () => {
                   onClick={() => setIsTeknisiAttendanceModalOpen(true)}
                 >
                   <Users className="w-3.5 h-3.5 mr-1.5" />
-                  Fase 2: Absen Selfie
+                  Tahap 2: Absen Selfie
                 </Button>
               </>
             )}
@@ -444,7 +444,7 @@ export const ComplaintDetail: React.FC = () => {
             {complaint.status === 'phase_1_completed' && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-teal-800 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-md font-medium">
-                  ✓ Fase 1 Teknis Selesai &bull; Menunggu kelengkapan absensi tim.
+                  ✓ Tahap 1 Teknis Selesai &bull; Menunggu kelengkapan absensi tim.
                 </span>
                 <Button
                   size="sm"
@@ -452,7 +452,7 @@ export const ComplaintDetail: React.FC = () => {
                   onClick={() => setIsTeknisiAttendanceModalOpen(true)}
                 >
                   <Users className="w-3.5 h-3.5 mr-1.5" />
-                  Lengkapi Absen Tim (Fase 2)
+                  Lengkapi Absen Tim (Tahap 2)
                 </Button>
               </div>
             )}
@@ -889,7 +889,7 @@ export const ComplaintDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Teknisi Selesai & Upload Bukti (Fase 1) */}
+      {/* Modal: Teknisi Selesai & Upload Bukti (Tahap 1) */}
       <TeknisiResolveModal
         isOpen={isTeknisiResolveModalOpen}
         onClose={() => setIsTeknisiResolveModalOpen(false)}
@@ -905,7 +905,7 @@ export const ComplaintDetail: React.FC = () => {
         }}
       />
 
-      {/* Modal: Absensi Mandiri Teknisi (Fase 2) */}
+      {/* Modal: Absensi Mandiri Teknisi (Tahap 2) */}
       <TeknisiAttendanceModal
         isOpen={isTeknisiAttendanceModalOpen}
         onClose={() => setIsTeknisiAttendanceModalOpen(false)}

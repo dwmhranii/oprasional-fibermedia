@@ -21,7 +21,7 @@ export const printSpkDocument = (submission: any) => {
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>SPK & Detail Pengajuan - ${submission.submissionNumber || `SUB-${submission.id}`}</title>
+  <title>Work Order & Detail Pengajuan - ${submission.submissionNumber || `SUB-${submission.id}`}</title>
   <style>
     @page {
       size: A4 portrait;
@@ -235,7 +235,7 @@ export const printSpkDocument = (submission: any) => {
 
     <!-- Title -->
     <div class="title-banner">
-      <h2>SURAT PERINTAH KERJA (SPK) & DETAIL PENGAJUAN</h2>
+      <h2>WORK ORDER & DETAIL PENGAJUAN</h2>
       <p>Formulir Pendaftaran & Verifikasi Pemasangan Baru WiFi Internet</p>
     </div>
 

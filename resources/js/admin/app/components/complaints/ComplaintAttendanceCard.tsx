@@ -87,7 +87,7 @@ export const ComplaintAttendanceCard: React.FC<ComplaintAttendanceCardProps> = (
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                Fase 2: Absensi Mandiri Tim Lapangan
+                Tahap 2: Absensi Mandiri Tim Lapangan
               </h3>
               <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                 {teamName}
@@ -130,10 +130,10 @@ export const ComplaintAttendanceCard: React.FC<ComplaintAttendanceCardProps> = (
 
       {/* Progress Banner Status 2-Fase */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Box Fase 1 */}
+        {/* Box Tahap 1 */}
         <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850">
           <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-gray-700 dark:text-slate-300">Fase 1: Teknis Lapangan</span>
+            <span className="font-semibold text-gray-700 dark:text-slate-300">Tahap 1: Teknis Lapangan</span>
             {complaint.current_assignment?.resolved_at || complaint.phase_1_completed_at ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 text-[11px]">
                 <CheckCircle2 className="w-3 h-3" /> Selesai
@@ -149,10 +149,10 @@ export const ComplaintAttendanceCard: React.FC<ComplaintAttendanceCardProps> = (
           </p>
         </div>
 
-        {/* Box Fase 2 */}
+        {/* Box Tahap 2 */}
         <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850">
           <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-gray-700 dark:text-slate-300">Fase 2: Geotag & Selfie</span>
+            <span className="font-semibold text-gray-700 dark:text-slate-300">Tahap 2: Geotag & Selfie</span>
             {isComplete ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 text-[11px]">
                 <CheckCircle2 className="w-3 h-3" /> Lengkap

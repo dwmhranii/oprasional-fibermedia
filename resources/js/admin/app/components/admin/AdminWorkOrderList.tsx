@@ -191,7 +191,7 @@ export const AdminWorkOrderList: React.FC = () => {
       case 'phase_1_submitted':
         return (
           <Badge className="bg-purple-600 text-white border-0 font-semibold text-[10px]">
-            Fase 1 Submitted
+            Tahap 1 Submitted
           </Badge>
         );
       case 'completed':
@@ -269,7 +269,7 @@ export const AdminWorkOrderList: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Navigation Toolbar (6 Tabs Sesuai Spesifikasi TAMBAHAN FASE 2) */}
+      {/* Tab Navigation Toolbar (6 Tabs Sesuai Spesifikasi TAMBAHAN Tahap 2) */}
       <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs overflow-x-auto">
         <div className="flex items-center gap-1.5 min-w-max">
           {tabs.map((tab) => {

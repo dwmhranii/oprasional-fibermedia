@@ -45,7 +45,7 @@ export const PrintableSpkModal: React.FC<PrintableSpkModalProps> = ({
         <div className="bg-gray-900 text-white p-4 flex items-center justify-between print:hidden shrink-0">
           <div className="flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <span className="font-bold text-sm">Pratinjau SPK & Detail Pengajuan</span>
+            <span className="font-bold text-sm">Pratinjau Work Order & Detail Pengajuan</span>
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -97,7 +97,7 @@ export const PrintableSpkModal: React.FC<PrintableSpkModalProps> = ({
           {/* Document Title Banner */}
           <div className="text-center py-1.5 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 rounded-lg border border-blue-100">
             <h2 className="text-xs font-bold uppercase text-blue-900 tracking-wide">
-              SURAT PERINTAH KERJA (SPK) & DETAIL PENGAJUAN
+              WORK ORDER & DETAIL PENGAJUAN
             </h2>
             <p className="text-[10px] text-gray-500">
               Formulir Pendaftaran & Verifikasi Pemasangan Baru WiFi Internet

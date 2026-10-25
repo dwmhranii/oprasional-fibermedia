@@ -8,7 +8,7 @@ export type ComplaintStatus =
   | 'assigned'          // Sudah ditugaskan ke teknisi
   | 'in_progress'       // Teknisi sedang menangani
   | 'pending_customer'  // Menunggu respons pelanggan (SLA dijeda)
-  | 'phase_1_completed' // Fase 1 selesai (menunggu absensi tim / rekan)
+  | 'phase_1_completed' // Tahap 1 Selesai (menunggu absensi tim / rekan)
   | 'resolved'          // Teknisi selesai & bukti/absen lengkap
   | 'closed'            // Admin memverifikasi bukti & menutup tiket (final)
   | 'cancelled'         // Dibatalkan oleh Admin (final)
@@ -267,7 +267,7 @@ export interface ComplaintResolveRemotePayload {
   notes?: string;
 }
 
-// Payload Teknisi Selesai Kerja & Upload Bukti (Fase 1)
+// Payload Teknisi Selesai Kerja & Upload Bukti (Tahap 1)
 export interface ComplaintResolveTechnicianPayload {
   resolution_category: ResolutionCategory;
   description?: string;
@@ -282,7 +282,7 @@ export interface ComplaintPhase1Payload {
   opm_redaman?: string;
 }
 
-// Payload Teknisi Absensi Mandiri (Fase 2)
+// Payload Teknisi Absensi Mandiri (Tahap 2)
 export interface ComplaintPhase2Payload {
   selfie_photo: File; // Foto selfie dari kamera depan
   latitude: number;

@@ -159,7 +159,7 @@ export const SuperadminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Shortcut Cards (Fase 1) */}
+      {/* Shortcut Cards (Tahap 1) */}
       <DashboardShortcutCards />
 
       {/* Global Error Notice */}

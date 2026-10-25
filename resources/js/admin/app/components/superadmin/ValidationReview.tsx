@@ -232,7 +232,7 @@ export const ValidationReview: React.FC = () => {
     if (!id) return;
     try {
       setIsExportingPdf(true);
-      toast.info('Menyiapkan Dokumen PDF...', { description: 'Mengunduh SPK & detail pengajuan...' });
+      toast.info('Menyiapkan Dokumen PDF...', { description: 'Mengunduh Work Order & detail pengajuan...' });
       await reportService.exportSubmissionPdf(id);
       toast.success('Unduh PDF Berhasil', { description: `File SPK_Detail_Pengajuan_${id}.pdf telah disimpan.` });
     } catch (err: any) {
@@ -275,7 +275,7 @@ export const ValidationReview: React.FC = () => {
               className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs h-9 shadow-sm flex items-center gap-1.5"
             >
               <FileText className="w-4 h-4" />
-              Cetak SPK (.pdf)
+              Cetak Work Order (.pdf)
             </Button>
 
             {/* BAST Button - ONLY appears if technician validated customer signature */}
@@ -735,7 +735,7 @@ export const ValidationReview: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Printable SPK Modal with Official Logo */}
+      {/* Printable Work Order Modal with Official Logo */}
       <PrintableSpkModal
         isOpen={showSpkModal}
         onClose={() => setShowSpkModal(false)}

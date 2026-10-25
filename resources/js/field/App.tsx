@@ -115,7 +115,7 @@ export const FieldApp: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Current Team Ticket state (Fase 2)
+  // Current Team Ticket state (Tahap 2)
   const [currentTicket, setCurrentTicket] = useState<{
     type: 'psb' | 'complaint';
     id: number;
@@ -1055,7 +1055,7 @@ export const FieldApp: React.FC = () => {
           </div>
         )}
 
-        {/* Assigned Team Ticket Section (Fase 2: Satu tim satu tiket, tombol Terima/Tolak) */}
+        {/* Assigned Team Ticket Section (Tahap 2: Satu tim satu tiket, tombol Terima/Tolak) */}
         {attendance?.check_in_at && currentTicket && (
           <div className="bg-gradient-to-br from-indigo-950/60 to-slate-900/80 border border-indigo-500/40 rounded-2xl p-4 shadow-xl space-y-3.5 animate-fade-in">
             <div className="flex items-center justify-between pb-2 border-b border-indigo-500/20">

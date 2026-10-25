@@ -174,7 +174,7 @@ const AppContent = () => {
         <Route path="/admin/network/odps" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><OdpManagement /></RoleRoute>} />
         <Route path="/admin/network/bras" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><BrasManagement /></RoleRoute>} />
 
-        {/* Tim & Absensi (Fase 1) */}
+        {/* Tim & Absensi (Tahap 1) */}
         <Route path="/admin/attendances/daily" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><DailyAttendanceManagement /></RoleRoute>} />
         <Route path="/admin/attendances/recap" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><AttendanceRecapManagement /></RoleRoute>} />
         <Route path="/admin/devices" element={<RoleRoute allowedRoles={['admin', 'superadmin']}><DeviceManagement /></RoleRoute>} />

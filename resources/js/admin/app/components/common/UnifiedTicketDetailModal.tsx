@@ -489,7 +489,7 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
                 </div>
               </TabsContent>
 
-              {/* 3. Tab Pekerjaan (Fase 1) */}
+              {/* 3. Tab Pekerjaan (Tahap 1) */}
               <TabsContent value="work" className="space-y-4 pt-4">
                 {/* Port Conflict Alert */}
                 {phase1?.has_port_conflict && (
@@ -510,7 +510,7 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
                 {/* Technical Specifications Grid */}
                 <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-3">
-                    Data Teknis Lapangan (Fase 1)
+                    Data Teknis Lapangan (Tahap 1)
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                     <div className="p-3 rounded-lg bg-white dark:bg-slate-800 border">
@@ -629,7 +629,7 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
                 </div>
               </TabsContent>
 
-              {/* 4. Tab Bukti (Fase 2 & Review) */}
+              {/* 4. Tab Bukti (Tahap 2 & Review) */}
               <TabsContent value="evidence" className="space-y-4 pt-4">
                 {/* Review Action Toolbar */}
                 <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -694,12 +694,12 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
                 {/* Attendances Cards */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Absensi Selfie & GPS Anggota Tim Lapangan (Fase 2)
+                    Absensi Selfie & GPS Anggota Tim Lapangan (Tahap 2)
                   </h4>
 
                   {attendances.length === 0 ? (
                     <div className="p-8 text-center border rounded-xl text-slate-400 text-xs">
-                      Belum ada personil yang melakukan absensi Fase 2 di lokasi.
+                      Belum ada personil yang melakukan absensi Tahap 2 di lokasi.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -764,10 +764,10 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
                   )}
                 </div>
 
-                {/* Persyaratan Fase 2 (Status Kehadiran Tim) */}
+                {/* Persyaratan Tahap 2 (Status Kehadiran Tim) */}
                 <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
-                    Daftar Teknisi Wajib Fase 2 (Terkunci Hari Ini)
+                    Daftar Teknisi Wajib Tahap 2 (Terkunci Hari Ini)
                   </h4>
                   <div className="space-y-1.5">
                     {phase2Requirements.length === 0 ? (
@@ -1028,7 +1028,7 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
         </DialogContent>
       </Dialog>
 
-      {/* Modal Bebaskan Anggota Fase 2 */}
+      {/* Modal Bebaskan Anggota Tahap 2 */}
       <Dialog open={waiveModalOpen} onOpenChange={setWaiveModalOpen}>
         <DialogContent className="sm:max-w-[440px]">
           <form
@@ -1049,7 +1049,7 @@ export const UnifiedTicketDetailModal: React.FC<UnifiedTicketDetailModalProps> =
             }}
           >
             <DialogHeader>
-              <DialogTitle>Bebaskan Teknisi dari Absensi Fase 2</DialogTitle>
+              <DialogTitle>Bebaskan Teknisi dari Absensi Tahap 2</DialogTitle>
               <DialogDescription className="text-xs">
                 Bebaskan anggota tim yang izin sakit atau urusan darurat agar tiket dapat diselesaikan.
               </DialogDescription>

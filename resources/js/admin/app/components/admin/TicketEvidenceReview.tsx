@@ -111,7 +111,7 @@ export const TicketEvidenceReview: React.FC = () => {
         user_id: waiveModalUser.user_id,
         reason: waiveReason,
       });
-      toast.success('Teknisi berhasil dibebaskan dari Fase 2.');
+      toast.success('Teknisi berhasil dibebaskan dari Tahap 2.');
       setWaiveModalUser(null);
       setWaiveReason('');
       fetchEvidence();
@@ -127,7 +127,7 @@ export const TicketEvidenceReview: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tinjau Bukti Kerja Lapangan & Integritas Fase 2</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Tinjau Bukti Kerja Lapangan & Integritas Tahap 2</h1>
           <p className="text-sm text-gray-500 mt-1">
             Verifikasi foto pengerjaan, SHA-256 hash, anomali geofence/jam, dan kelengkapan absensi mandiri tim.
           </p>
@@ -174,7 +174,7 @@ export const TicketEvidenceReview: React.FC = () => {
           <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />
           <h3 className="text-base font-semibold text-gray-700">Pilih Tiket untuk Meninjau Bukti</h3>
           <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-            Masukkan tipe tiket dan ID untuk memeriksa bukti foto, deteksi anomali, dan status absensi Fase 2.
+            Masukkan tipe tiket dan ID untuk memeriksa bukti foto, deteksi anomali, dan status absensi Tahap 2.
           </p>
         </div>
       )}
@@ -330,7 +330,7 @@ export const TicketEvidenceReview: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-indigo-600" />
-              <span>Daftar Teknisi Wajib Fase 2 ({evidenceData.phase2_requirements.length})</span>
+              <span>Daftar Teknisi Wajib Tahap 2 ({evidenceData.phase2_requirements.length})</span>
             </h3>
             <p className="text-xs text-gray-500">
               Tiket hanya dapat berstatus selesai penuh (Resolved/Completed) jika seluruh teknisi yang hadir hari itu telah melakukan absensi selfie + GPS atau dibebaskan resmi oleh Admin.
@@ -401,7 +401,7 @@ export const TicketEvidenceReview: React.FC = () => {
               <span>Bebaskan Teknisi dari Absensi Tiket</span>
             </h3>
             <p className="text-xs text-gray-600">
-              Anda akan membebaskan <strong>{waiveModalUser.user?.name}</strong> dari kewajiban absensi Fase 2 untuk tiket ini. Alasan tertulis wajib disertakan untuk audit trail.
+              Anda akan membebaskan <strong>{waiveModalUser.user?.name}</strong> dari kewajiban absensi Tahap 2 untuk tiket ini. Alasan tertulis wajib disertakan untuk audit trail.
             </p>
 
             <div>

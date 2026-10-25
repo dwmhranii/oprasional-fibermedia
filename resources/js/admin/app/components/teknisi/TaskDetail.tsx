@@ -74,16 +74,16 @@ export const TaskDetail: React.FC = () => {
       task?.submission_id ||
       task?.submission?.id;
     if (!subId) {
-      toast.error('Data pengajuan tidak ditemukan untuk mencetak SPK.');
+      toast.error('Data pengajuan tidak ditemukan untuk mencetak Work Order.');
       return;
     }
     setIsExportingSpk(true);
     try {
-      toast.info('Mengunduh dokumen SPK PDF...');
+      toast.info('Mengunduh dokumen Work Order PDF...');
       await reportService.exportSubmissionPdf(subId);
-      toast.success('SPK PDF berhasil diunduh!');
+      toast.success('Work Order PDF berhasil diunduh!');
     } catch (err: any) {
-      toast.error(err.message || 'Gagal mengunduh SPK PDF');
+      toast.error(err.message || 'Gagal mengunduh Work Order PDF');
     } finally {
       setIsExportingSpk(false);
     }
@@ -312,7 +312,7 @@ export const TaskDetail: React.FC = () => {
                   disabled={isSubmitting}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Selesai & Upload Bukti (Fase 1 & 2)
+                  Selesai & Upload Bukti (Tahap 1 & 2)
                 </Button>
                 <Button
                   onClick={() => handleActionClick('failed')}
@@ -400,7 +400,7 @@ export const TaskDetail: React.FC = () => {
             </div>
           )}
 
-          {/* Cetak SPK (.pdf) */}
+          {/* Cetak Work Order (.pdf) */}
           <button
             type="button"
             onClick={handleExportSpk}
@@ -412,7 +412,7 @@ export const TaskDetail: React.FC = () => {
             ) : (
               <FileText className="w-4 h-4 text-indigo-600 mb-1" />
             )}
-            <span className="text-[11px] font-semibold">Cetak SPK</span>
+            <span className="text-[11px] font-semibold">Cetak Work Order</span>
           </button>
 
           {/* Cetak BAST */}
@@ -694,7 +694,7 @@ export const TaskDetail: React.FC = () => {
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-indigo-600" />
-                  Verifikasi Tim (Fase 1)
+                  Verifikasi Tim (Tahap 1)
                 </span>
                 {task.shared_verification?.completed ? (
                   <Badge className="bg-emerald-600 text-white text-[10px]">Selesai</Badge>
@@ -717,7 +717,7 @@ export const TaskDetail: React.FC = () => {
                       : 'Memerlukan foto lokasi & tanda tangan digital pelanggan.'}
                   </p>
                   <p className="text-slate-500 leading-relaxed">
-                    Fase 1 dikerjakan bersama tim instalasi sebelum setiap teknisi mengirim laporan absensi individu (Fase 2).
+                    Tahap 1 dikerjakan bersama tim instalasi sebelum setiap teknisi mengirim laporan absensi individu (Tahap 2).
                   </p>
                 </div>
               </div>
@@ -806,15 +806,15 @@ export const TaskDetail: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* TAB CONTENT 4: DOKUMEN SPK & BAST */}
+        {/* TAB CONTENT 4: DOKUMEN WORK ORDER & BAST */}
         <TabsContent value="dokumen" className="space-y-4 focus-visible:outline-none">
-          {/* Card SPK */}
+          {/* Card Work Order */}
           <Card className="border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="bg-slate-50/70 dark:bg-slate-850 p-4 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-indigo-600" />
                 <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                  Surat Perintah Kerja (SPK)
+                  Work Order
                 </CardTitle>
               </div>
               <Badge variant="outline" className="text-[10px] font-mono text-indigo-700 bg-indigo-50 border-indigo-200">
@@ -846,9 +846,9 @@ export const TaskDetail: React.FC = () => {
                 className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs"
               >
                 {isExportingSpk ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Mengunduh SPK...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Mengunduh Work Order...</>
                 ) : (
-                  <><FileText className="w-4 h-4 mr-2" /> Unduh Dokumen SPK (.pdf)</>
+                  <><FileText className="w-4 h-4 mr-2" /> Unduh Dokumen Work Order (.pdf)</>
                 )}
               </Button>
             </CardContent>

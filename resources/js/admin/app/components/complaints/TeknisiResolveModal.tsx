@@ -155,7 +155,7 @@ export const TeknisiResolveModal: React.FC<TeknisiResolveModalProps> = ({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
-                <span>Fase 1: Selesaikan Pengerjaan Teknis</span>
+                <span>Tahap 1: Selesaikan Pengerjaan Teknis</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-white/90">
                 Tiket: <strong className="font-mono text-white bg-black/20 px-1.5 py-0.5 rounded">{complaint.ticket_number}</strong> • {complaint.customer_name}
@@ -313,7 +313,7 @@ export const TeknisiResolveModal: React.FC<TeknisiResolveModalProps> = ({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                  Simpan Bukti (Fase 1)
+                  Simpan Bukti (Tahap 1)
                 </>
               )}
             </Button>

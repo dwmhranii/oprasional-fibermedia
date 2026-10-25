@@ -46,7 +46,7 @@ export const reportService = {
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      console.error('Failed to export Excel report:', error);
+      console.error('Gagal ekspor Excel:', error);
       if (error instanceof ApiError) {
         throw error;
       }

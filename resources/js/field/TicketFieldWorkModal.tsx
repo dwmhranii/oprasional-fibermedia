@@ -352,7 +352,7 @@ export const TicketFieldWorkModal: React.FC<TicketFieldWorkModalProps> = ({
           </div>
         )}
 
-        {/* STEP 1: FASE 1 (DATA TEKNIS & ODP) */}
+        {/* STEP 1: Tahap 1 (DATA TEKNIS & ODP) */}
         {activeStep === 'phase1' && (
           <div className="space-y-4 text-xs">
             {/* ODP Selector from Dexie */}

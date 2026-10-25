@@ -240,7 +240,7 @@ export const complaintService = {
     return (res?.data ?? res) as Complaint;
   },
 
-  // Fase 1: Penyelesaian Teknis Lapangan & Bukti Fisik
+  // Tahap 1: Penyelesaian Teknis Lapangan & Bukti Fisik
   teknisiPhase1: async (id: number | string, payload: ComplaintPhase1Payload): Promise<Complaint> => {
     const formData = new FormData();
     formData.append('resolution_category', payload.resolution_category);
@@ -264,7 +264,7 @@ export const complaintService = {
     }
   },
 
-  // Fase 2: Absensi Mandiri Setiap Teknisi Tim (Selfie & Geotag)
+  // Tahap 2: Absensi Mandiri Setiap Teknisi Tim (Selfie & Geotag)
   teknisiPhase2Attendance: async (
     id: number | string,
     payload: ComplaintPhase2Payload
@@ -622,7 +622,7 @@ export const useTeknisiPhase1Complaint = () => {
       if (data.status === 'resolved') {
         toast.success('Pengerjaan teknis & absensi tim lengkap! Tiket resmi diselesaikan (RESOLVED).');
       } else {
-        toast.success('Fase 1 (Penyelesaian Teknis) berhasil disimpan. Menunggu absensi mandiri tim.');
+        toast.success('Tahap 1 (Penyelesaian Teknis) berhasil disimpan. Menunggu absensi mandiri tim.');
       }
       queryClient.invalidateQueries({ queryKey: ['teknisiComplaints'] });
       queryClient.invalidateQueries({ queryKey: ['teknisiComplaints', 'detail', String(vars.id)] });
@@ -631,7 +631,7 @@ export const useTeknisiPhase1Complaint = () => {
       queryClient.invalidateQueries({ queryKey: ['complaints', 'attendances', String(vars.id)] });
     },
     onError: (error: ApiError | any) => {
-      toast.error(error?.getFirstError?.() || error?.message || 'Gagal menyimpan penyelesaian teknis Fase 1');
+      toast.error(error?.getFirstError?.() || error?.message || 'Gagal menyimpan penyelesaian teknis Tahap 1');
     },
   });
 };
@@ -655,7 +655,7 @@ export const useTeknisiPhase2Attendance = () => {
       queryClient.invalidateQueries({ queryKey: ['complaints', 'attendances', String(vars.id)] });
     },
     onError: (error: ApiError | any) => {
-      toast.error(error?.getFirstError?.() || error?.message || 'Gagal mengirimkan absensi mandiri Fase 2');
+      toast.error(error?.getFirstError?.() || error?.message || 'Gagal mengirimkan absensi mandiri Tahap 2');
     },
   });
 };

@@ -140,7 +140,7 @@ export const TaskDetail: React.FC = () => {
     if (!selectedAssignment) return;
     if (selectedAssignment.status !== 'phase_2_complete' && selectedAssignment.status !== 'submitted') {
       toast.warning('Tugas belum dapat disetujui.', {
-        description: 'Teknisi harus menyelesaikan dan mengirimkan laporan Fase 2 terlebih dahulu dari aplikasi teknisi.'
+        description: 'Teknisi harus menyelesaikan dan mengirimkan laporan Tahap 2 terlebih dahulu dari aplikasi teknisi.'
       });
       return;
     }
@@ -313,14 +313,14 @@ export const TaskDetail: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-lg font-bold text-gray-800">Status Anggota & Tahapan Tim</h2>
 
-          {/* List 1: Status Fase 1 (Verifikasi Bersama Tim) */}
+          {/* List 1: Status Tahap 1 (Verifikasi Bersama Tim) */}
           <Card className="border-sky-200 bg-sky-50/20 shadow-sm">
             <CardContent className="p-5">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-gray-900 text-base">
-                      1. Verifikasi Bersama Tim (Fase 1)
+                      1. Verifikasi Bersama Tim (Tahap 1)
                     </span>
                     <Badge className="bg-sky-100 text-sky-800 border border-sky-300 font-bold text-xs">
                       {task.shared_verification?.completed || task.status === 'completed' || task.status === 'phase_1_submitted' || task.status === 'phase_2_complete' ? 'Phase 1 Submitted' : 'Menunggu Pengerjaan'}
@@ -337,9 +337,9 @@ export const TaskDetail: React.FC = () => {
                       variant="outline"
                       size="sm"
                       className="bg-white border-sky-200 text-sky-700 hover:bg-sky-50 font-semibold text-xs h-9"
-                      onClick={() => setSelectedAssignment({ isPhase1: true, user: { name: 'Dokumentasi Bersama Tim (Fase 1)' }, evidence: { photo_before: task.photos?.before, photo_after: task.photos?.after, signature_url: task.customer_signature_url } })}
+                      onClick={() => setSelectedAssignment({ isPhase1: true, user: { name: 'Dokumentasi Bersama Tim (Tahap 1)' }, evidence: { photo_before: task.photos?.before, photo_after: task.photos?.after, signature_url: task.customer_signature_url } })}
                     >
-                      Lihat Bukti Fase 1
+                      Lihat Bukti Tahap 1
                     </Button>
                   )}
                 </div>
@@ -534,12 +534,12 @@ export const TaskDetail: React.FC = () => {
           {selectedAssignment && (
             <div className="space-y-6 py-2 text-xs">
               {selectedAssignment.isPhase1 ? (
-                /* FASE 1: DOKUMENTASI VERIFIKASI BERSAMA TIM */
+                /* Tahap 1: DOKUMENTASI VERIFIKASI BERSAMA TIM */
                 <div className="bg-sky-50/50 border border-sky-200 rounded-xl p-4 space-y-4">
                   <div className="flex items-center justify-between border-b border-sky-200 pb-2">
                     <h4 className="font-bold text-sky-900 text-sm flex items-center gap-2">
                       <FileCheck className="w-4 h-4 text-sky-600" />
-                      Dokumentasi Verifikasi Bersama Tim (Fase 1)
+                      Dokumentasi Verifikasi Bersama Tim (Tahap 1)
                     </h4>
                     <Badge className="bg-sky-600 text-white font-bold text-[10px]">Phase 1 (Team Shared)</Badge>
                   </div>
@@ -638,7 +638,7 @@ export const TaskDetail: React.FC = () => {
                   })()}
                 </div>
               ) : (
-                /* FASE 2: LAPORAN KEHADIRAN INDIVIDU TEKNISI */
+                /* Tahap 2: LAPORAN KEHADIRAN INDIVIDU TEKNISI */
                 <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 space-y-4">
                   <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
                     <h4 className="font-bold text-emerald-900 text-sm flex items-center gap-2">
@@ -722,7 +722,7 @@ export const TaskDetail: React.FC = () => {
             <div className="bg-sky-50 border border-sky-200 p-4 rounded-xl flex items-center justify-between text-sky-800 text-sm font-bold mt-4 shadow-sm">
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-sky-600 shrink-0" />
-                Dokumentasi Foto Lapangan & TTD Digital Pelanggan (Fase 1).
+                Dokumentasi Foto Lapangan & TTD Digital Pelanggan (Tahap 1).
               </span>
               <Badge className="bg-sky-600 text-white font-bold px-3 py-1 text-xs">Phase 1 Submitted</Badge>
             </div>
@@ -735,9 +735,9 @@ export const TaskDetail: React.FC = () => {
                   <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl flex items-start gap-2.5 text-amber-800 text-xs mt-3">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
-                      <p className="font-bold text-amber-900">Belum Siap Disetujui (Menunggu Laporan Fase 2)</p>
+                      <p className="font-bold text-amber-900">Belum Siap Disetujui (Menunggu Laporan Tahap 2)</p>
                       <p className="text-amber-700 leading-relaxed">
-                        Status teknisi saat ini masih <strong>{selectedAssignment?.status || 'Assigned'}</strong>. Tombol persetujuan (Approve) hanya dapat digunakan setelah teknisi mengunggah selfie kehadiran dan menyelesaikan laporan tugas (Fase 2) dari aplikasi teknisi.
+                        Status teknisi saat ini masih <strong>{selectedAssignment?.status || 'Assigned'}</strong>. Tombol persetujuan (Approve) hanya dapat digunakan setelah teknisi mengunggah selfie kehadiran dan menyelesaikan laporan tugas (Tahap 2) dari aplikasi teknisi.
                       </p>
                     </div>
                   </div>
@@ -769,7 +769,7 @@ export const TaskDetail: React.FC = () => {
                     className="bg-emerald-600 text-white hover:bg-emerald-700 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleApprove}
                     disabled={isApproving || isRejecting || !canApprove}
-                    title={!canApprove ? 'Teknisi belum menyelesaikan Fase 2' : undefined}
+                    title={!canApprove ? 'Teknisi belum menyelesaikan Tahap 2' : undefined}
                   >
                     {isApproving ? 'Menyetujui...' : 'Approve Bukti'}
                   </Button>

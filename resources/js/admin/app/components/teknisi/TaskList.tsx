@@ -91,8 +91,8 @@ export const TaskList: React.FC = () => {
       assigned: { label: 'Assigned', color: '#3b82f6' },
       on_the_way: { label: 'On The Way', color: '#8b5cf6' },
       in_progress: { label: 'In Progress', color: '#f59e0b' },
-      phase_1_submitted: { label: 'Fase 1 Selesai (Menunggu Absen)', color: '#0d9488' },
-      phase_2_complete: { label: 'Fase 2 Selesai', color: '#0ea5e9' },
+      phase_1_submitted: { label: 'Tahap 1 Selesai (Menunggu Absen)', color: '#0d9488' },
+      phase_2_complete: { label: 'Tahap 2 Selesai', color: '#0ea5e9' },
       submitted: { label: 'Submitted (Menunggu Persetujuan Admin)', color: '#6366f1' },
       completed: { label: 'Completed', color: '#10b981' },
       failed: { label: 'Failed', color: '#ef4444' },
@@ -207,7 +207,7 @@ export const TaskList: React.FC = () => {
                       <SelectItem value="assigned">Assigned</SelectItem>
                       <SelectItem value="on_the_way">On The Way</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="phase_1_submitted">Fase 1 Selesai</SelectItem>
+                      <SelectItem value="phase_1_submitted">Tahap 1 Selesai</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
                     </SelectContent>

@@ -53,7 +53,7 @@ export const ComplaintEvidenceGallery: React.FC<ComplaintEvidenceGalleryProps> =
           </div>
           <div>
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Bukti Lapangan dari Teknisi (Fase 1)
+              Bukti Lapangan dari Teknisi (Tahap 1)
             </h4>
             <p className="text-xs text-gray-500 dark:text-slate-400">
               {technicianName ? `Diselesaikan oleh ${technicianName}` : 'Laporan teknisi lapangan'}

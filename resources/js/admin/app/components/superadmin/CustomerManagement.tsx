@@ -204,7 +204,7 @@ export const CustomerManagement: React.FC = () => {
 
   const handleDownloadTemplate = async () => {
     try {
-      toast.info('Mengunduh template import Excel...');
+      toast.info('Mengunduh template impor Excel...');
       await downloadBlob('/admin/customers/import-template', 'template-import-pelanggan.xlsx');
       toast.success('Template import berhasil diunduh');
     } catch (err: any) {
@@ -450,7 +450,7 @@ export const CustomerManagement: React.FC = () => {
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
           >
-            <Upload className="w-3.5 h-3.5" /> Import Excel
+            <Upload className="w-3.5 h-3.5" /> Impor Excel
           </Button>
 
           <Button

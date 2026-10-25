@@ -51,7 +51,7 @@ export const COMPLAINT_STATUS_CONFIG: Record<
     icon: PauseCircle,
   },
   phase_1_completed: {
-    label: 'Fase 1 Selesai (Menunggu Absen)',
+    label: 'Tahap 1 Selesai (Menunggu Absen)',
     bg: 'bg-teal-50',
     text: 'text-teal-700',
     border: 'border-teal-200',

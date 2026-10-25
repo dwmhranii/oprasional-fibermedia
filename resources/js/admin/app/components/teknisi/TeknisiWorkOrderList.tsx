@@ -109,7 +109,7 @@ export const TeknisiWorkOrderList: React.FC = () => {
       case 'phase_1_submitted':
         return (
           <Badge className="bg-sky-600 text-white border-0 font-semibold">
-            Fase 1 Selesai (Tim)
+            Tahap 1 Selesai (Tim)
           </Badge>
         );
       case 'completed':
@@ -399,7 +399,7 @@ export const TeknisiWorkOrderList: React.FC = () => {
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="text-gray-600 dark:text-slate-300 flex items-center gap-1">
                               <FileCheck className="w-3.5 h-3.5 text-sky-600" />
-                              Fase 1 (Tim):
+                              Tahap 1 (Tim):
                             </span>
                             <span className={`font-bold ${wo.phase_1_done ? 'text-emerald-600' : 'text-amber-600'}`}>
                               {wo.phase_1_done ? '✓ Selesai' : 'Menunggu'}
@@ -409,7 +409,7 @@ export const TeknisiWorkOrderList: React.FC = () => {
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="text-gray-600 dark:text-slate-300 flex items-center gap-1">
                               <User className="w-3.5 h-3.5 text-purple-600" />
-                              Fase 2 (Individu):
+                              Tahap 2 (Individu):
                             </span>
                             <span className={`font-bold ${wo.phase_2_done ? 'text-emerald-600' : 'text-amber-600'}`}>
                               {wo.phase_2_done ? '✓ Selesai' : 'Menunggu'}

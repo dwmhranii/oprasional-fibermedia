@@ -333,7 +333,7 @@ export const TeknisiComplaintList: React.FC = () => {
                     </>
                   )}
 
-                  {/* Status: IN_PROGRESS -> Pending, Fase 1 Selesai Teknis, Fase 2 Absen Selfie */}
+                  {/* Status: IN_PROGRESS -> Pending, Tahap 1 Selesai Teknis, Tahap 2 Absen Selfie */}
                   {item.status === 'in_progress' && (
                     <>
                       <Button
@@ -356,7 +356,7 @@ export const TeknisiComplaintList: React.FC = () => {
                         onClick={() => setSelectedForResolve(item)}
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                        Fase 1: Bukti
+                        Tahap 1: Bukti
                       </Button>
                       <Button
                         size="sm"
@@ -364,7 +364,7 @@ export const TeknisiComplaintList: React.FC = () => {
                         onClick={() => setSelectedForAttendance(item)}
                       >
                         <Users className="w-3.5 h-3.5 mr-1" />
-                        Fase 2: Absen
+                        Tahap 2: Absen
                       </Button>
                     </>
                   )}
@@ -377,7 +377,7 @@ export const TeknisiComplaintList: React.FC = () => {
                       onClick={() => setSelectedForAttendance(item)}
                     >
                       <Users className="w-3.5 h-3.5 mr-1" />
-                      Lengkapi Absen Tim (Fase 2)
+                      Lengkapi Absen Tim (Tahap 2)
                     </Button>
                   )}
 
@@ -407,7 +407,7 @@ export const TeknisiComplaintList: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Resolve with Evidence (Fase 1) */}
+      {/* Modal: Resolve with Evidence (Tahap 1) */}
       {selectedForResolve && (
         <TeknisiResolveModal
           isOpen={!!selectedForResolve}
@@ -425,7 +425,7 @@ export const TeknisiComplaintList: React.FC = () => {
         />
       )}
 
-      {/* Modal: Absensi Mandiri Teknisi (Fase 2) */}
+      {/* Modal: Absensi Mandiri Teknisi (Tahap 2) */}
       {selectedForAttendance && (
         <TeknisiAttendanceModal
           isOpen={!!selectedForAttendance}

@@ -159,7 +159,7 @@ export const TeknisiAttendanceModal: React.FC<TeknisiAttendanceModalProps> = ({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-white flex items-center gap-1.5">
-                <span>Fase 2: Absensi Mandiri Teknisi</span>
+                <span>Tahap 2: Absensi Mandiri Teknisi</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-white/90">
                 Selfie & Geotagging kehadiran fisik tim di lokasi pelanggan
@@ -300,7 +300,7 @@ export const TeknisiAttendanceModal: React.FC<TeknisiAttendanceModalProps> = ({
             <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
               • Setiap anggota tim wajib melakukan absensi mandiri di lokasi.
               <br />
-              • Tiket akan otomatis berstatus <strong>RESOLVED</strong> setelah Fase 1 selesai dan seluruh anggota tim telah selfie.
+              • Tiket akan otomatis berstatus <strong>RESOLVED</strong> setelah Tahap 1 Selesai dan seluruh anggota tim telah selfie.
             </p>
           </div>
 

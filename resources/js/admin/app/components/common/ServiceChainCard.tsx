@@ -65,7 +65,7 @@ export const ServiceChainCard: React.FC<ServiceChainCardProps> = ({ submission, 
     },
     {
       key: 'task',
-      title: '3. No. Task / SPK (Teknisi)',
+      title: '3. No. Work Order (Teknisi)',
       value: chain.task_number,
       placeholder: 'Menunggu Penugasan',
       icon: Wrench,
