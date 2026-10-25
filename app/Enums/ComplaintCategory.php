@@ -21,4 +21,27 @@ enum ComplaintCategory: string
     {
         return $this !== self::BILLING;
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::NO_SIGNAL => 'Tidak Ada Sinyal (LOS)',
+            self::SLOW_SPEED => 'Koneksi Lambat',
+            self::INTERMITTENT => 'Koneksi Putus-Putus',
+            self::EQUIPMENT => 'Perangkat / Modem Rusak',
+            self::BILLING => 'Administrasi & Tagihan',
+            self::RELOCATION => 'Relokasi / Pemindahan Jalur',
+            self::MASS_OUTAGE => 'Gangguan Massal',
+            self::OTHER => 'Lainnya',
+        };
+    }
+
+    public static function options(): array
+    {
+        return array_map(fn (self $case) => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], self::cases());
+    }
 }
+

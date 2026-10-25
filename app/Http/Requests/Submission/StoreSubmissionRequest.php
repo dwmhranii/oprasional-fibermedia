@@ -45,8 +45,8 @@ class StoreSubmissionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'lat.required_with' => 'Latitude and longitude must be provided together.',
-            'lng.required_with' => 'Latitude and longitude must be provided together.',
+            'lat.required_with' => 'Latitude dan longitude harus diisi bersamaan.',
+            'lng.required_with' => 'Latitude dan longitude harus diisi bersamaan.',
         ];
     }
 }

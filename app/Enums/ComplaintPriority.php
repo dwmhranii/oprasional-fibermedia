@@ -34,4 +34,23 @@ enum ComplaintPriority: string
             self::CRITICAL => 4,  // 4 jam
         };
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::LOW => 'Rendah',
+            self::MEDIUM => 'Sedang',
+            self::HIGH => 'Tinggi',
+            self::CRITICAL => 'Kritis',
+        };
+    }
+
+    public static function options(): array
+    {
+        return array_map(fn (self $case) => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], self::cases());
+    }
 }
+

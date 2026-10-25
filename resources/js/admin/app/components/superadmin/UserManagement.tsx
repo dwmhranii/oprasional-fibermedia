@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
@@ -38,11 +37,8 @@ import {
 } from '../ui/dropdown-menu';
 import {
   Plus,
-  Search,
   Edit,
   MoreVertical,
-  UserPlus,
-  Shield,
   Mail,
   Phone,
   Loader2,
@@ -53,16 +49,24 @@ import {
   Ban,
   CheckCircle2,
   Users,
-  Trash2
+  Trash2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { apiClient, ApiError } from '../../lib/api';
 import { userToFrontend } from '../../lib/mappers';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Skeleton } from '../ui/skeleton';
-import { useMemo } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
+import { 
+  PageHeader, 
+  StatCards, 
+  FilterBar, 
+  StatusBadge, 
+  ConfirmDialog, 
+  showToast 
+} from '@shared/ui';
+import { ACTIONS, TERMS, MESSAGES } from '@shared/i18n/id';
+import { formatPhone } from '@shared/lib/formatters';
 
 export const UserManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -85,6 +89,9 @@ export const UserManagement: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendErrors, setBackendErrors] = useState<Record<string, string[]>>({});
+
+  // Confirm delete dialog state
+  const [deleteTargetUser, setDeleteTargetUser] = useState<any>(null);
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -111,47 +118,35 @@ export const UserManagement: React.FC = () => {
     password_confirmation: '',
   });
 
-  // Auto-focus first invalid field
-  useEffect(() => {
-    const errorKeys = Object.keys(backendErrors);
-    if (errorKeys.length > 0) {
-      const firstError = errorKeys[0];
-      const prefix = showCreateModal ? 'create_' : showEditModal ? 'edit_' : showPasswordModal ? 'reset_' : '';
-      if (prefix) {
-        // Handle special case for password reset (API usually returns 'password')
-        const fieldId = prefix + (showPasswordModal && firstError === 'password' ? 'pass' : firstError);
-        const element = document.getElementById(fieldId);
-        if (element) {
-          element.focus();
-        }
-      }
-    }
-  }, [backendErrors, showCreateModal, showEditModal, showPasswordModal]);
-
-  // Query live users list
+  // Query users
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['adminUsers', 'list', { page, role: roleFilter, status: statusFilter, search: debouncedSearch, dateFrom, dateTo, sortBy, sortOrder }],
+    queryKey: ['adminUsers', page, debouncedSearch, roleFilter, statusFilter, dateFrom, dateTo, sortBy, sortOrder],
     queryFn: async () => {
-      let url = `/superadmin/users?page=${page}&per_page=10`;
-      if (roleFilter && roleFilter !== 'all') url += `&role=${roleFilter}`;
-      if (statusFilter && statusFilter !== 'all') url += `&status=${statusFilter}`;
-      if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
-      if (dateFrom) url += `&date_from=${dateFrom}`;
-      if (dateTo) url += `&date_to=${dateTo}`;
-      if (sortBy) url += `&sort_by=${sortBy}`;
-      if (sortOrder) url += `&sort_order=${sortOrder}`;
-      
-      const response = await apiClient.get<any>(url);
-      
-      const mappedUsers = (response.data || []).map(userToFrontend);
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('per_page', '10');
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (roleFilter && roleFilter !== 'all') params.append('role', roleFilter);
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
+
+      const response = await apiClient.get<any>(`/superadmin/users?${params.toString()}`);
       return {
-        users: mappedUsers,
-        meta: response.meta || { current_page: 1, last_page: 1, total: mappedUsers.length, from: 1, to: mappedUsers.length },
+        users: (response.data || []).map(userToFrontend),
+        meta: response.meta || {
+          current_page: 1,
+          last_page: 1,
+          per_page: 10,
+          total: (response.data || []).length,
+        },
       };
     },
   });
 
-  // Query stats (fetch with large limit to count correctly)
+  // Query stats
   const { data: allUsersData, isLoading: isStatsLoading, isError: isStatsError } = useQuery({
     queryKey: ['users', 'stats'],
     queryFn: async () => {
@@ -162,9 +157,9 @@ export const UserManagement: React.FC = () => {
 
   const stats = {
     total: allUsersData?.length || 0,
-    sales: allUsersData?.filter((u: any) => u.role === 'sales').length || 0,
-    admin: allUsersData?.filter((u: any) => u.role === 'admin').length || 0,
-    teknisi: allUsersData?.filter((u: any) => u.role === 'teknisi').length || 0,
+    sales: allUsersData?.filter((u: any) => u.role?.toLowerCase() === 'sales').length || 0,
+    admin: allUsersData?.filter((u: any) => u.role?.toLowerCase() === 'admin').length || 0,
+    teknisi: allUsersData?.filter((u: any) => u.role?.toLowerCase() === 'teknisi').length || 0,
     active: allUsersData?.filter((u: any) => u.status === 'active').length || 0,
   };
 
@@ -175,35 +170,20 @@ export const UserManagement: React.FC = () => {
   };
 
   const getRoleBadge = (role: string) => {
-    const roleConfig: Record<string, { label: string; color: string }> = {
-      sales: { label: 'Sales', color: '#3b82f6' },
-      admin: { label: 'Admin', color: '#10b981' },
-      teknisi: { label: 'Teknisi', color: '#f59e0b' },
-      superadmin: { label: 'Superadmin', color: '#ef4444' },
+    const roleConfig: Record<string, { label: string; badgeClass: string }> = {
+      sales: { label: 'Sales', badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
+      admin: { label: 'Admin', badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
+      teknisi: { label: 'Teknisi', badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
+      superadmin: { label: 'Superadmin', badgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800' },
     };
 
-    const config = roleConfig[role] || { label: role || 'User', color: '#6b7280' };
+    const normRole = (role || '').toLowerCase();
+    const config = roleConfig[normRole] || { label: role || 'Pengguna', badgeClass: 'bg-slate-50 text-slate-700 dark:bg-slate-900/40 dark:text-slate-400 border-slate-200 dark:border-slate-800' };
 
     return (
-      <Badge style={{ backgroundColor: `${config.color}20`, color: config.color }}>
+      <span className={`inline-flex items-center text-xs px-2.5 py-0.5 rounded-full font-medium border ${config.badgeClass}`}>
         {config.label}
-      </Badge>
-    );
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; color: string }> = {
-      active: { label: 'Active', color: '#10b981' },
-      inactive: { label: 'Inactive', color: '#6b7280' },
-      suspended: { label: 'Suspended', color: '#ef4444' },
-    };
-
-    const config = statusConfig[status] || { label: status, color: '#6b7280' };
-
-    return (
-      <Badge style={{ backgroundColor: `${config.color}20`, color: config.color }}>
-        {config.label}
-      </Badge>
+      </span>
     );
   };
 
@@ -245,7 +225,7 @@ export const UserManagement: React.FC = () => {
 
     try {
       await apiClient.post('/superadmin/users', payload);
-      toast.success('Pengguna baru berhasil ditambahkan!');
+      showToast.success('Pengguna baru berhasil ditambahkan!');
 
       setShowCreateModal(false);
       setCreateForm({
@@ -253,19 +233,18 @@ export const UserManagement: React.FC = () => {
         username: '',
         email: '',
         phone: '',
-        role: 'Sales',
+        role: 'sales',
         status: 'active',
         password: '',
       });
-
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       refetch();
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.getFirstError() || 'Gagal menambahkan pengguna.');
+        showToast.error(err.getFirstError() || 'Gagal menambahkan pengguna.');
         if (err.errors) setBackendErrors(err.errors);
       } else {
-        toast.error('Terjadi kesalahan koneksi saat mengirim data.');
+        showToast.error('Terjadi kesalahan koneksi.');
       }
     } finally {
       setIsSubmitting(false);
@@ -275,6 +254,7 @@ export const UserManagement: React.FC = () => {
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+
     setIsSubmitting(true);
     setBackendErrors({});
 
@@ -296,7 +276,7 @@ export const UserManagement: React.FC = () => {
 
     try {
       await apiClient.put(`/superadmin/users/${selectedUser.id}`, payload);
-      toast.success('Detail pengguna berhasil diperbarui!');
+      showToast.success('Informasi pengguna berhasil diperbarui!');
 
       setShowEditModal(false);
       setSelectedUser(null);
@@ -304,10 +284,10 @@ export const UserManagement: React.FC = () => {
       refetch();
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.getFirstError() || 'Gagal menyimpan pembaruan.');
+        showToast.error(err.getFirstError() || 'Gagal menyimpan pembaruan.');
         if (err.errors) setBackendErrors(err.errors);
       } else {
-        toast.error('Terjadi kesalahan koneksi saat memperbarui data.');
+        showToast.error('Terjadi kesalahan koneksi saat memperbarui data.');
       }
     } finally {
       setIsSubmitting(false);
@@ -331,9 +311,9 @@ export const UserManagement: React.FC = () => {
       const tempPass = res?.data?.temporary_password || res?.temporary_password || res?.data?.password || res?.password;
 
       if (tempPass) {
-        toast.success(`Password berhasil direset! Password temporary: ${tempPass}`, { duration: 10000 });
+        showToast.success(`Kata sandi berhasil direset! Password temporary: ${tempPass}`);
       } else {
-        toast.success('Kata sandi pengguna berhasil direset!');
+        showToast.success('Kata sandi pengguna berhasil direset!');
       }
 
       setShowPasswordModal(false);
@@ -341,10 +321,10 @@ export const UserManagement: React.FC = () => {
       setSelectedUser(null);
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.getFirstError() || 'Gagal mereset kata sandi.');
+        showToast.error(err.getFirstError() || 'Gagal mereset kata sandi.');
         if (err.errors) setBackendErrors(err.errors);
       } else {
-        toast.error('Terjadi kesalahan koneksi.');
+        showToast.error('Terjadi kesalahan koneksi.');
       }
     } finally {
       setIsSubmitting(false);
@@ -359,7 +339,7 @@ export const UserManagement: React.FC = () => {
       await apiClient.patch(`/superadmin/users/${userToToggle.id}/status`, {
         status: newStatus,
       });
-      toast.success(`Berhasil ${actionText} user ${userToToggle.name}`);
+      showToast.success(`Berhasil ${actionText} akun ${userToToggle.name}`);
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       refetch();
     } catch (err) {
@@ -370,33 +350,33 @@ export const UserManagement: React.FC = () => {
           email: userToToggle.email,
           role: mapRoleToBackend(userToToggle.role),
         });
-        toast.success(`Berhasil ${actionText} user ${userToToggle.name}`);
+        showToast.success(`Berhasil ${actionText} akun ${userToToggle.name}`);
         queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
         refetch();
       } catch (fallbackErr) {
         if (fallbackErr instanceof ApiError) {
-          toast.error(fallbackErr.getFirstError() || 'Gagal mengubah status pengguna.');
+          showToast.error(fallbackErr.getFirstError() || 'Gagal mengubah status pengguna.');
         } else {
-          toast.error('Terjadi kesalahan koneksi.');
+          showToast.error('Terjadi kesalahan koneksi.');
         }
       }
     }
   };
 
-  const handleDeleteUser = async (userToDelete: any) => {
-    const isConfirmed = window.confirm(`Yakin ingin menghapus pengguna ${userToDelete.name || userToDelete.email}?`);
-    if (!isConfirmed) return;
+  const confirmDeleteUser = async () => {
+    if (!deleteTargetUser) return;
 
     try {
-      await apiClient.delete(`/superadmin/users/${userToDelete.id}`);
-      toast.success(`Pengguna ${userToDelete.name || userToDelete.email} berhasil dihapus!`);
+      await apiClient.delete(`/superadmin/users/${deleteTargetUser.id}`);
+      showToast.success(`Pengguna ${deleteTargetUser.name || deleteTargetUser.email} berhasil dihapus!`);
+      setDeleteTargetUser(null);
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       refetch();
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.getFirstError() || 'Gagal menghapus pengguna.');
+        showToast.error(err.getFirstError() || 'Gagal menghapus pengguna.');
       } else {
-        toast.error('Terjadi kesalahan koneksi saat menghapus data.');
+        showToast.error('Terjadi kesalahan koneksi saat menghapus data.');
       }
     }
   };
@@ -416,23 +396,14 @@ export const UserManagement: React.FC = () => {
       .slice(0, 2);
   };
 
-  const handleSortChange = (value: string) => {
-    setSortBy(value);
-    setPage(1);
-  };
-
-  const handleOrderChange = (value: string) => {
-    setSortOrder(value);
-    setPage(1);
-  };
-
-  const handleDateFromChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDateFrom(e.target.value);
-    setPage(1);
-  };
-
-  const handleDateToChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDateTo(e.target.value);
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setRoleFilter('all');
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setSortBy('created_at');
+    setSortOrder('desc');
     setPage(1);
   };
 
@@ -440,25 +411,20 @@ export const UserManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
-            Manajemen Pengguna Staf
-          </h1>
-          <p className="text-gray-500 dark:text-slate-400">
-            Kelola data staf sales, admin provisioning, teknisi pemasangan, dan akses superadmin.
-          </p>
-        </div>
-        <Button
-          className="text-white"
-          style={{ backgroundColor: '#667eea' }}
-          onClick={() => setShowCreateModal(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Pengguna Baru
-        </Button>
-      </div>
+      {/* Standard Page Header */}
+      <PageHeader
+        title="Manajemen Pengguna Staf"
+        description="Kelola akun staf internal, pembagian peran operasional, dan izin akses sistem Fibermedia-Ops."
+        actions={
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {ACTIONS.add} Pengguna
+          </Button>
+        }
+      />
 
       {/* Global Error Boundary */}
       {isAnyError && (
@@ -468,307 +434,298 @@ export const UserManagement: React.FC = () => {
           <AlertDescription className="flex flex-col gap-3 items-start mt-2">
             <p>{error instanceof Error ? error.message : 'Terjadi kesalahan saat memproses data pengguna dari backend.'}</p>
             <Button variant="outline" size="sm" onClick={handleRetry}>
-              <RefreshCw className="w-4 h-4 mr-2" /> Coba Lagi
+              <RefreshCw className="w-4 h-4 mr-2" /> {ACTIONS.reload}
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {isStatsLoading ? (
-          Array.from({ length: 5 }).map((_, idx) => (
-            <Card key={idx}>
-              <CardContent className="p-4 flex flex-col items-center gap-2">
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-8 w-1/2" />
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-gray-500 font-semibold uppercase">Total Pengguna</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: '#667eea' }}>{stats.total}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-gray-500 font-semibold uppercase">Sales</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: '#3b82f6' }}>{stats.sales}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-gray-500 font-semibold uppercase">Admin</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: '#10b981' }}>{stats.admin}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-gray-500 font-semibold uppercase">Teknisi</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: '#f59e0b' }}>{stats.teknisi}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-gray-500 font-semibold uppercase">Staf Aktif</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: '#10b981' }}>{stats.active}</p>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
+      {/* Stats Cards with Semantic Tokens */}
+      <StatCards
+        isLoading={isStatsLoading}
+        columns={4}
+        items={[
+          {
+            title: 'Total Pengguna',
+            value: stats.total,
+            variant: 'neutral',
+            icon: Users,
+          },
+          {
+            title: 'Staf Sales',
+            value: stats.sales,
+            variant: 'info',
+            icon: Users,
+          },
+          {
+            title: 'Staf Admin',
+            value: stats.admin,
+            variant: 'success',
+            icon: Users,
+          },
+          {
+            title: 'Teknisi Lapangan',
+            value: stats.teknisi,
+            variant: 'warning',
+            icon: Users,
+          },
+        ]}
+      />
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Cari pengguna berdasarkan nama, username, atau email..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                className="pl-10"
-              />
-            </div>
+      {/* Filter Bar */}
+      <FilterBar
+        searchQuery={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setPage(1); }}
+        searchPlaceholder="Cari pengguna berdasarkan nama, username, atau email..."
+        onReset={handleResetFilters}
+      >
+        <Input 
+          type="date" 
+          value={dateFrom} 
+          onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} 
+          className="w-36 text-xs" 
+          title="Dari Tanggal" 
+        />
+        <Input 
+          type="date" 
+          value={dateTo} 
+          onChange={(e) => { setDateTo(e.target.value); setPage(1); }} 
+          className="w-36 text-xs" 
+          title="Sampai Tanggal" 
+        />
+        
+        <Select value={sortBy} onValueChange={(val) => { setSortBy(val); setPage(1); }}>
+          <SelectTrigger className="w-36 text-xs">
+            <SelectValue placeholder="Urutkan" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_at">Tanggal Dibuat</SelectItem>
+            <SelectItem value="username">Username</SelectItem>
+            <SelectItem value="nama_lengkap">Nama Lengkap</SelectItem>
+          </SelectContent>
+        </Select>
 
-            <div className="flex flex-wrap gap-4">
-              <Input type="date" value={dateFrom} onChange={handleDateFromChange} className="w-36" title="Dari Tanggal" />
-              <Input type="date" value={dateTo} onChange={handleDateToChange} className="w-36" title="Sampai Tanggal" />
-              
-              <Select value={sortBy} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Urutkan Berdasarkan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at">Tanggal Dibuat</SelectItem>
-                  <SelectItem value="username">Username</SelectItem>
-                  <SelectItem value="nama_lengkap">Nama Lengkap</SelectItem>
-                </SelectContent>
-              </Select>
+        <Select value={sortOrder} onValueChange={(val) => { setSortOrder(val); setPage(1); }}>
+          <SelectTrigger className="w-32 text-xs">
+            <SelectValue placeholder="Urutan" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">Terbaru</SelectItem>
+            <SelectItem value="asc">Terlama</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Select value={roleFilter} onValueChange={(val) => { setRoleFilter(val); setPage(1); }}>
+          <SelectTrigger className="w-36 text-xs">
+            <SelectValue placeholder="Semua Peran" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Peran</SelectItem>
+            <SelectItem value="Admin">Admin</SelectItem>
+            <SelectItem value="Sales">Sales</SelectItem>
+            <SelectItem value="Teknisi">Teknisi</SelectItem>
+            <SelectItem value="Superadmin">Superadmin</SelectItem>
+          </SelectContent>
+        </Select>
 
-              <Select value={sortOrder} onValueChange={handleOrderChange}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Urutan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">Terbaru</SelectItem>
-                  <SelectItem value="asc">Terlama</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={roleFilter} onValueChange={(val) => { setRoleFilter(val); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-36">
-                  <SelectValue placeholder="Semua Peran" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Peran</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Sales">Sales</SelectItem>
-                  <SelectItem value="Teknisi">Teknisi</SelectItem>
-                  <SelectItem value="Superadmin">Superadmin</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-36">
-                  <SelectValue placeholder="Semua Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="inactive">Nonaktif</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+          <SelectTrigger className="w-36 text-xs">
+            <SelectValue placeholder="Semua Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Status</SelectItem>
+            <SelectItem value="active">Aktif</SelectItem>
+            <SelectItem value="inactive">Nonaktif</SelectItem>
+            <SelectItem value="suspended">Terisolir</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
       {/* Users Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : !data || filteredUsers.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">
-              <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-xl font-medium">Tidak ada pengguna</p>
-              <p className="text-sm text-gray-400 mt-1">Coba filter pencarian atau peran yang berbeda.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nama & Username</TableHead>
-                    <TableHead>Email & Telepon</TableHead>
-                    <TableHead>Peran</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
+      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <tr className="border-b border-border bg-muted/40">
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Nama & Username</TableHead>
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Email & Telepon</TableHead>
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Peran</TableHead>
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Status</TableHead>
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Aksi</TableHead>
+              </tr>
+            </TableHeader>
+            <TableBody className="divide-y divide-border/60">
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, rIdx) => (
+                  <TableRow key={rIdx} className="animate-pulse">
+                    <TableCell colSpan={5} className="py-4">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user: any) => (
-                    <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors">
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="w-10 h-10">
-                            <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
-                              {getInitials(user.name || user.nama_lengkap)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold text-gray-800">{user.name || user.nama_lengkap}</p>
-                            <p className="text-xs text-gray-400 font-mono">@{user.username}</p>
+                ))
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                    <p className="text-base font-medium text-foreground">{MESSAGES.emptyData}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{MESSAGES.emptySearchResult}</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers.map((user: any) => (
+                  <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-9 h-9">
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                            {getInitials(user.name || user.nama_lengkap)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{user.name || user.nama_lengkap}</p>
+                          <p className="text-xs text-muted-foreground font-mono">@{user.username}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5 text-xs text-muted-foreground">
+                        <div className="flex items-center space-x-1.5">
+                          <Mail className="w-3.5 h-3.5 opacity-60" />
+                          <span className="text-foreground">{user.email}</span>
+                        </div>
+                        {user.phone && (
+                          <div className="flex items-center space-x-1.5">
+                            <Phone className="w-3.5 h-3.5 opacity-60" />
+                            <span>{formatPhone(user.phone)}</span>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm text-gray-600">
-                          <div className="flex items-center space-x-1">
-                            <Mail className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{user.email}</span>
-                          </div>
-                          {user.phone && (
-                            <div className="flex items-center space-x-1">
-                              <Phone className="w-3.5 h-3.5 text-gray-400" />
-                              <span>{user.phone}</span>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>{getStatusBadge(user.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => navigate(`/superadmin/users/${user.id}`)}
-                            className="bg-blue-50/50 hover:bg-blue-100 text-blue-700 border-blue-200 text-xs font-semibold"
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1" /> Lihat Profil
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setEditForm({
-                                    name: user.name || user.nama_lengkap || '',
-                                    username: user.username || '',
-                                    email: user.email || '',
-                                    phone: user.phone || '',
-                                    role: user.role || 'sales',
-                                    status: user.status || 'active',
-                                  });
-                                  setShowEditModal(true);
-                                }}
-                              >
-                                <Edit className="w-4 h-4 mr-2 text-gray-500" /> Edit User Info
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setPasswordForm({ password: '', password_confirmation: '' });
-                                  setShowPasswordModal(true);
-                                }}
-                              >
-                                <KeyRound className="w-4 h-4 mr-2 text-gray-500" /> Reset Password
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className={user.status === 'active' ? 'text-amber-600' : 'text-green-600'}
-                                onClick={() => handleToggleStatus(user)}
-                              >
-                                {user.status === 'active' ? (
-                                  <>
-                                    <Ban className="w-4 h-4 mr-2" /> Deactivate Staf
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Activate Staf
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600 font-semibold focus:text-red-700"
-                                onClick={() => handleDeleteUser(user)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" /> Hapus User
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pagination Controls */}
-      {data && data.meta && data.meta.last_page > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between bg-white border rounded-lg p-4 gap-4">
-          <div className="text-sm text-gray-500">
-            Menampilkan <span className="font-semibold">{data.meta.to ? (data.meta.to - data.meta.from + 1) : 0}</span> dari{' '}
-            <span className="font-semibold">{data.meta.total}</span> data
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-sm">
-              Halaman <span className="font-semibold">{page}</span> dari{' '}
-              <span className="font-semibold">{data.meta.last_page}</span>
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === data.meta.last_page}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={user.status} size="sm" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/superadmin/users/${user.id}`)}
+                          className="text-xs font-medium"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1" /> {ACTIONS.viewDetails}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="text-xs">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setEditForm({
+                                  name: user.name || user.nama_lengkap || '',
+                                  username: user.username || '',
+                                  email: user.email || '',
+                                  phone: user.phone || '',
+                                  role: user.role || 'sales',
+                                  status: user.status || 'active',
+                                });
+                                setShowEditModal(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-2 opacity-70" /> {ACTIONS.edit} Pengguna
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setPasswordForm({ password: '', password_confirmation: '' });
+                                setShowPasswordModal(true);
+                              }}
+                            >
+                              <KeyRound className="w-4 h-4 mr-2 opacity-70" /> Atur Ulang Kata Sandi
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className={user.status === 'active' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}
+                              onClick={() => handleToggleStatus(user)}
+                            >
+                              {user.status === 'active' ? (
+                                <>
+                                  <Ban className="w-4 h-4 mr-2" /> Nonaktifkan Pengguna
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="w-4 h-4 mr-2" /> Aktifkan Pengguna
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-rose-600 dark:text-rose-400 font-medium focus:text-rose-700"
+                              onClick={() => setDeleteTargetUser(user)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> {ACTIONS.delete} Pengguna
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
-      )}
+
+        {/* Pagination Controls */}
+        {data && data.meta && data.meta.last_page > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-border bg-muted/10 gap-4 text-xs text-muted-foreground">
+            <div>
+              Menampilkan <span className="font-semibold text-foreground">{data.meta.to ? (data.meta.to - data.meta.from + 1) : 0}</span> dari{' '}
+              <span className="font-semibold text-foreground">{data.meta.total}</span> data
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span>
+                Halaman <span className="font-semibold text-foreground">{page}</span> dari{' '}
+                <span className="font-semibold text-foreground">{data.meta.last_page}</span>
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === data.meta.last_page}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Create User Modal Dialog */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-md">
           <form onSubmit={handleCreateUser} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+              <DialogTitle>{ACTIONS.add} Pengguna</DialogTitle>
               <DialogDescription>
-                Daftarkan akun pengguna staf baru ke database system.
+                Daftarkan akun pengguna staf baru ke sistem Fibermedia-Ops.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="create_name">Nama Lengkap <span className="text-red-500">*</span></Label>
+                <Label htmlFor="create_name">Nama Lengkap <span className="text-rose-500">*</span></Label>
                 <Input
                   id="create_name"
                   placeholder="Contoh: Budi Santoso"
@@ -777,10 +734,10 @@ export const UserManagement: React.FC = () => {
                   disabled={isSubmitting}
                   required
                 />
-                {backendErrors.name && <p className="text-xs text-red-500 font-medium">{backendErrors.name[0]}</p>}
+                {backendErrors.name && <p className="text-xs text-rose-500 font-medium">{backendErrors.name[0]}</p>}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="create_email">Alamat Email <span className="text-red-500">*</span></Label>
+                <Label htmlFor="create_email">Alamat Email <span className="text-rose-500">*</span></Label>
                 <Input
                   id="create_email"
                   type="email"
@@ -790,10 +747,10 @@ export const UserManagement: React.FC = () => {
                   disabled={isSubmitting}
                   required
                 />
-                {backendErrors.email && <p className="text-xs text-red-500 font-medium">{backendErrors.email[0]}</p>}
+                {backendErrors.email && <p className="text-xs text-rose-500 font-medium">{backendErrors.email[0]}</p>}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="create_password">Kata Sandi (Password) <span className="text-red-500">*</span></Label>
+                <Label htmlFor="create_password">Kata Sandi <span className="text-rose-500">*</span></Label>
                 <Input
                   id="create_password"
                   type="password"
@@ -804,13 +761,13 @@ export const UserManagement: React.FC = () => {
                   minLength={8}
                   required
                 />
-                {backendErrors.password && <p className="text-xs text-red-500 font-medium">{backendErrors.password[0]}</p>}
+                {backendErrors.password && <p className="text-xs text-rose-500 font-medium">{backendErrors.password[0]}</p>}
               </div>
               <div className="space-y-1">
-                <Label>Peran Sistem <span className="text-red-500">*</span></Label>
+                <Label>Peran Sistem <span className="text-rose-500">*</span></Label>
                 <Select value={createForm.role} onValueChange={(val) => setCreateForm({ ...createForm, role: val })} disabled={isSubmitting}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Role" />
+                    <SelectValue placeholder="Pilih Peran" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Superadmin">Superadmin</SelectItem>
@@ -819,15 +776,15 @@ export const UserManagement: React.FC = () => {
                     <SelectItem value="Teknisi">Teknisi</SelectItem>
                   </SelectContent>
                 </Select>
-                {backendErrors.role && <p className="text-xs text-red-500 font-medium">{backendErrors.role[0]}</p>}
+                {backendErrors.role && <p className="text-xs text-rose-500 font-medium">{backendErrors.role[0]}</p>}
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)} disabled={isSubmitting}>
-                Batal
+                {ACTIONS.cancel}
               </Button>
-              <Button type="submit" className="text-white" style={{ backgroundColor: '#667eea' }} disabled={isSubmitting}>
-                {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Menyimpan...</> : 'Daftarkan Pengguna'}
+              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+                {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {MESSAGES.saving}</> : ACTIONS.save}
               </Button>
             </DialogFooter>
           </form>
@@ -839,9 +796,9 @@ export const UserManagement: React.FC = () => {
         <DialogContent className="max-w-md">
           <form onSubmit={handleEditUser} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Edit Informasi Pengguna</DialogTitle>
+              <DialogTitle>{ACTIONS.edit} Data Pengguna</DialogTitle>
               <DialogDescription>
-                Perbarui detail profil atau ubah peran penugasan pengguna.
+                Perbarui detail profil atau ubah peran penugasan pengguna staf.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -854,7 +811,7 @@ export const UserManagement: React.FC = () => {
                   disabled={isSubmitting}
                   required
                 />
-                {backendErrors.name && <p className="text-xs text-red-500 font-medium">{backendErrors.name[0]}</p>}
+                {backendErrors.name && <p className="text-xs text-rose-500 font-medium">{backendErrors.name[0]}</p>}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="edit_username">Username</Label>
@@ -865,7 +822,7 @@ export const UserManagement: React.FC = () => {
                   disabled={isSubmitting}
                   required
                 />
-                {backendErrors.username && <p className="text-xs text-red-500 font-medium">{backendErrors.username[0]}</p>}
+                {backendErrors.username && <p className="text-xs text-rose-500 font-medium">{backendErrors.username[0]}</p>}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="edit_email">Alamat Email</Label>
@@ -877,7 +834,7 @@ export const UserManagement: React.FC = () => {
                   disabled={isSubmitting}
                   required
                 />
-                {backendErrors.email && <p className="text-xs text-red-500 font-medium">{backendErrors.email[0]}</p>}
+                {backendErrors.email && <p className="text-xs text-rose-500 font-medium">{backendErrors.email[0]}</p>}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="edit_phone">Nomor Telepon</Label>
@@ -887,13 +844,13 @@ export const UserManagement: React.FC = () => {
                   onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                   disabled={isSubmitting}
                 />
-                {backendErrors.phone && <p className="text-xs text-red-500 font-medium">{backendErrors.phone[0]}</p>}
+                {backendErrors.phone && <p className="text-xs text-rose-500 font-medium">{backendErrors.phone[0]}</p>}
               </div>
               <div className="space-y-1">
                 <Label>Peran Sistem</Label>
                 <Select value={editForm.role} onValueChange={(val) => setEditForm({ ...editForm, role: val })} disabled={isSubmitting}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Role" />
+                    <SelectValue placeholder="Pilih Peran" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Superadmin">Superadmin</SelectItem>
@@ -904,12 +861,12 @@ export const UserManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} disabled={isSubmitting}>
-                Batal
+                {ACTIONS.cancel}
               </Button>
-              <Button type="submit" className="text-white bg-indigo-600 hover:bg-indigo-700" disabled={isSubmitting}>
-                {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Menyimpan...</> : 'Simpan Perubahan'}
+              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+                {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {MESSAGES.saving}</> : ACTIONS.save}
               </Button>
             </DialogFooter>
           </form>
@@ -921,9 +878,9 @@ export const UserManagement: React.FC = () => {
         <DialogContent className="max-w-md">
           <form onSubmit={handleResetPassword} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Reset Sandi Pengguna</DialogTitle>
+              <DialogTitle>Atur Ulang Kata Sandi</DialogTitle>
               <DialogDescription>
-                Tentukan kata sandi baru untuk akun: <span className="font-semibold text-gray-700">{selectedUser?.name}</span>
+                Tentukan kata sandi baru untuk akun: <span className="font-semibold text-foreground">{selectedUser?.name}</span>
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -938,7 +895,7 @@ export const UserManagement: React.FC = () => {
                   disabled={isSubmitting}
                   required
                 />
-                {backendErrors.password && <p className="text-xs text-red-500 font-medium">{backendErrors.password[0]}</p>}
+                {backendErrors.password && <p className="text-xs text-rose-500 font-medium">{backendErrors.password[0]}</p>}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="reset_pass_confirm">Konfirmasi Sandi Baru</Label>
@@ -952,17 +909,30 @@ export const UserManagement: React.FC = () => {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setShowPasswordModal(false)} disabled={isSubmitting}>
-                Batal
+                {ACTIONS.cancel}
               </Button>
-              <Button type="submit" className="text-white bg-amber-500 hover:bg-amber-600" disabled={isSubmitting}>
-                {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Meriset...</> : 'Reset Password'}
+              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+                {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memproses...</> : 'Atur Ulang Sandi'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Delete User Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteTargetUser}
+        onClose={() => setDeleteTargetUser(null)}
+        onConfirm={confirmDeleteUser}
+        title="Konfirmasi Hapus Pengguna"
+        description={`Apakah Anda yakin ingin menghapus akun pengguna staf "${deleteTargetUser?.name || deleteTargetUser?.email}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmLabel={ACTIONS.delete}
+        variant="danger"
+      />
     </div>
   );
 };
+
+export default UserManagement;

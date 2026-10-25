@@ -31,14 +31,14 @@ class SubmissionsExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             'ID',
-            'Submission Number',
-            'Sales Name',
-            'Customer Name',
-            'Phone',
-            'Address',
-            'Package',
+            'Nomor Pengajuan',
+            'Nama Sales',
+            'Nama Pelanggan',
+            'Nomor Telepon',
+            'Alamat',
+            'Paket Layanan',
             'Status',
-            'Created At',
+            'Tanggal Dibuat',
         ];
     }
 

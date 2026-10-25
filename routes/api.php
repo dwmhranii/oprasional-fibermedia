@@ -59,6 +59,53 @@ Route::get('/time', function () {
         'timezone' => config('app.timezone', 'Asia/Jakarta'),
     ]);
 });
+Route::get('/enums', function () {
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'complaint_status' => \App\Enums\ComplaintStatus::options(),
+            'task_status' => \App\Enums\TaskStatus::options(),
+            'complaint_priority' => \App\Enums\ComplaintPriority::options(),
+            'complaint_category' => \App\Enums\ComplaintCategory::options(),
+            'provisioning_status' => \App\Enums\ProvisioningStatus::options(),
+            'submission_status' => \App\Enums\SubmissionStatus::options(),
+            'resolution_category' => \App\Enums\ResolutionCategory::options(),
+            'task_assignment_status' => \App\Enums\TaskAssignmentStatus::options(),
+            'bfass_status' => \App\Enums\BfassStatus::options(),
+            'document_type' => \App\Enums\DocumentType::options(),
+            'customer_status' => [
+                ['value' => 'active', 'label' => 'Aktif'],
+                ['value' => 'suspended', 'label' => 'Terisolir'],
+                ['value' => 'terminated', 'label' => 'Berhenti'],
+            ],
+            'network_status' => [
+                ['value' => 'normal', 'label' => 'Normal'],
+                ['value' => 'disrupted', 'label' => 'Gangguan'],
+                ['value' => 'cut', 'label' => 'Putus'],
+                ['value' => 'maintenance', 'label' => 'Pemeliharaan'],
+            ],
+            'review_status' => [
+                ['value' => 'not_required', 'label' => 'Tidak Perlu'],
+                ['value' => 'pending', 'label' => 'Perlu Ditinjau'],
+                ['value' => 'approved', 'label' => 'Disetujui'],
+                ['value' => 'rework', 'label' => 'Kerja Ulang'],
+                ['value' => 'flagged', 'label' => 'Bermasalah'],
+            ],
+            'geofence_status' => [
+                ['value' => 'inside', 'label' => 'Di dalam radius'],
+                ['value' => 'outside', 'label' => 'Di luar radius'],
+                ['value' => 'low_accuracy', 'label' => 'Akurasi rendah'],
+                ['value' => 'unverified', 'label' => 'Belum diverifikasi'],
+            ],
+            'attendance_status' => [
+                ['value' => 'hadir', 'label' => 'Hadir'],
+                ['value' => 'izin', 'label' => 'Izin'],
+                ['value' => 'sakit', 'label' => 'Sakit'],
+                ['value' => 'alpa', 'label' => 'Alpa'],
+            ],
+        ],
+    ]);
+});
 Route::get('/tiles/manifest', [NetworkSyncController::class, 'tilesManifest']);
 Route::get('/tiles/area.pmtiles', [NetworkSyncController::class, 'servePmtiles']);
 Route::post('/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:100,1');

@@ -12,4 +12,27 @@ enum ResolutionCategory: string
     case CUSTOMER_SIDE = 'customer_side';
     case BILLING_RESOLVED = 'billing_resolved';
     case OTHER = 'other';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::CABLE_BROKEN => 'Kabel Dropcore Putus',
+            self::ONT_FAULTY => 'Modem / ONT Rusak',
+            self::ONT_RESET => 'Konfigurasi ONT Ulang',
+            self::SPLITTER_ODP_ISSUE => 'Gangguan Port / Splitter ODP',
+            self::CONFIG_ISSUE => 'Gangguan Konfigurasi Server',
+            self::CUSTOMER_SIDE => 'Kendala Perangkat Pelanggan',
+            self::BILLING_RESOLVED => 'Tagihan Diselesaikan',
+            self::OTHER => 'Lainnya',
+        };
+    }
+
+    public static function options(): array
+    {
+        return array_map(fn (self $case) => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], self::cases());
+    }
 }
+

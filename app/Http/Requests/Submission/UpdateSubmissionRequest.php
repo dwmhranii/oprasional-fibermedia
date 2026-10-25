@@ -40,11 +40,11 @@ class UpdateSubmissionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'lat.required_with' => 'Latitude and longitude must be provided together.',
-            'lng.required_with' => 'Latitude and longitude must be provided together.',
-            'package_price.numeric' => 'Package price must be a valid number.',
-            'installation_fee.numeric' => 'Installation fee must be a valid number.',
-            'package_speed.integer' => 'Package speed must be a whole number.',
+            'lat.required_with' => 'Latitude dan longitude harus diisi bersamaan.',
+            'lng.required_with' => 'Latitude dan longitude harus diisi bersamaan.',
+            'package_price.numeric' => 'Harga paket harus berupa angka valid.',
+            'installation_fee.numeric' => 'Biaya pemasangan harus berupa angka valid.',
+            'package_speed.integer' => 'Kecepatan paket harus berupa angka bulat.',
         ];
     }
 }

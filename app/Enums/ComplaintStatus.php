@@ -39,4 +39,30 @@ enum ComplaintStatus: string
     {
         return in_array($this, [self::CLOSED, self::CANCELLED]);
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::OPEN => 'Pengaduan Baru',
+            self::UNASSIGNED => 'Belum Ditugaskan',
+            self::ESCALATED_TO_ADMIN => 'Eskalasi ke Admin',
+            self::ASSIGNED => 'Menunggu Diterima',
+            self::IN_PROGRESS => 'Dikerjakan',
+            self::PHASE_1_COMPLETED => 'Perlu Ditinjau',
+            self::PENDING_CUSTOMER => 'Menunggu Pelanggan',
+            self::RESOLVED => 'Selesai',
+            self::CLOSED => 'Ditutup',
+            self::CANCELLED => 'Dibatalkan',
+            self::REOPENED => 'Dibuka Kembali',
+        };
+    }
+
+    public static function options(): array
+    {
+        return array_map(fn (self $case) => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], self::cases());
+    }
 }
+
