@@ -164,6 +164,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'attendance.view',
             'attendance.manage',
             'kpi.view',
+            'kpi.manage',
+            'reports.view',
+            'settings.manage',
             'pwa.access',
             // legacy
             'manage_customers',
@@ -172,6 +175,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'view_work_orders',
             'view_dashboard',
             'view_sla',
+            'view_analytics',
+            'manage_dispatch_settings',
         ];
 
         $roleAdminCs = Role::firstOrCreate(['name' => 'Admin/CS', 'guard_name' => 'web']);

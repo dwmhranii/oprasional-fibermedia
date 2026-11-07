@@ -596,10 +596,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/settings/dispatch', [DispatchController::class, 'updateSettings'])->name('settings.dispatch.update');
         Route::get('/dispatch-settings', [DispatchController::class, 'getSettings']);
         Route::put('/dispatch-settings', [DispatchController::class, 'updateSettings']);
+        Route::get('/admin/dispatch-settings', [DispatchController::class, 'getSettings']);
+        Route::put('/admin/dispatch-settings', [DispatchController::class, 'updateSettings']);
         Route::get('/dispatch/pending', [DispatchController::class, 'getPendingTickets'])->name('dispatch.pending');
         Route::get('/dispatch/unassigned', [DispatchController::class, 'getPendingTickets'])->name('dispatch.unassigned');
         Route::get('/dispatch/assignment-logs', [DispatchController::class, 'getAssignmentLogs'])->name('dispatch.logs');
         Route::get('/assignment-logs', [DispatchController::class, 'getAssignmentLogs']);
+        Route::get('/admin/assignment-logs', [DispatchController::class, 'getAssignmentLogs']);
         Route::post('/dispatch/manual-assign', [DispatchController::class, 'manualAssign'])->name('dispatch.manual_assign');
         Route::post('/dispatch/tickets/{type}/{id}/dispatch-now', [DispatchController::class, 'dispatchNow'])->name('dispatch.now');
         Route::get('/dispatch/tickets/{type}/{id}/unified-detail', [DispatchController::class, 'unifiedDetail'])->name('dispatch.detail');
@@ -658,6 +661,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/submissions/{submission}/pdf', [ReportController::class, 'exportPdf'])->name('reports.submissions.pdf');
         Route::get('/reports/submissions/{submission}/bast', [ReportController::class, 'exportBast'])->name('reports.submissions.bast');
         Route::get('/analytics/kpi', [AnalyticsController::class, 'kpi'])->name('analytics.kpi');
+        Route::get('/admin/analytics/kpi', [AnalyticsController::class, 'kpi']);
         Route::get('/analytics/funnel', [AnalyticsController::class, 'funnel'])->name('analytics.funnel');
         Route::get('/analytics/regional', [AnalyticsController::class, 'regional'])->name('analytics.regional');
         Route::get('/analytics/trends', [AnalyticsController::class, 'trends'])->name('analytics.trends');
@@ -665,9 +669,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('can:kpi.view')->group(function () {
         Route::get('/kpi/overview', [KpiController::class, 'overview'])->name('kpi.overview');
+        Route::get('/admin/kpi/overview', [KpiController::class, 'overview']);
+        Route::get('/kpi/settings', [KpiController::class, 'getSettings'])->name('kpi.settings.get');
+        Route::get('/admin/kpi/settings', [KpiController::class, 'getSettings']);
         Route::get('/kpi/export', [KpiController::class, 'export'])->name('kpi.export');
+        Route::get('/admin/kpi/export', [KpiController::class, 'export']);
         Route::get('/kpi/whatsapp-link', [KpiController::class, 'getWhatsAppLink'])->name('kpi.whatsapp_link');
+        Route::get('/admin/kpi/whatsapp-link', [KpiController::class, 'getWhatsAppLink']);
         Route::get('/kpi/ratings/wa-link', [KpiController::class, 'getWhatsAppLink']);
+        Route::get('/admin/kpi/ratings/wa-link', [KpiController::class, 'getWhatsAppLink']);
         Route::get('/kpi/team/{team}/{period}', [KpiController::class, 'teamKpi'])->name('kpi.team');
         Route::get('/kpi/operations/{user}/{period}', [KpiController::class, 'technicianKpi'])->name('kpi.operations');
         Route::get('/kpi/acquisitions/{user}/{period}', [KpiController::class, 'salesKpi'])->name('kpi.acquisitions');
@@ -677,12 +687,14 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('can:kpi.manage')->group(function () {
-        Route::get('/kpi/settings', [KpiController::class, 'getSettings'])->name('kpi.settings.get');
         Route::put('/kpi/settings', [KpiController::class, 'updateSettings'])->name('kpi.settings.update');
+        Route::put('/admin/kpi/settings', [KpiController::class, 'updateSettings']);
         Route::post('/kpi/snapshot', [KpiController::class, 'triggerSnapshot'])->name('kpi.snapshot');
         Route::post('/kpi/snapshots/calculate', [KpiController::class, 'triggerSnapshot']);
+        Route::post('/admin/kpi/snapshot', [KpiController::class, 'triggerSnapshot']);
         Route::post('/kpi/rating', [KpiController::class, 'recordRating'])->name('kpi.rating');
         Route::post('/kpi/ratings', [KpiController::class, 'recordRating']);
+        Route::post('/admin/kpi/rating', [KpiController::class, 'recordRating']);
     });
 
     // ── Pengguna (Users) ───────────────────────────────────────────────────

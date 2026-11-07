@@ -166,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           rawUser.role?.toLowerCase() === 'superadmin' ||
           (Array.isArray(rawUser.roles) && rawUser.roles.some((r: any) => String(r).toLowerCase().includes('superadmin')))
         );
+        const normalizedUser = userToFrontend(rawUser);
         normalizedUser.role = isSuper ? 'superadmin' : (data.role || data.user?.role || rawUser.role || 'admin');
         setUser(normalizedUser);
         storeUser(normalizedUser);

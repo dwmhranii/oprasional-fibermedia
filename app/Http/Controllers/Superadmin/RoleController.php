@@ -360,9 +360,14 @@ class RoleController extends Controller
      */
     public function menuPreview(Request $request, Role $role): JsonResponse
     {
-        $permissions = $request->has('permissions')
-            ? (array) $request->input('permissions')
-            : $role->permissions->pluck('name')->toArray();
+        $raw = $request->input('permissions');
+        if (is_string($raw)) {
+            $permissions = array_filter(array_map('trim', explode(',', $raw)));
+        } elseif (is_array($raw)) {
+            $permissions = $raw;
+        } else {
+            $permissions = $role->permissions->pluck('name')->toArray();
+        }
 
         $previewTree = $this->menuService->getPreviewTree($permissions, strtolower($role->name) === 'superadmin');
 

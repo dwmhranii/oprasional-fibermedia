@@ -13,6 +13,7 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Tests\TestCase;
 
 class KpiAndDispatchSyncTest extends TestCase
@@ -26,10 +27,7 @@ class KpiAndDispatchSyncTest extends TestCase
     {
         parent::setUp();
 
-        Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'Superadmin', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'Teknisi', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'Sales', 'guard_name' => 'web']);
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->admin = User::factory()->create(['email' => 'admin.kpi@fibermedia.test']);
         $this->admin->assignRole('Admin');

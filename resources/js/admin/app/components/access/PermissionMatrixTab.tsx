@@ -253,6 +253,8 @@ export const PermissionMatrixTab: React.FC<PermissionMatrixTabProps> = ({ initia
     onSuccess: (res: any) => {
       toast.success(res?.message || 'Hak akses role berhasil disimpan.');
       queryClient.invalidateQueries({ queryKey: ['access-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['access-menu-preview'] });
+      queryClient.invalidateQueries({ queryKey: ['dynamicMenu'] });
       setSaveModalOpen(false);
       setSuperadminPassword('');
     },
@@ -270,6 +272,8 @@ export const PermissionMatrixTab: React.FC<PermissionMatrixTabProps> = ({ initia
     onSuccess: (res: any) => {
       toast.success(res?.message || 'Hak akses dikembalikan ke bawaan registri.');
       queryClient.invalidateQueries({ queryKey: ['access-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['access-menu-preview'] });
+      queryClient.invalidateQueries({ queryKey: ['dynamicMenu'] });
       setResetModalOpen(false);
     },
     onError: (err: any) => {

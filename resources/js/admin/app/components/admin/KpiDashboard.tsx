@@ -46,6 +46,7 @@ import {
 } from '@shared/ui';
 import { ACTIONS, TERMS, MESSAGES } from '@shared/i18n/id';
 import { formatNumber } from '@shared/lib/formatters';
+import { useAuth } from '../../context/AuthContext';
 
 interface KpiDashboardProps {
   defaultTab?: 'teams' | 'sales' | 'settings';
@@ -54,6 +55,8 @@ interface KpiDashboardProps {
 
 export const KpiDashboard: React.FC<KpiDashboardProps> = ({ defaultTab = 'teams', initialRatingOpen = false }) => {
   const queryClient = useQueryClient();
+  const { can, isSuperadmin } = useAuth();
+  const canManageKpi = isSuperadmin || can('kpi.manage');
 
   // Period state in YYYY-MM
   const currentMonthStr = new Date().toISOString().substring(0, 7);
@@ -207,14 +210,16 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ defaultTab = 'teams'
               className="text-xs rounded-lg border border-border bg-card text-foreground px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
             />
 
-            <Button
-              onClick={() => calculateSnapshotMutation.mutate()}
-              disabled={calculateSnapshotMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${calculateSnapshotMutation.isPending ? 'animate-spin' : ''}`} />
-              Hitung Snapshot KPI
-            </Button>
+            {canManageKpi && (
+              <Button
+                onClick={() => calculateSnapshotMutation.mutate()}
+                disabled={calculateSnapshotMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${calculateSnapshotMutation.isPending ? 'animate-spin' : ''}`} />
+                Hitung Snapshot KPI
+              </Button>
+            )}
 
             <Button
               onClick={() => setIsRatingModalOpen(true)}
@@ -225,14 +230,16 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ defaultTab = 'teams'
               Rating WhatsApp
             </Button>
 
-            <Button
-              onClick={() => setIsSettingsModalOpen(true)}
-              variant="outline"
-              className="text-xs"
-            >
-              <Settings2 className="w-3.5 h-3.5 mr-1.5" />
-              Pengaturan Bobot
-            </Button>
+            {canManageKpi && (
+              <Button
+                onClick={() => setIsSettingsModalOpen(true)}
+                variant="outline"
+                className="text-xs"
+              >
+                <Settings2 className="w-3.5 h-3.5 mr-1.5" />
+                Pengaturan Bobot
+              </Button>
+            )}
           </div>
         }
       />

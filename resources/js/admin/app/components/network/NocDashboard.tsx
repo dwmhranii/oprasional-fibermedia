@@ -47,10 +47,12 @@ export const NocDashboard: React.FC<NocDashboardProps> = ({ onNavigate }) => {
   });
 
   const j = data?.jaringan;
-  const kabelBermasalah = j?.kabel_bermasalah ?? 0;
-  const perubahanMenunggu = j?.perubahan_menunggu ?? 0;
-  const gangguanMassal = j?.gangguan_massal_aktif ?? 0;
-  const odpBermasalah = j?.odp_bermasalah ?? 0;
+  const kabelBermasalah = Number(j?.kabel_bermasalah ?? 0);
+  const perubahanMenunggu = Number(j?.perubahan_menunggu ?? (j as any)?.perubahan_menunggu_persetujuan ?? 0);
+  const gangguanMassalCount = typeof j?.gangguan_massal_aktif === 'object' && j?.gangguan_massal_aktif !== null
+    ? Number((j.gangguan_massal_aktif as any).total_insiden ?? 0)
+    : Number(j?.gangguan_massal_aktif ?? 0);
+  const odpBermasalah = Number(j?.odp_bermasalah ?? 0);
 
   const statItems: StatItem[] = [
     {
@@ -101,10 +103,10 @@ export const NocDashboard: React.FC<NocDashboardProps> = ({ onNavigate }) => {
     {
       id: 'mass-outage',
       title: 'Insiden Gangguan Massal',
-      value: gangguanMassal,
-      subtitle: gangguanMassal > 0 ? 'Insiden aktif dalam penanganan' : 'Jaringan aman dan stabil',
+      value: `${gangguanMassalCount} Insiden`,
+      subtitle: gangguanMassalCount > 0 ? `${gangguanMassalCount} insiden aktif dalam penanganan` : 'Jaringan aman dan stabil',
       icon: AlertTriangle,
-      variant: gangguanMassal > 0 ? 'danger' : 'success',
+      variant: gangguanMassalCount > 0 ? 'danger' : 'success',
       onClick: () => handleNav('/complaints'),
     },
   ];

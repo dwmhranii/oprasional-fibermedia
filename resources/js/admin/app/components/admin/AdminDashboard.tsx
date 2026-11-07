@@ -7,6 +7,7 @@ import { NocDashboard } from '../network/NocDashboard';
 import { SalesDashboard } from '../sales/SalesDashboard';
 import { TeknisiDashboard } from '../teknisi/TeknisiDashboard';
 import { CollectorDashboard } from '../collector/CollectorDashboard';
+import { DashboardErrorBoundary } from '../common/DashboardErrorBoundary';
 import {
   Shield,
   Headphones,
@@ -98,12 +99,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       )}
 
       {/* Render Dashboard Sesuai Peran Aktif */}
-      {activeRoleView === 'superadmin' && <UnifiedSuperadminDashboard />}
-      {activeRoleView === 'admin' && <AdminOperationalDashboard onNavigate={handleNav} />}
-      {activeRoleView === 'noc' && <NocDashboard onNavigate={handleNav} />}
-      {activeRoleView === 'sales' && <SalesDashboard onNavigate={handleNav} />}
-      {activeRoleView === 'teknisi' && <TeknisiDashboard />}
-      {activeRoleView === 'collector' && <CollectorDashboard onNavigate={handleNav} />}
+      <DashboardErrorBoundary roleName={roleTabs.find((t) => t.id === activeRoleView)?.label}>
+        {activeRoleView === 'superadmin' && <UnifiedSuperadminDashboard />}
+        {activeRoleView === 'admin' && <AdminOperationalDashboard onNavigate={handleNav} />}
+        {activeRoleView === 'noc' && <NocDashboard onNavigate={handleNav} />}
+        {activeRoleView === 'sales' && <SalesDashboard onNavigate={handleNav} />}
+        {activeRoleView === 'teknisi' && <TeknisiDashboard />}
+        {activeRoleView === 'collector' && <CollectorDashboard onNavigate={handleNav} />}
+      </DashboardErrorBoundary>
     </div>
   );
 };

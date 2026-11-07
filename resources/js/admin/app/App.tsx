@@ -333,7 +333,7 @@ const AppContent = () => {
 
         {/* 10. KPI (Tab Dasbor, Rating, Pengaturan) */}
         <Route path="/kpi/ratings" element={<RequirePermission can="kpi.view"><KpiDashboard defaultTab="teams" initialRatingOpen={true} /></RequirePermission>} />
-        <Route path="/kpi/settings" element={<RequirePermission can="kpi.manage"><KpiDashboard defaultTab="settings" /></RequirePermission>} />
+        <Route path="/kpi/settings" element={<RequirePermission can={['kpi.view', 'kpi.manage']}><KpiDashboard defaultTab="settings" /></RequirePermission>} />
         <Route path="/kpi" element={<RequirePermission can="kpi.view"><KpiDashboard defaultTab="teams" /></RequirePermission>} />
 
         {/* 11. Produk & Penjualan: Katalog & Promo */}
