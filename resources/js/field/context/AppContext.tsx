@@ -523,8 +523,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // Attendances State
-  const [attendances, setAttendances] = useState<DailyAttendance[]>(INITIAL_ATTENDANCE);
+  // Attendances State (Mulai kosong, disinkronkan langsung dari server database)
+  const [attendances, setAttendances] = useState<DailyAttendance[]>([]);
   const todayStr = new Date().toISOString().split('T')[0];
 
   const todayAttendance = attendances.find(
@@ -612,7 +612,59 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     };
 
+    // Ambil riwayat absensi pribadi dari server
+    const fetchAttendanceHistory = async () => {
+      try {
+        const histResp = await fetch('/api/attendance/history', {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-Client-Type': 'pwa',
+          },
+        });
+        if (histResp.ok) {
+          const histJson = await histResp.json();
+          if (histJson.success && Array.isArray(histJson.data) && isMounted) {
+            const mappedHistory: DailyAttendance[] = histJson.data.map((h: any) => ({
+              id: `att-db-${h.id}`,
+              user_id: h.user_id || currentUser.id,
+              work_date: h.work_date,
+              status: h.status || 'hadir',
+              attendance_channel: h.attendance_channel || 'office',
+              check_in_at: h.check_in_at,
+              check_out_at: h.check_out_at,
+              check_in_lat: office.latitude,
+              check_in_lng: office.longitude,
+              check_in_accuracy: 8,
+              check_in_photo_url: h.check_in_photo_url,
+              check_out_photo_url: h.check_out_photo_url,
+              office_id: office.id,
+              office_distance_meters: h.office_distance_meters,
+              wifi_ip: h.wifi_ip,
+              wifi_ip_verified: h.wifi_ip_verified,
+              is_suspicious: h.is_suspicious,
+              review_status: h.review_status,
+              device_id: currentUser.device_uuid,
+            }));
+            setAttendances((prev) => {
+              // Gabungkan riwayat server dengan riwayat lokal/hari ini tanpa duplikasi
+              const combined = [...mappedHistory];
+              prev.forEach((p) => {
+                if (!combined.some((c) => c.work_date === p.work_date && c.user_id === p.user_id)) {
+                  combined.push(p);
+                }
+              });
+              return combined;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memuat riwayat absensi dari server:', err);
+      }
+    };
+
     fetchTodayStatus();
+    fetchAttendanceHistory();
     return () => {
       isMounted = false;
     };

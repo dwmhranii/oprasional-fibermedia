@@ -537,6 +537,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware(['can:pwa.access', 'can:attendance.self'])->group(function () {
         Route::post('/devices/register', [DeviceController::class, 'register'])->name('devices.register');
         Route::get('/attendance/today', [AttendanceController::class, 'today'])->name('attendance.today');
+        Route::get('/attendance/history', [AttendanceController::class, 'history'])->name('attendance.history');
         Route::post('/attendance/check-in', [AttendanceController::class, 'checkIn'])->name('attendance.check_in');
         Route::post('/attendance/check-out', [AttendanceController::class, 'checkOut'])->name('attendance.check_out');
     });

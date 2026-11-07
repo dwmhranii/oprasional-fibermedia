@@ -54,6 +54,7 @@ import {
   CheckSquare,
   Square,
   DollarSign,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient, ApiError, API_BASE_URL, getToken } from '../../lib/api';
@@ -104,7 +105,7 @@ const ALL_COLUMNS: ColumnDef[] = [
 
 export const CustomerManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isSuperadmin =
@@ -135,22 +136,55 @@ export const CustomerManagement: React.FC = () => {
 
   // Sync state if URL search params change
   useEffect(() => {
-    const s = searchParams.get('status');
-    if (s) setStatusFilter(s);
-
-    if (searchParams.has('has_debt')) {
-      setDebtOnly(searchParams.get('has_debt') === '1');
-    }
-
-    const expFrom = searchParams.get('expires_from');
-    if (expFrom !== null && expFrom !== undefined) setExpiresFrom(expFrom);
-
-    const expTo = searchParams.get('expires_to');
-    if (expTo !== null && expTo !== undefined) setExpiresTo(expTo);
-
-    const search = searchParams.get('search');
-    if (search !== null && search !== undefined) setSearchTerm(search);
+    setStatusFilter(searchParams.get('status') || 'all');
+    setDebtOnly(searchParams.get('has_debt') === '1');
+    setExpiresFrom(searchParams.get('expires_from') || '');
+    setExpiresTo(searchParams.get('expires_to') || '');
+    setSearchTerm(searchParams.get('search') || '');
+    setWilayahFilter(searchParams.get('wilayah') || 'all');
   }, [searchParams]);
+
+  // Synchronized Filter Handlers
+  const handleToggleDebtOnly = (forcedValue?: boolean) => {
+    const nextVal = forcedValue !== undefined ? forcedValue : !debtOnly;
+    setDebtOnly(nextVal);
+    setPage(1);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextVal) {
+      nextParams.set('has_debt', '1');
+    } else {
+      nextParams.delete('has_debt');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleStatusChange = (val: string) => {
+    setStatusFilter(val);
+    setPage(1);
+    const nextParams = new URLSearchParams(searchParams);
+    if (val && val !== 'all') {
+      nextParams.set('status', val);
+    } else {
+      nextParams.delete('status');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setWilayahFilter('all');
+    setServiceTypeFilter('all');
+    setPackageFilter('all');
+    setOdpFilter('all');
+    setTeamFilter('all');
+    setSalesFilter('all');
+    setDebtOnly(false);
+    setExpiresFrom('');
+    setExpiresTo('');
+    setSearchTerm('');
+    setPage(1);
+    setSearchParams({}, { replace: true });
+  };
 
   // Pagination & Display
   const [page, setPage] = useState(1);
@@ -595,10 +629,7 @@ export const CustomerManagement: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <Select
               value={statusFilter}
-              onValueChange={(val) => {
-                setStatusFilter(val);
-                setPage(1);
-              }}
+              onValueChange={handleStatusChange}
             >
               <SelectTrigger className="w-[140px] text-xs">
                 <SelectValue placeholder="Status" />
@@ -635,10 +666,7 @@ export const CustomerManagement: React.FC = () => {
             <Button
               variant={debtOnly ? 'default' : 'outline'}
               size="sm"
-              onClick={() => {
-                setDebtOnly(!debtOnly);
-                setPage(1);
-              }}
+              onClick={() => handleToggleDebtOnly()}
               className={`text-xs flex items-center gap-1.5 ${
                 debtOnly ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'text-slate-700'
               }`}
@@ -658,6 +686,63 @@ export const CustomerManagement: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Active Filter Indicators */}
+        {(debtOnly || statusFilter !== 'all' || packageFilter !== 'all' || serviceTypeFilter !== 'all' || odpFilter !== 'all' || teamFilter !== 'all' || salesFilter !== 'all' || wilayahFilter !== 'all' || expiresFrom || expiresTo || searchTerm.trim()) && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">Filter aktif:</span>
+            {debtOnly && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-medium">
+                <DollarSign className="w-3 h-3 text-rose-600" />
+                Hutang &gt; 0
+                <button
+                  type="button"
+                  onClick={() => handleToggleDebtOnly(false)}
+                  className="hover:bg-rose-200/60 rounded-full p-0.5 text-rose-600 hover:text-rose-900 transition-colors"
+                  title="Hapus filter hutang"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {statusFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px]">
+                Status: {statusFilter}
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange('all')}
+                  className="hover:bg-slate-200 rounded-full p-0.5 text-slate-500"
+                  title="Hapus filter status"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {searchTerm.trim() && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px]">
+                Cari: "{searchTerm}"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setPage(1);
+                  }}
+                  className="hover:bg-slate-200 rounded-full p-0.5 text-slate-500"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-[11px] text-indigo-600 hover:text-indigo-800 hover:underline ml-1 font-medium"
+            >
+              Bersihkan Semua Filter
+            </button>
+          </div>
+        )}
 
         {/* Collapsible Advanced Filters */}
         {isFilterDrawerOpen && (
@@ -800,19 +885,7 @@ export const CustomerManagement: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setStatusFilter('all');
-                  setWilayahFilter('all');
-                  setServiceTypeFilter('all');
-                  setPackageFilter('all');
-                  setOdpFilter('all');
-                  setTeamFilter('all');
-                  setDebtOnly(false);
-                  setExpiresFrom('');
-                  setExpiresTo('');
-                  setSearchTerm('');
-                  setPage(1);
-                }}
+                onClick={handleResetFilters}
                 className="text-xs text-slate-500 hover:text-slate-800"
               >
                 Reset Semua Filter
@@ -873,8 +946,36 @@ export const CustomerManagement: React.FC = () => {
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="p-8 text-center text-slate-400">
-                    Tidak ada data pelanggan yang cocok dengan pencarian / filter.
+                  <td colSpan={visibleColumns.length + 1} className="p-8 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-slate-700">
+                          {debtOnly
+                            ? 'Tidak Ada Pelanggan dengan Tunggakan Hutang'
+                            : searchTerm.trim() || statusFilter !== 'all' || wilayahFilter !== 'all' || packageFilter !== 'all' || odpFilter !== 'all' || expiresFrom || expiresTo
+                            ? 'Tidak Ada Data Pelanggan yang Cocok'
+                            : 'Belum Ada Data Pelanggan'}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {debtOnly
+                            ? 'Filter "Hutang > 0" sedang aktif, tetapi saat ini seluruh 1.552 pelanggan memiliki saldo lunas (Rp 0).'
+                            : 'Coba ubah kata kunci pencarian atau bersihkan filter yang sedang aktif.'}
+                        </p>
+                      </div>
+                      {(debtOnly || searchTerm.trim() || statusFilter !== 'all' || wilayahFilter !== 'all' || serviceTypeFilter !== 'all' || packageFilter !== 'all' || odpFilter !== 'all' || expiresFrom || expiresTo) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleResetFilters}
+                          className="text-xs mt-1 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium"
+                        >
+                          Tampilkan Semua Data Pelanggan ({statsData?.total ?? 1552})
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

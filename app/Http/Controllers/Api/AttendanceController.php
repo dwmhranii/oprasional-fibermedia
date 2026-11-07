@@ -140,6 +140,48 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Riwayat absensi pribadi pengguna (PWA / Mobile).
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $limit = min((int) $request->input('limit', 30), 100);
+
+        $attendances = DailyAttendance::with(['office', 'checkInMedia', 'checkOutMedia'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('work_date')
+            ->orderByDesc('check_in_at')
+            ->take($limit)
+            ->get()
+            ->map(function ($att) {
+                return [
+                    'id' => (string) $att->id,
+                    'user_id' => $att->user_id,
+                    'work_date' => $att->work_date ? $att->work_date->toDateString() : null,
+                    'status' => $att->status,
+                    'attendance_channel' => $att->track === 'field' ? 'field' : 'office',
+                    'check_in_at' => $att->check_in_at ? $att->check_in_at->toIso8601String() : null,
+                    'check_out_at' => $att->check_out_at ? $att->check_out_at->toIso8601String() : null,
+                    'check_in_time' => $att->check_in_at ? $att->check_in_at->format('H:i') : null,
+                    'check_out_time' => $att->check_out_at ? $att->check_out_at->format('H:i') : null,
+                    'office_name' => $att->office?->name,
+                    'office_distance_meters' => $att->office_distance_meters,
+                    'wifi_ip' => $att->client_ip,
+                    'wifi_ip_verified' => true,
+                    'is_suspicious' => (bool) $att->is_suspicious,
+                    'review_status' => $att->review_status,
+                    'check_in_photo_url' => $att->checkInMedia?->signed_url,
+                    'check_out_photo_url' => $att->checkOutMedia?->signed_url,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $attendances,
+        ]);
+    }
+
+    /**
      * Halaman Admin: Absensi Harian Hari Ini.
      * Mengembalikan:
      * 1. Tabel siapa sudah masuk/pulang hari ini (jam, lokasi lat/lng, penanda di luar radius).
@@ -148,11 +190,23 @@ class AttendanceController extends Controller
      */
     public function adminToday(Request $request): JsonResponse
     {
-        $today = Carbon::today()->toDateString();
+        $targetDate = $request->input('date');
+        $query = DailyAttendance::with(['user.teams', 'office', 'checkInMedia', 'checkOutMedia', 'setBy', 'reviewedBy']);
 
-        // 1. Ambil absensi hari ini beserta relasinya
-        $query = DailyAttendance::with(['user.teams', 'office', 'checkInMedia', 'checkOutMedia', 'setBy', 'reviewedBy'])
-            ->whereDate('work_date', $today);
+        if ($targetDate && $targetDate !== 'all') {
+            try {
+                $today = Carbon::parse($targetDate)->toDateString();
+            } catch (\Exception $e) {
+                $today = Carbon::today()->toDateString();
+            }
+            $query->whereDate('work_date', $today);
+        } elseif ($targetDate === 'all') {
+            $today = Carbon::today()->toDateString();
+            $query->orderByDesc('work_date')->orderByDesc('check_in_at')->take(100);
+        } else {
+            $today = Carbon::today()->toDateString();
+            $query->whereDate('work_date', $today);
+        }
 
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('status', $request->input('status'));

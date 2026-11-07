@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class AssignmentLog extends Model
 {
-    public const UPDATED_AT = null;
-
     protected $fillable = [
         'assignable_type',
         'assignable_id',

@@ -210,7 +210,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateTab 
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-300">
                 <span className="flex items-center gap-1">
                   <Wifi className="w-3 h-3 text-cyan-400" />
-                  <span>GEOFENCE 50M + IP KANTOR ({office.allowed_wifi_ip})</span>
+                  <span>Radius Kantor ({office.radius_meters}m)</span>
                 </span>
                 <span
                   className={`font-bold tabular-nums ${
@@ -219,7 +219,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateTab 
                       : 'text-rose-400'
                   }`}
                 >
-                  {officeGeo.distanceMeters}m / {office.radius_meters}m · ±{currentGps.accuracy}m
+                  {officeGeo.distanceMeters}m / {office.radius_meters}m
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-slate-950/90 overflow-hidden">
@@ -567,22 +567,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateTab 
                 {todayAttendance?.check_in_at ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="text-emerald-300">Sudah Check-In Lapangan Hari Ini</span>
+                    <span className="text-emerald-300">Sudah Absen Hari Ini</span>
                   </>
                 ) : (
                   <>
                     <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="text-amber-300">Belum Check-In Lapangan (field_checkin)</span>
+                    <span className="text-amber-300">Belum Absen Lapangan</span>
                   </>
                 )}
               </div>
               <p className="text-[11px] text-slate-300 font-mono tabular-nums">
                 {todayAttendance?.check_in_at
-                  ? `Masuk pukul ${new Date(todayAttendance.check_in_at).toLocaleTimeString('id-ID', {
+                  ? `Masuk: ${new Date(todayAttendance.check_in_at).toLocaleTimeString('id-ID', {
                       hour: '2-digit',
                       minute: '2-digit',
-                    })} WIB · Jalur Lapangan (Tanpa Wi-Fi Kantor)`
-                  : `Jalur Lapangan: Selfie + Geotag GPS (±${currentGps.accuracy}m) dari titik prospek`}
+                    })} WIB`
+                  : 'Lokasi Lapangan'}
               </p>
             </div>
 
@@ -871,7 +871,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateTab 
             />
             <div>
               <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
-                NOC & ADMIN ATTENDANCE NODE
+                Petugas Kantor
               </p>
               <h1 className="text-base font-extrabold text-white">{currentUser.name}</h1>
               <p
@@ -899,7 +899,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigateTab 
                 : 'Belum Absen Masuk Hari Ini'}
             </p>
             <p className="text-[11px] text-slate-300 mt-0.5">
-              Sesuai PRD v1.2: Peran Kantor wajib absen Jalur Kantor (≤50m + Wi-Fi Kantor).
+              Radius kantor ≤50m & terhubung jaringan.
             </p>
           </div>
           <button

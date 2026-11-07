@@ -280,8 +280,13 @@ export const DashboardStatCardsRow: React.FC<DashboardStatCardsRowProps> = ({
 
   // Gangguan Massal Aktif (Fase N1)
   if (jaringan?.gangguan_massal_aktif) {
-    const totalIncidents = jaringan.gangguan_massal_aktif.total_insiden ?? 0;
-    const totalAffectedCustomers = jaringan.gangguan_massal_aktif.total_pelanggan_terdampak ?? 0;
+    const isObj = typeof jaringan.gangguan_massal_aktif === 'object' && jaringan.gangguan_massal_aktif !== null;
+    const totalIncidents = isObj
+      ? Number((jaringan.gangguan_massal_aktif as any).total_insiden ?? 0)
+      : Number(jaringan.gangguan_massal_aktif ?? 0);
+    const totalAffectedCustomers = isObj
+      ? Number((jaringan.gangguan_massal_aktif as any).total_pelanggan_terdampak ?? 0)
+      : 0;
 
     jaringanItems.unshift({
       id: 'stat-gangguan-massal-aktif',

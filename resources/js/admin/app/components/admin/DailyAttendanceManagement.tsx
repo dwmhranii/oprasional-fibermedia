@@ -141,11 +141,19 @@ export const DailyAttendanceManagement: React.FC = () => {
   // Photo viewer modal state
   const [photoViewerUrl, setPhotoViewerUrl] = useState<string | null>(null);
 
-  // 1. Fetch Today Attendances & Readiness
+  // Tanggal filter absensi (bawaan hari ini)
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const [filterDate, setFilterDate] = useState<string>(todayDateStr);
+
+  // 1. Fetch Attendances & Readiness sesuai tanggal
   const { data, isLoading, refetch, isRefetching } = useQuery<{ success: boolean; data: TodayAttendanceData }>({
-    queryKey: ['dailyAttendances', 'today'],
+    queryKey: ['dailyAttendances', filterDate],
     queryFn: async () => {
-      return await apiClient.get('/attendances/today');
+      return await apiClient.get('/attendances/today', {
+        params: {
+          date: filterDate,
+        },
+      });
     },
     refetchInterval: 15000,
   });
@@ -300,7 +308,35 @@ export const DailyAttendanceManagement: React.FC = () => {
             Pantau kehadiran personil hari ini ({attendanceData?.date || workDate}), validasi jalur kantor & lapangan, dan antrean giliran tim.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Pemilih Tanggal */}
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
+            <Button
+              type="button"
+              variant={filterDate === todayDateStr ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setFilterDate(todayDateStr)}
+              className="h-8 px-2.5 text-xs font-medium"
+            >
+              Hari Ini
+            </Button>
+            <Button
+              type="button"
+              variant={filterDate === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setFilterDate('all')}
+              className="h-8 px-2.5 text-xs font-medium"
+            >
+              Semua
+            </Button>
+            <Input
+              type="date"
+              value={filterDate === 'all' ? '' : filterDate}
+              onChange={(e) => setFilterDate(e.target.value || todayDateStr)}
+              className="h-8 w-36 text-xs bg-background border-border"
+            />
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -309,17 +345,17 @@ export const DailyAttendanceManagement: React.FC = () => {
               refetchOffices();
             }}
             disabled={isRefetching}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-1.5 h-8 text-xs"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
             Segarkan
           </Button>
           <Button
             size="sm"
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+            className="flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircle className="w-3.5 h-3.5" />
             Input Absen Manual
           </Button>
         </div>

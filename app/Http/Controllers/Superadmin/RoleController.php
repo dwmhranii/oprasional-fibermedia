@@ -362,7 +362,12 @@ class RoleController extends Controller
     {
         $raw = $request->input('permissions');
         if (is_string($raw)) {
-            $permissions = array_filter(array_map('trim', explode(',', $raw)));
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $permissions = $decoded;
+            } else {
+                $permissions = array_filter(array_map('trim', explode(',', $raw)));
+            }
         } elseif (is_array($raw)) {
             $permissions = $raw;
         } else {

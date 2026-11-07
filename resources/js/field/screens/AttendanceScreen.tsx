@@ -300,28 +300,22 @@ export const AttendanceScreen: React.FC = () => {
 
       {/* 2. Tampilan Absensi Wajah Kamera Langsung (Sesuai Gambar 3) */}
       <div className={`rounded-3xl p-4 sm:p-5 border space-y-4 ${cardSurfaceClass}`}>
-        {/* Header Bagian: Label Kategori, Judul, & Status Kamera */}
+        {/* Header Bagian: Judul & Status Kamera */}
         <div className="flex items-start justify-between gap-2">
           <div>
-            <span
-              className="text-xs font-mono font-extrabold tracking-wider uppercase block"
-              style={{ color: accentConfig.secondaryHex }}
-            >
-              ABSENSI WAJAH
-            </span>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              Posisikan wajah Anda
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Absensi Kamera
             </h3>
           </div>
           <div className="shrink-0">
             {cameraActive ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Kamera Aktif
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 Siapkan Kamera
               </span>
             )}
@@ -526,28 +520,34 @@ export const AttendanceScreen: React.FC = () => {
             Riwayat Absensi
           </h3>
           <Badge tone="info" mono>
-            {attendances.filter((att) => att.user_id === currentUser.id).length} Hari Terakhir
+            {attendances.filter((att) => att.user_id === currentUser.id).length} Hari
           </Badge>
         </div>
 
         <div className="space-y-2">
-          {attendances
-            .filter((att) => att.user_id === currentUser.id)
-            .sort((a, b) => b.work_date.localeCompare(a.work_date))
-            .map((att) => {
-              const todayStr = new Date().toISOString().split('T')[0];
-              const isToday = att.work_date === todayStr;
+          {attendances.filter((att) => att.user_id === currentUser.id).length === 0 ? (
+            <div className="text-center py-6 text-xs text-slate-400">
+              Belum ada riwayat absensi.
+            </div>
+          ) : (
+            attendances
+              .filter((att) => att.user_id === currentUser.id)
+              .sort((a, b) => (b.work_date || '').localeCompare(a.work_date || ''))
+              .map((att) => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const isToday = att.work_date === todayStr;
 
-              return (
-                <AttendanceReviewCard
-                  key={att.id}
-                  attendance={att}
-                  userName={currentUser.name}
-                  userAvatar={currentUser.avatar}
-                  isToday={isToday}
-                />
-              );
-            })}
+                return (
+                  <AttendanceReviewCard
+                    key={att.id}
+                    attendance={att}
+                    userName={currentUser.name}
+                    userAvatar={currentUser.avatar}
+                    isToday={isToday}
+                  />
+                );
+              })
+          )}
         </div>
       </div>
     </div>
