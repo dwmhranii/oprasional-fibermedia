@@ -44,6 +44,13 @@ export const AddressStep: React.FC<AddressStepProps> = ({ form }) => {
     const [isLocating, setIsLocating] = useState(false);
 
     const handleGetLocation = () => {
+        if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            form.setValue('coordinates.lat', -8.081413);
+            form.setValue('coordinates.lng', 112.637789);
+            toast.info('GPS diblokir browser HTTP. Koordinat area Bululawang (-8.081413, 112.637789) diisikan otomatis.');
+            return;
+        }
+
         if (!navigator.geolocation) {
             toast.error('Browser Anda tidak mendukung geolokasi.');
             return;
@@ -60,9 +67,15 @@ export const AddressStep: React.FC<AddressStepProps> = ({ form }) => {
             (error) => {
                 setIsLocating(false);
                 let message = 'Gagal mendapatkan lokasi.';
-                if (error.code === error.PERMISSION_DENIED) message = 'Izin akses lokasi ditolak oleh browser Anda.';
-                if (error.code === error.POSITION_UNAVAILABLE) message = 'Informasi lokasi tidak tersedia.';
-                if (error.code === error.TIMEOUT) message = 'Waktu pencarian lokasi habis.';
+                if (error.message && (error.message.toLowerCase().includes('secure origin') || error.message.toLowerCase().includes('secure origins'))) {
+                    message = 'Fitur GPS diblokir browser karena halaman dibuka tanpa HTTPS. Silakan buka via http://localhost atau isi koordinat secara manual.';
+                } else if (error.code === error.PERMISSION_DENIED) {
+                    message = 'Izin akses lokasi ditolak oleh browser Anda.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    message = 'Informasi lokasi tidak tersedia.';
+                } else if (error.code === error.TIMEOUT) {
+                    message = 'Waktu pencarian lokasi habis.';
+                }
                 toast.error(message);
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }

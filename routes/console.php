@@ -19,4 +19,5 @@ Schedule::command('dispatch:assign-pending')->everyTwoMinutes();
 Schedule::command('dispatch:check-no-response')->everyMinute();
 Schedule::command('phase2:lock-requirements')->everyFiveMinutes();
 Schedule::command('bras:sync-sessions')->everyFiveMinutes();
+Schedule::command('odp:release-held-ports')->hourly();
 Schedule::command('kpi:snapshot')->dailyAt('00:05');

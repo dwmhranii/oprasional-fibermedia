@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api';
 import { CableRouteDrawer } from '../maps/CableRouteDrawer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { NodeStatusChangeModal } from './NodeStatusChangeModal';
 import {
   Route,
   Layers,
@@ -25,10 +26,13 @@ export const NetworkCableManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
 
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusModalNode, setStatusModalNode] = useState<any | null>(null);
+
   const { data: cableTracks, isLoading, refetch } = useQuery({
     queryKey: ['cableTracks', activeTab],
     queryFn: async () => {
-      const endpoint = activeTab === 'undrawn' ? '/admin/cable-tracks?undrawn=1' : '/admin/cable-tracks';
+      const endpoint = activeTab === 'undrawn' ? '/cable-tracks?undrawn=1' : '/cable-tracks';
       const res = await apiClient.get<any>(endpoint);
       return res?.data || (Array.isArray(res) ? res : []);
     },
@@ -36,7 +40,7 @@ export const NetworkCableManagement: React.FC = () => {
 
   const approveMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.post(`/admin/cable-tracks/${id}/approve`);
+      return await apiClient.post(`/cable-tracks/${id}/approve`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cableTracks'] });
@@ -45,7 +49,7 @@ export const NetworkCableManagement: React.FC = () => {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      return await apiClient.put(`/admin/cable-tracks/${id}`, { operational_status: status });
+      return await apiClient.put(`/cable-tracks/${id}`, { operational_status: status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cableTracks'] });
@@ -231,37 +235,26 @@ export const NetworkCableManagement: React.FC = () => {
                       </p>
                     )}
 
-                    {/* Actions: Approve & Operational Status */}
+                    {/* Actions: Operational Status & Approval */}
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => updateStatusMutation.mutate({ id: track.id, status: 'normal' })}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                            status === 'normal' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          Normal
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updateStatusMutation.mutate({ id: track.id, status: 'disrupted' })}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                            status === 'disrupted' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          Gangguan
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updateStatusMutation.mutate({ id: track.id, status: 'cut' })}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                            status === 'cut' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          Cut
-                        </button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant={isCut || isDisrupted ? 'destructive' : 'outline'}
+                        onClick={() => {
+                          setStatusModalNode({
+                            id: track.id,
+                            type: 'cable',
+                            name: track.name,
+                            code: track.code || track.name,
+                            status: track.operational_status || 'normal',
+                          });
+                          setStatusModalOpen(true);
+                        }}
+                        className="h-7 text-xs"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                        Ubah Status
+                      </Button>
 
                       {track.status === 'proposed' && (
                         <Button
@@ -289,6 +282,14 @@ export const NetworkCableManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Ubah Status & Pratinjau Dampak */}
+      <NodeStatusChangeModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        node={statusModalNode}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };

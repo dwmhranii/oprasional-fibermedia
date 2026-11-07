@@ -29,7 +29,7 @@ class FieldService
         $device->platform = $data['platform'] ?? $device->platform;
         $device->last_seen_at = now();
 
-        if (! $device->exists && (config('app.env') !== 'production' || $user->hasRole('Superadmin'))) {
+        if (! $device->exists && (config('app.env') !== 'production' || $user->can('devices.manage'))) {
             $device->approved_at = now();
             $device->approved_by_id = $user->id;
         }

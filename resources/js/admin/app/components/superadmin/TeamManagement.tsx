@@ -60,8 +60,8 @@ import {
 } from '../ui/alert-dialog';
 import { Skeleton } from '../ui/skeleton';
 import { teamService, Team, TeamMember } from '../../lib/teamService';
-import { PageHeader, StatCards, StatusBadge } from '@/../../shared/ui';
-import { formatPhone } from '@/../../shared/lib/formatters';
+import { PageHeader, StatCards, StatusBadge } from '@shared/ui';
+import { formatPhone } from '@shared/lib/formatters';
 
 export const TeamManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -283,9 +283,8 @@ export const TeamManagement: React.FC = () => {
         title="Manajemen Tim"
         description="Atur komposisi tim teknisi lapangan, alokasikan personil, dan monitor pembagian tiket pengaduan."
         breadcrumb={[
-          { label: 'Admin', href: '#' },
-          { label: 'Superadmin', href: '#' },
-          { label: 'Manajemen Tim' },
+          { label: 'Beranda', href: '/dashboard' },
+          { label: 'Tim dan Anggota' },
         ]}
         actions={
           <div className="flex items-center gap-2">
@@ -316,31 +315,31 @@ export const TeamManagement: React.FC = () => {
 
       {/* KPI Stats Overview */}
       <StatCards
-        loading={isTeamsLoading}
-        stats={[
+        isLoading={isTeamsLoading}
+        items={[
           {
             title: 'Total Tim Lapangan',
             value: stats.total,
-            description: 'Semua tim terdaftar',
+            subtitle: 'Semua tim terdaftar',
             icon: Users,
           },
           {
             title: 'Tim Siap Tugas',
             value: stats.active,
-            description: 'Status Aktif & Siap',
+            subtitle: 'Status Aktif & Siap',
             icon: CheckCircle2,
-            trend: { value: 100, label: 'Siap tugas', isPositive: true },
+            trend: { value: 100, label: 'Siap tugas', isUp: true },
           },
           {
             title: 'Teknisi Terpetakan',
             value: stats.totalMembersAssigned,
-            description: `Dari total ${allTechnicians.length} teknisi`,
+            subtitle: `Dari total ${allTechnicians.length} teknisi`,
             icon: UserCheck,
           },
           {
             title: 'Beban Tiket Aktif',
             value: stats.totalActiveTickets,
-            description: 'Dalam penanganan',
+            subtitle: 'Dalam penanganan',
             icon: Activity,
           },
         ]}

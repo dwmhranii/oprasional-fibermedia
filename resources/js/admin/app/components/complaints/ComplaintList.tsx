@@ -14,9 +14,16 @@ import { ComplaintPriorityBadge } from './ComplaintPriorityBadge';
 import { SlaCountdown } from './SlaCountdown';
 import { ComplaintAssignModal } from './ComplaintAssignModal';
 import { formatDate } from '../../lib/formatters';
-import type { ComplaintListItem, Complaint } from '../../types/complaint';
-import { Eye, UserCheck,
-  Users, ChevronLeft, ChevronRight, Inbox, Clock } from 'lucide-react';
+import {
+  Eye,
+  UserCheck,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Clock,
+  AlertTriangle,
+} from 'lucide-react';
 
 interface ComplaintListProps {
   complaints: ComplaintListItem[];
@@ -84,7 +91,7 @@ export const ComplaintList: React.FC<ComplaintListProps> = ({
               <TableRow
                 key={item.id}
                 className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
-                onClick={() => navigate(`/admin/complaints/${item.id}`)}
+                onClick={() => navigate(`/complaints/${item.id}`)}
               >
                 {/* Ticket Number & Date */}
                 <TableCell className="font-medium text-xs">
@@ -94,6 +101,14 @@ export const ComplaintList: React.FC<ComplaintListProps> = ({
                   <div className="text-[11px] text-gray-400 mt-0.5">
                     {formatDate(item.created_at)}
                   </div>
+                  {(item.is_mass || item.category === 'mass_outage') && (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
+                        Massal ({item.affected_customers_count ?? 0} pelanggan)
+                      </span>
+                    </div>
+                  )}
                 </TableCell>
 
                 {/* Customer */}
@@ -165,7 +180,7 @@ export const ComplaintList: React.FC<ComplaintListProps> = ({
                       size="sm"
                       variant="ghost"
                       className="h-7 text-xs px-2 text-gray-600 hover:text-gray-900"
-                      onClick={() => navigate(`/admin/complaints/${item.id}`)}
+                      onClick={() => navigate(`/complaints/${item.id}`)}
                     >
                       <Eye className="w-3.5 h-3.5 mr-1" />
                       Detail

@@ -120,9 +120,9 @@ export const LiveFleetTracking: React.FC = () => {
     // Extract raw ID if format is WO-CMP-12 or WO-TSK-4
     const rawId = wo.id.replace(/^WO-(CMP|TSK)-/, '');
     if (wo.type === 'psb') {
-      navigate(`/admin/tasks/${rawId}`);
+      navigate(`/work-orders/${rawId}`);
     } else {
-      navigate(`/admin/complaints/${rawId}`);
+      navigate(`/complaints/${rawId}`);
     }
   };
 
@@ -294,8 +294,9 @@ export const LiveFleetTracking: React.FC = () => {
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, USGS, Fibermedia Ops'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={19}
               />
 
               <FitMapBounds workOrders={workOrders} />

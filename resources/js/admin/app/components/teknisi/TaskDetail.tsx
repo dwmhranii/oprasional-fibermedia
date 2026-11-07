@@ -97,7 +97,7 @@ export const TaskDetail: React.FC = () => {
   // Fetch task detail using only the user context isolation
   const { data: task, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['tasks', 'detail', id, user?.id],
-    queryFn: () => apiClient.get<any>(`/teknisi/tasks/${id}`),
+    queryFn: () => apiClient.get<any>(`/tasks/${id}`),
     enabled: !!id,
     staleTime: 1000 * 5, // 5 seconds
     refetchInterval: 5000, // React Query polling for team sync
@@ -144,7 +144,7 @@ export const TaskDetail: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await apiClient.put(`/teknisi/tasks/${id}/status`, { status: transitionType });
+      await apiClient.put(`/tasks/${id}/status`, { status: transitionType });
       toast.success(`Status penugasan berhasil diubah ke: ${transitionType.toUpperCase().replace(/_/g, ' ')}`);
       
       setTransitionType(null);
@@ -171,7 +171,7 @@ export const TaskDetail: React.FC = () => {
     }
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/teknisi/work-orders')} className="mb-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/work-orders')} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Work Order
         </Button>
         <Alert variant="destructive">
@@ -253,7 +253,7 @@ export const TaskDetail: React.FC = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate('/teknisi/work-orders')}
+                onClick={() => navigate('/work-orders')}
                 className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10 shrink-0"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -307,7 +307,7 @@ export const TaskDetail: React.FC = () => {
               (task.current_assignment?.status === 'assigned' || task.current_assignment?.status === 'returned' || task.current_assignment?.status === 'in_progress' || task.current_assignment?.status === 'on_the_way') && (
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => navigate(`/teknisi/tasks/${task.id}/complete`)}
+                  onClick={() => navigate(`/work-orders/${task.id}`)}
                   className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2"
                   disabled={isSubmitting}
                 >
@@ -328,7 +328,7 @@ export const TaskDetail: React.FC = () => {
 
             {(task.status === 'returned' || task.current_assignment?.status === 'returned') && (
               <Button
-                onClick={() => navigate(`/teknisi/tasks/${task.id}/complete`)}
+                onClick={() => navigate(`/work-orders/${task.id}`)}
                 className="w-full h-11 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2"
                 disabled={isSubmitting}
               >

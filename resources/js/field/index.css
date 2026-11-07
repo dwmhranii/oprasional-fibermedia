@@ -1,0 +1,247 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   FIBERMEDIA FTTH DESIGN SYSTEM — FOUNDATION TOKENS (LIGHT & DARK)
+   Pola Penamaan Token: --kategori-peran-skala
+   ============================================================================ */
+:root {
+  /* Typography Tokens */
+  --font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Brand & Optical Accent Tokens (Default: Navy & Optical Cyan) */
+  --color-brand-navy: #0a162e;
+  --color-brand-primary: #0891b2;
+  --color-brand-accent: #06b6d4;
+  --color-brand-accent-hover: #0e7490;
+  --color-brand-on-primary: #ffffff;
+  --color-brand-glow: rgba(6, 182, 212, 0.20);
+  --isp-accent: #06b6d4;
+  --isp-accent-light: #38bdf8;
+  --isp-accent-glow: rgba(6, 182, 212, 0.22);
+
+  /* Surface & Neutral Tokens (Mode Terang - High Contrast Outdoor PWA) */
+  --color-surface-canvas: #f1f5f9;
+  --color-surface-card: #ffffff;
+  --color-surface-elevated: #f8fafc;
+  --color-surface-muted: #e2e8f0;
+  --color-surface-header: #0a162e;
+
+  /* Content / Text Tokens (WCAG AA+ Verified) */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #f8fafc;
+
+  /* Border / Divider Tokens */
+  --color-border-subtle: #cbd5e1;
+  --color-border-strong: #94a3b8;
+  --color-border-focus: #06b6d4;
+
+  /* Semantic Status Tokens: Safe / Normal (Hijau) */
+  --color-status-safe-bg: #dcfce7;
+  --color-status-safe-fg: #166534;
+  --color-status-safe-border: #86efac;
+
+  /* Semantic Status Tokens: Warning / SLA Hampir Lewat (Kuning/Oranye) */
+  --color-status-warning-bg: #fef3c7;
+  --color-status-warning-fg: #92400e;
+  --color-status-warning-border: #fcd34d;
+
+  /* Semantic Status Tokens: Danger / SLA Lewat Batas / LOS (Merah) */
+  --color-status-danger-bg: #fee2e2;
+  --color-status-danger-fg: #991b1b;
+  --color-status-danger-border: #fca5a5;
+
+  /* Semantic Status Tokens: Paused / Dijeda / Offline (Abu) */
+  --color-status-paused-bg: #e2e8f0;
+  --color-status-paused-fg: #334155;
+  --color-status-paused-border: #cbd5e1;
+
+  /* Semantic Status Tokens: Info / Dalam Perjalanan (Cyan Optik) */
+  --color-status-info-bg: #cffafe;
+  --color-status-info-fg: #155e75;
+  --color-status-info-border: #67e8f9;
+
+  /* Spacing & Touch Target Tokens (PWA >= 48px) */
+  --space-touch-min: 3rem; /* 48px */
+  --space-card-pad: 1rem;  /* 16px */
+  --space-section-gap: 1rem;
+
+  /* Radius Tokens (8px - 12px sesuai spesifikasi) */
+  --radius-token-sm: 0.5rem;   /* 8px */
+  --radius-token-md: 0.625rem; /* 10px */
+  --radius-token-lg: 0.75rem;  /* 12px */
+
+  /* Shadow & Optical Glow Tokens */
+  --shadow-token-card: 0 2px 8px -2px rgba(15, 23, 42, 0.08), 0 1px 3px -1px rgba(15, 23, 42, 0.05);
+  --shadow-token-elevated: 0 10px 25px -5px rgba(15, 23, 42, 0.14);
+  --shadow-token-glow: 0 0 0 3px rgba(6, 182, 212, 0.25);
+
+  /* Motion Tokens */
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  --motion-easing-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Z-Index Tokens */
+  --z-sticky: 30;
+  --z-banner: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}
+
+.dark {
+  /* Brand & Optical Accent Tokens (Mode Gelap - Navy Dasar & Cahaya Serat Optik) */
+  --color-brand-navy: #060d1e;
+  --color-brand-primary: #06b6d4;
+  --color-brand-accent: #22d3ee;
+  --color-brand-accent-hover: #38bdf8;
+  --color-brand-on-primary: #041022;
+  --color-brand-glow: rgba(34, 211, 238, 0.22);
+
+  /* Surface & Neutral Tokens (Mode Gelap) */
+  --color-surface-canvas: #060d1e;
+  --color-surface-card: #0b1730;
+  --color-surface-elevated: #0f2042;
+  --color-surface-muted: #071022;
+  --color-surface-header: #050b18;
+
+  /* Content / Text Tokens */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: #0f172a;
+
+  /* Border / Divider Tokens */
+  --color-border-subtle: #1e3a6e;
+  --color-border-strong: #254b8c;
+  --color-border-focus: #22d3ee;
+
+  /* Semantic Status Tokens: Safe / Normal (Hijau) */
+  --color-status-safe-bg: rgba(16, 185, 129, 0.16);
+  --color-status-safe-fg: #34d399;
+  --color-status-safe-border: rgba(52, 211, 153, 0.40);
+
+  /* Semantic Status Tokens: Warning / SLA Hampir Lewat (Oranye/Kuning) */
+  --color-status-warning-bg: rgba(245, 158, 11, 0.18);
+  --color-status-warning-fg: #fbbf24;
+  --color-status-warning-border: rgba(251, 191, 36, 0.45);
+
+  /* Semantic Status Tokens: Danger / SLA Lewat Batas / LOS (Merah) */
+  --color-status-danger-bg: rgba(239, 68, 68, 0.18);
+  --color-status-danger-fg: #f87171;
+  --color-status-danger-border: rgba(248, 113, 113, 0.45);
+
+  /* Semantic Status Tokens: Paused / Dijeda (Abu) */
+  --color-status-paused-bg: rgba(148, 163, 184, 0.16);
+  --color-status-paused-fg: #cbd5e1;
+  --color-status-paused-border: rgba(148, 163, 184, 0.35);
+
+  /* Semantic Status Tokens: Info / Dalam Perjalanan (Cyan Optik) */
+  --color-status-info-bg: rgba(6, 182, 212, 0.18);
+  --color-status-info-fg: #22d3ee;
+  --color-status-info-border: rgba(34, 211, 238, 0.45);
+
+  /* Shadow & Optical Glow Tokens */
+  --shadow-token-card: 0 4px 16px -4px rgba(2, 6, 23, 0.65);
+  --shadow-token-elevated: 0 12px 32px -6px rgba(2, 6, 23, 0.80);
+  --shadow-token-glow: 0 0 16px rgba(34, 211, 238, 0.25);
+}
+
+@theme {
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+
+  --color-brand-navy: var(--color-brand-navy);
+  --color-brand-primary: var(--color-brand-primary);
+  --color-brand-accent: var(--color-brand-accent);
+  --color-brand-accent-hover: var(--color-brand-accent-hover);
+  --color-brand-on-primary: var(--color-brand-on-primary);
+
+  --color-surface-canvas: var(--color-surface-canvas);
+  --color-surface-card: var(--color-surface-card);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-surface-header: var(--color-surface-header);
+
+  --color-content-primary: var(--color-text-primary);
+  --color-content-secondary: var(--color-text-secondary);
+  --color-content-muted: var(--color-text-muted);
+  --color-content-inverse: var(--color-text-inverse);
+
+  --color-edge-subtle: var(--color-border-subtle);
+  --color-edge-strong: var(--color-border-strong);
+  --color-edge-focus: var(--color-border-focus);
+
+  --color-status-safe-bg: var(--color-status-safe-bg);
+  --color-status-safe-fg: var(--color-status-safe-fg);
+  --color-status-safe-border: var(--color-status-safe-border);
+
+  --color-status-warning-bg: var(--color-status-warning-bg);
+  --color-status-warning-fg: var(--color-status-warning-fg);
+  --color-status-warning-border: var(--color-status-warning-border);
+
+  --color-status-danger-bg: var(--color-status-danger-bg);
+  --color-status-danger-fg: var(--color-status-danger-fg);
+  --color-status-danger-border: var(--color-status-danger-border);
+
+  --color-status-paused-bg: var(--color-status-paused-bg);
+  --color-status-paused-fg: var(--color-status-paused-fg);
+  --color-status-paused-border: var(--color-status-paused-border);
+
+  --color-status-info-bg: var(--color-status-info-bg);
+  --color-status-info-fg: var(--color-status-info-fg);
+  --color-status-info-border: var(--color-status-info-border);
+
+  --radius-token-sm: var(--radius-token-sm);
+  --radius-token-md: var(--radius-token-md);
+  --radius-token-lg: var(--radius-token-lg);
+
+  --shadow-token-card: var(--shadow-token-card);
+  --shadow-token-elevated: var(--shadow-token-elevated);
+  --shadow-token-glow: var(--shadow-token-glow);
+
+  --spacing-touch: var(--space-touch-min);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-family-sans);
+    background-color: var(--color-surface-canvas);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .font-mono {
+    font-family: var(--font-family-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Canvas Backgrounds using Semantic Tokens */
+.isp-grid-dark {
+  background-color: var(--color-surface-canvas);
+}
+
+.isp-grid-day {
+  background-color: var(--color-surface-canvas);
+}
+
+/* Header-Only Fiber Node Topology Decoration (Sesuai aturan: hanya di header/login, tidak di area data) */
+.fiber-header-topology {
+  background-color: var(--color-surface-header);
+  background-image:
+    radial-gradient(circle at 85% 20%, var(--color-brand-glow), transparent 45%),
+    radial-gradient(circle at 15% 80%, rgba(14, 165, 233, 0.12), transparent 50%);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

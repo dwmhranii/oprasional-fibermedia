@@ -22,7 +22,8 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import type { Odp, Odc, OperationalStatus, OdpPortItem } from '../../../shared/types/api.generated';
-import { formatCoordinate } from '@/../../shared/lib/formatters';
+import { formatCoordinate } from '@shared/lib/formatters';
+import { NodeStatusChangeModal } from './NodeStatusChangeModal';
 
 export const OdpManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -42,6 +43,9 @@ export const OdpManagement: React.FC = () => {
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingOdp, setEditingOdp] = useState<Odp | null>(null);
 
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusModalNode, setStatusModalNode] = useState<any | null>(null);
+
   const [formData, setFormData] = useState({
     odc_id: '',
     code: '',
@@ -60,7 +64,7 @@ export const OdpManagement: React.FC = () => {
   const { data: odcsResponse } = useQuery({
     queryKey: ['odcs-list'],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/odcs', { params: { per_page: 100 } });
+      const res = await apiClient.get<any>('/odcs', { params: { per_page: 100 } });
       return res?.data || [];
     },
   });
@@ -70,7 +74,7 @@ export const OdpManagement: React.FC = () => {
   const { data: odpResponse, isLoading, refetch } = useQuery({
     queryKey: ['odps', page, search, odcFilter, statusFilter, approvalFilter],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/odps', {
+      const res = await apiClient.get<any>('/odps', {
         params: {
           page,
           search: search || undefined,
@@ -88,7 +92,7 @@ export const OdpManagement: React.FC = () => {
 
   const openPortVisualizer = async (odp: Odp) => {
     try {
-      const detail = await apiClient.get<any>(`/admin/odps/${odp.id}`);
+      const detail = await apiClient.get<any>(`/odps/${odp.id}`);
       setSelectedOdpForPorts(detail?.data || odp);
       setPortModalOpen(true);
     } catch {
@@ -155,9 +159,9 @@ export const OdpManagement: React.FC = () => {
       };
 
       if (editingOdp) {
-        return await apiClient.put(`/admin/odps/${editingOdp.id}`, payload);
+        return await apiClient.put(`/odps/${editingOdp.id}`, payload);
       } else {
-        return await apiClient.post('/admin/odps', payload);
+        return await apiClient.post('/odps', payload);
       }
     },
     onSuccess: () => {
@@ -172,7 +176,7 @@ export const OdpManagement: React.FC = () => {
 
   const approveMutation = useMutation({
     mutationFn: async ({ id, approve, notes }: { id: number; approve: boolean; notes?: string }) => {
-      return await apiClient.post(`/admin/odps/${id}/approve`, { approve, notes });
+      return await apiClient.post(`/odps/${id}/approve`, { approve, notes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['odps'] });
@@ -182,7 +186,7 @@ export const OdpManagement: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.delete(`/admin/odps/${id}`);
+      return await apiClient.delete(`/odps/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['odps'] });
@@ -400,15 +404,35 @@ export const OdpManagement: React.FC = () => {
 
                 {/* Actions */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openPortVisualizer(odp)}
-                    className="h-7 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950"
-                  >
-                    <Grid className="w-3.5 h-3.5 mr-1" />
-                    Kotak Port
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openPortVisualizer(odp)}
+                      className="h-7 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                    >
+                      <Grid className="w-3.5 h-3.5 mr-1" />
+                      Kotak Port
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isCut || isDisrupted ? 'destructive' : 'outline'}
+                      onClick={() => {
+                        setStatusModalNode({
+                          id: odp.id,
+                          type: 'odp',
+                          name: odp.name,
+                          code: odp.code,
+                          status: odp.operational_status || 'normal',
+                        });
+                        setStatusModalOpen(true);
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                      Status
+                    </Button>
+                  </div>
 
                   <div className="flex items-center gap-1">
                     <Button
@@ -834,6 +858,14 @@ export const OdpManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Ubah Status & Pratinjau Dampak */}
+      <NodeStatusChangeModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        node={statusModalNode}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };

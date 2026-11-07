@@ -83,12 +83,12 @@ export const DispatchManagement: React.FC = () => {
   const [manualReason, setManualReason] = useState('');
   const [submittingManual, setSubmittingManual] = useState(false);
 
-  const getAuthToken = () => localStorage.getItem('token') || localStorage.getItem('fmp_admin_token') || '';
+  const getAuthToken = () => localStorage.getItem('fm-admin:auth_token') || '';
 
   // Fetch Settings
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/admin/dispatch-settings', {
+      const res = await fetch('/api/dispatch-settings', {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
           Accept: 'application/json',
@@ -107,7 +107,7 @@ export const DispatchManagement: React.FC = () => {
   const fetchPending = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/dispatch/pending', {
+      const res = await fetch('/api/dispatch/pending', {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
           Accept: 'application/json',
@@ -130,8 +130,8 @@ export const DispatchManagement: React.FC = () => {
     setLoading(true);
     try {
       const url = logFilterAction
-        ? `/api/admin/assignment-logs?action=${logFilterAction}`
-        : '/api/admin/assignment-logs';
+        ? `/api/assignment-logs?action=${logFilterAction}`
+        : '/api/assignment-logs';
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
@@ -152,7 +152,7 @@ export const DispatchManagement: React.FC = () => {
   // Fetch Teams for Modal
   const fetchTeams = async () => {
     try {
-      const res = await fetch('/api/admin/complaints/available-teams', {
+      const res = await fetch('/api/complaints/available-teams', {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
           Accept: 'application/json',
@@ -186,7 +186,7 @@ export const DispatchManagement: React.FC = () => {
     e.preventDefault();
     setSavingSettings(true);
     try {
-      const res = await fetch('/api/admin/dispatch-settings', {
+      const res = await fetch('/api/dispatch-settings', {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
@@ -224,7 +224,7 @@ export const DispatchManagement: React.FC = () => {
 
     setSubmittingManual(true);
     try {
-      const res = await fetch('/api/admin/dispatch/manual-assign', {
+      const res = await fetch('/api/dispatch/manual-assign', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,

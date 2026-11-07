@@ -115,6 +115,19 @@ export const ComplaintFilterBar: React.FC<ComplaintFilterBarProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Jenis Tiket Filter */}
+        <div>
+          <select
+            value={filters.type || 'all'}
+            onChange={(e) => onFilterChange({ ...filters, type: e.target.value as any, page: 1 })}
+            className="w-full text-xs h-9 rounded-md border border-gray-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-gray-700 dark:text-slate-200 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="all">Semua Jenis</option>
+            <option value="individual">Pengaduan Individu</option>
+            <option value="mass">Gangguan Massal</option>
+          </select>
+        </div>
       </div>
 
       {hasActiveFilters && (

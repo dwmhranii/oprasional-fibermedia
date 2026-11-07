@@ -11,6 +11,8 @@ class ComplaintDetailResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $canViewInternalDispatch = $request->user()?->can('complaints.view') || $request->user()?->can('complaints.assign');
+
         return [
             'id' => $this->id,
             'ticket_number' => $this->ticket_number,
@@ -24,8 +26,8 @@ class ComplaintDetailResource extends JsonResource
             'customer_lat' => $this->customer_lat ? (float) $this->customer_lat : null,
             'customer_lng' => $this->customer_lng ? (float) $this->customer_lng : null,
             'area' => $this->area,
-            'assigned_team' => $this->assigned_team,
-            'team_members' => $this->assigned_team ? User::role('Teknisi')->where('team', $this->assigned_team)->get(['id', 'name', 'phone'])->toArray() : [],
+            'assigned_team' => $canViewInternalDispatch ? $this->assigned_team : null,
+            'team_members' => $canViewInternalDispatch && $this->assigned_team ? User::role('Teknisi')->where('team', $this->assigned_team)->get(['id', 'name', 'phone'])->toArray() : [],
             'whatsapp_message' => $this->whatsapp_message,
             'attachments' => $this->attachments ? array_values(array_map(fn ($p) => Storage::url($p), $this->attachments)) : [],
 
@@ -40,8 +42,8 @@ class ComplaintDetailResource extends JsonResource
             // Resolusi 2 Fase
             'phase_1_completed_at' => $this->phase_1_completed_at?->toIso8601String(),
             'phase_2_completed_at' => $this->phase_2_completed_at?->toIso8601String(),
-            'all_team_members_attended' => $this->allTeamMembersAttended(),
-            'attendances' => $this->whenLoaded('attendances', fn () => $this->attendances->map(fn ($att) => [
+            'all_team_members_attended' => $canViewInternalDispatch ? $this->allTeamMembersAttended() : false,
+            'attendances' => $canViewInternalDispatch ? $this->whenLoaded('attendances', fn () => $this->attendances->map(fn ($att) => [
                 'id' => $att->id,
                 'user_id' => $att->user_id,
                 'technician_name' => $att->technician?->name,
@@ -53,7 +55,7 @@ class ComplaintDetailResource extends JsonResource
                 'is_within_radius' => (bool) $att->is_within_radius,
                 'clocked_at' => $att->clocked_at?->toIso8601String(),
             ])
-            ),
+            ) : [],
 
             // Resolusi & Verifikasi
             'resolution_type' => $this->resolution_type,
@@ -63,12 +65,22 @@ class ComplaintDetailResource extends JsonResource
             'verified_at' => $this->verified_at?->toIso8601String(),
             'verified_notes' => $this->verified_notes,
 
-            // SLA Timers
+            // SLA Timers & PRD v1.2 Engine
+            'sla_target_minutes' => (int) ($this->sla_target_minutes ?: \App\Models\SlaSetting::getMinutesForPriority($this->priority?->value ?? 'medium')),
             'sla_response_due_at' => $this->sla_response_due_at?->toIso8601String(),
             'sla_resolve_due_at' => $this->sla_resolve_due_at?->toIso8601String(),
             'sla_paused_at' => $this->sla_paused_at?->toIso8601String(),
             'sla_paused_seconds' => (int) $this->sla_paused_seconds,
             'is_sla_breached' => (bool) $this->is_sla_breached,
+            'sla_progress' => app(\App\Services\ComplaintSlaService::class)->getProgress($this->resource),
+            'pause_reason' => $this->pauseReason ? [
+                'id' => $this->pauseReason->id,
+                'code' => $this->pauseReason->code,
+                'reason' => $this->pauseReason->reason,
+            ] : null,
+            'reopened_at' => $this->reopened_at?->toIso8601String(),
+            'reopen_count' => (int) ($this->reopen_count ?? 0),
+            'can_reopen' => $this->canBeReopened(),
             'first_response_at' => $this->first_response_at?->toIso8601String(),
             'resolved_at' => $this->resolved_at?->toIso8601String(),
             'closed_at' => $this->closed_at?->toIso8601String(),
@@ -78,7 +90,7 @@ class ComplaintDetailResource extends JsonResource
                 'id' => $this->createdBy->id,
                 'name' => $this->createdBy->name,
             ]),
-            'current_assignment' => $this->whenLoaded('currentAssignment', function () {
+            'current_assignment' => $canViewInternalDispatch ? $this->whenLoaded('currentAssignment', function () {
                 $a = $this->currentAssignment;
                 if (! $a) {
                     return null;
@@ -105,8 +117,8 @@ class ComplaintDetailResource extends JsonResource
                     'returned_at' => $a->returned_at?->toIso8601String(),
                     'return_reason' => $a->return_reason,
                 ];
-            }),
-            'all_assignments' => $this->whenLoaded('assignments', fn () => $this->assignments->map(fn ($a) => [
+            }) : null,
+            'all_assignments' => $canViewInternalDispatch ? $this->whenLoaded('assignments', fn () => $this->assignments->map(fn ($a) => [
                 'id' => $a->id,
                 'technician_id' => $a->technician_id,
                 'technician_name' => $a->technician?->name,
@@ -122,7 +134,7 @@ class ComplaintDetailResource extends JsonResource
                 'returned_at' => $a->returned_at?->toIso8601String(),
                 'return_reason' => $a->return_reason,
             ])
-            ),
+            ) : [],
             'evidence' => $this->whenLoaded('evidence', fn () => $this->evidence ? [
                 'photos' => $this->evidence->photos,
                 'description' => $this->evidence->description,
@@ -141,6 +153,73 @@ class ComplaintDetailResource extends JsonResource
                 'created_at' => $l->created_at?->toIso8601String(),
             ])
             ),
+            'is_mass' => (bool) ($this->is_mass || $this->is_mass_outage),
+            'incident_id' => $this->incident_id,
+            'incident' => $this->whenLoaded('incident', fn () => $this->incident ? [
+                'id' => $this->incident->id,
+                'code' => $this->incident->code,
+                'node_type' => $this->incident->node_type,
+                'node_id' => $this->incident->node_id,
+                'node_name' => $this->incident->node?->name ?? strtoupper($this->incident->node_type)." #{$this->incident->node_id}",
+                'status' => $this->incident->status,
+                'severity' => $this->incident->severity,
+                'started_at' => $this->incident->started_at?->toIso8601String(),
+                'detected_at' => $this->incident->detected_at?->toIso8601String(),
+                'resolved_at' => $this->incident->resolved_at?->toIso8601String(),
+                'summary' => $this->incident->summary,
+            ] : null),
+            'affected_customers' => $this->when($this->is_mass || $this->is_mass_outage, function () {
+                if ($this->incident_id) {
+                    return \App\Models\IncidentCustomer::with(['customer.odp:id,code,name', 'splitComplaint:id,ticket_number'])
+                        ->where('incident_id', $this->incident_id)
+                        ->get()
+                        ->map(function ($ic) {
+                            $c = $ic->customer;
+                            $phoneClean = preg_replace('/\D+/', '', (string) ($c?->phone ?? ''));
+                            if (str_starts_with($phoneClean, '0')) {
+                                $phoneClean = '62'.substr($phoneClean, 1);
+                            }
+                            $waText = urlencode("Halo {$c?->name}, kami menginformasikan bahwa saat ini sedang terjadi gangguan jaringan di area Anda dan tim teknisi kami sedang dalam penanganan.");
+                            $waUrl = $phoneClean ? "https://wa.me/{$phoneClean}?text={$waText}" : null;
+
+                            return [
+                                'id' => $c?->id,
+                                'customer_code' => $c?->customer_code,
+                                'name' => $c?->name,
+                                'phone' => $c?->phone,
+                                'address' => $c?->address,
+                                'odp_id' => $c?->odp_id,
+                                'odp_code' => $c?->odp?->code,
+                                'odp_name' => $c?->odp?->name,
+                                'odp_port' => $c?->odp_port,
+                                'package' => $c?->package,
+                                'status' => $c?->status,
+                                'state' => $ic->state,
+                                'first_seen_at' => $ic->first_seen_at?->toIso8601String(),
+                                'restored_at' => $ic->restored_at?->toIso8601String(),
+                                'split_complaint_id' => $ic->split_complaint_id,
+                                'split_ticket_number' => $ic->splitComplaint?->ticket_number,
+                                'whatsapp_url' => $waUrl,
+                            ];
+                        });
+                }
+
+                return $this->affectedCustomers->map(function ($c) {
+                    return [
+                        'id' => $c->id,
+                        'customer_code' => $c->customer_code,
+                        'name' => $c->name,
+                        'phone' => $c->phone,
+                        'address' => $c->address,
+                        'odp_id' => $c->odp_id,
+                        'odp_code' => $c->odp_code,
+                        'odp_port' => $c->odp_port,
+                        'package' => $c->package,
+                        'status' => $c->status,
+                        'state' => 'affected',
+                    ];
+                });
+            }),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

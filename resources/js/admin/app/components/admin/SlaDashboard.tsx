@@ -35,8 +35,8 @@ import {
   Eye,
   Calendar as CalendarIcon
 } from 'lucide-react';
-import { PageHeader, StatCards, StatusBadge } from '@/../../shared/ui';
-import { formatDateTime } from '@/../../shared/lib/formatters';
+import { PageHeader, StatCards, StatusBadge } from '@shared/ui';
+import { formatDateTime } from '@shared/lib/formatters';
 
 export const SlaDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ export const SlaDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['sla', 'summary'],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/admin/sla-breaches/summary');
+      const response = await apiClient.get<any>('/sla-breaches/summary');
       return response.data;
     }
   });
@@ -74,7 +74,7 @@ export const SlaDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['sla', 'list', { breachType, resolved, startDate, endDate, page }],
     queryFn: async () => {
-      let url = `/admin/sla-breaches?page=${page}`;
+      let url = `/sla-breaches?page=${page}`;
       const params = new URLSearchParams();
       if (breachType !== 'all') params.append('breach_type', breachType);
       if (resolved !== 'all') params.append('resolved', resolved);
@@ -143,8 +143,8 @@ export const SlaDashboard: React.FC = () => {
 
       {/* SLA Summary Section */}
       <StatCards
-        loading={isSummaryLoading}
-        stats={[
+        isLoading={isSummaryLoading}
+        items={[
           {
             title: 'Pelanggaran Terbuka',
             value: summaryData?.open_count || 0,

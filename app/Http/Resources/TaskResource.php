@@ -89,7 +89,7 @@ class TaskResource extends JsonResource
         }
 
         $allAssignments = null;
-        if ($request->user() && $request->user()->hasRole(['Admin', 'Superadmin'])) {
+        if ($request->user() && $request->user()->can('workorders.view')) {
             $this->loadMissing(['assignments.evidence', 'assignments.user']);
             $allAssignments = $this->assignments;
         }

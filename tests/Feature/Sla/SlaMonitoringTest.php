@@ -133,7 +133,7 @@ class SlaMonitoringTest extends TestCase
             'detected_at' => now(),
         ]);
 
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/sla-breaches');
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/sla-breaches');
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['data']]);
     }
@@ -143,7 +143,7 @@ class SlaMonitoringTest extends TestCase
         $sales = User::factory()->create(['status' => 'active']);
         $sales->assignRole('Sales');
 
-        $response = $this->actingAs($sales, 'sanctum')->getJson('/api/admin/sla-breaches');
+        $response = $this->actingAs($sales, 'sanctum')->getJson('/api/sla-breaches');
         $response->assertStatus(403);
     }
 

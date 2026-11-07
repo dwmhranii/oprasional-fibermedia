@@ -7,15 +7,17 @@ export const AccessDenied = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-gray-50">
-      <ShieldAlert className="w-24 h-24 text-red-500 mb-6" />
-      <h1 className="text-4xl font-bold text-gray-900 mb-2">Akses Ditolak</h1>
-      <p className="text-lg text-gray-600 mb-8 text-center max-w-md">
-        Anda tidak memiliki izin untuk mengakses halaman ini. Silakan kembali ke dashboard atau hubungi administrator jika ini adalah sebuah kesalahan.
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
+      <div className="p-4 rounded-full bg-destructive/10 text-destructive mb-6">
+        <ShieldAlert className="w-16 h-16" />
+      </div>
+      <h1 className="text-3xl font-bold text-foreground mb-2">Akses Ditolak</h1>
+      <p className="text-base text-muted-foreground mb-8 text-center max-w-md">
+        Anda tidak memiliki izin untuk mengakses halaman ini. Silakan kembali ke dashboard atau hubungi administrator jika Anda memerlukan akses tambahan.
       </p>
       <Button 
-        onClick={() => navigate('/dashboard')}
-        className="h-12 px-8 text-lg"
+        onClick={() => navigate('/admin')}
+        className="h-11 px-6 text-sm font-medium"
       >
         Kembali ke Dashboard
       </Button>

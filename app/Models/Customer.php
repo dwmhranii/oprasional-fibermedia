@@ -24,9 +24,9 @@ class Customer extends Model
         'subscribed_at', 'expires_at', 'status',
         'is_online', 'last_online_at', 'last_offline_at', 'current_ip_address', 'current_mac_address', 'session_uptime', 'session_id',
         'onu_index', 'odp_id', 'odp_port',
-        'debt', 'wilayah',
+        'debt', 'debt_amount', 'billing_cycle_day', 'wilayah',
         'installed_by_team_id', 'installed_task_id', 'sales_id',
-        'notes',
+        'notes', 'location_source',
         // Kolom lama, dipertahankan sementara sampai kode yang memakainya dipindah.
         'package', 'odp_code',
     ];
@@ -41,6 +41,8 @@ class Customer extends Model
         'longitude' => 'decimal:7',
         'monthly_price' => 'decimal:2',
         'debt' => 'decimal:2',
+        'debt_amount' => 'decimal:2',
+        'billing_cycle_day' => 'integer',
         'is_online' => 'boolean',
         'last_online_at' => 'datetime',
         'last_offline_at' => 'datetime',
@@ -68,6 +70,9 @@ class Customer extends Model
                 $customer->attributes['odp_code'] = $customer->odp?->code;
             }
         });
+
+        static::saved(fn () => \App\Services\DashboardService::clearCache());
+        static::deleted(fn () => \App\Services\DashboardService::clearCache());
     }
 
     public static function normalizePhone(?string $phone): ?string
@@ -175,5 +180,10 @@ class Customer extends Model
     public function brasSessionLogs(): HasMany
     {
         return $this->hasMany(BrasSessionLog::class, 'customer_id');
+    }
+
+    public function odpPortHistory(): HasMany
+    {
+        return $this->hasMany(OdpPortHistory::class);
     }
 }

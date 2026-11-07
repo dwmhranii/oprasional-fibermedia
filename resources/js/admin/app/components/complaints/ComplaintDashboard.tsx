@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   MessageSquareWarning,
   Plus,
@@ -18,7 +18,24 @@ import type { ComplaintFilters } from '../../types/complaint';
 
 export const ComplaintDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ComplaintFilters>({ page: 1, per_page: 10 });
+  const [searchParams] = useSearchParams();
+
+  const [filters, setFilters] = useState<ComplaintFilters>(() => {
+    const status = searchParams.get('status') || undefined;
+    const period = searchParams.get('period') || undefined;
+    return { page: 1, per_page: 10, status, period };
+  });
+
+  useEffect(() => {
+    const status = searchParams.get('status') || undefined;
+    const period = searchParams.get('period') || undefined;
+    setFilters((prev) => ({
+      ...prev,
+      status,
+      period,
+      page: 1,
+    }));
+  }, [searchParams]);
 
   const { data: statsData, isLoading: isLoadingStats } = useComplaintStats();
   const { data: complaintsData, isLoading: isLoadingList, refetch } = useAdminComplaints(filters);
@@ -77,7 +94,7 @@ export const ComplaintDashboard: React.FC = () => {
 
           <Button
             size="sm"
-            onClick={() => navigate('/admin/complaints/new')}
+            onClick={() => navigate('/complaints/new')}
             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 shadow-xs"
           >
             <Plus className="w-4 h-4 mr-1.5" />

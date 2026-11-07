@@ -52,6 +52,32 @@ class TeamReadinessService
     }
 
     /**
+     * Helper: Ambil seluruh anggota tim yang tercatat pernah HADIR hari ini (baik yang masih aktif di kantor maupun sudah pulang).
+     *
+     * @return Collection<User>
+     */
+    public function getAttendedMembersToday(int|Team $team, ?string $date = null): Collection
+    {
+        $teamModel = $team instanceof Team ? $team : Team::findOrFail($team);
+        $workDate = $date ?: Carbon::today()->toDateString();
+
+        $memberUserIds = $teamModel->activeMembers()->pluck('user_id')->toArray();
+
+        if (empty($memberUserIds)) {
+            return collect();
+        }
+
+        $attendedUserIds = DailyAttendance::whereIn('user_id', $memberUserIds)
+            ->whereDate('work_date', $workDate)
+            ->where('status', 'hadir')
+            ->whereNotNull('check_in_at')
+            ->pluck('user_id')
+            ->toArray();
+
+        return User::whereIn('id', $attendedUserIds)->get();
+    }
+
+    /**
      * Periksa apakah tim tertentu siap beroperasi pada tanggal yang ditentukan.
      * Tim siap jika jumlah anggota aktif yang hadir >= min_members_present (default 1).
      */

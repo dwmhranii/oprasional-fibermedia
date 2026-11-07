@@ -297,7 +297,7 @@ export const TeknisiComplaintList: React.FC = () => {
                   size="sm"
                   variant="ghost"
                   className="text-xs h-8 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white px-2"
-                  onClick={() => navigate(`/teknisi/complaints/${item.id}`)}
+                  onClick={() => navigate(`/complaints/${item.id}`)}
                 >
                   Detail Lengkap <ChevronRight className="w-3.5 h-3.5 ml-1" />
                 </Button>

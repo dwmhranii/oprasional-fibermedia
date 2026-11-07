@@ -23,6 +23,7 @@ export type ComplaintCategory =
   | 'equipment'    // Perangkat ONT/Adaptor rusak
   | 'billing'      // Tagihan/administrasi (tidak dapat di-assign ke teknisi)
   | 'relocation'   // Geser kabel/relokasi ONT
+  | 'mass_outage'  // Gangguan massal jaringan
   | 'other';       // Lainnya
 
 export type ResolutionCategory =
@@ -186,6 +187,10 @@ export interface Complaint {
   resolved_at?: string;
   closed_at?: string;
 
+  is_mass?: boolean;
+  incident_id?: number | null;
+  affected_customers?: any[];
+
   created_at: string;
   updated_at: string;
 }
@@ -204,6 +209,9 @@ export interface ComplaintListItem {
   priority: ComplaintPriority;
   assigned_to_name?: string;
   assigned_team?: string;
+  is_mass?: boolean;
+  incident_id?: number | null;
+  affected_customers_count?: number;
   sla_resolve_due_at?: string;
   is_sla_breached: boolean;
   phase_1_completed_at?: string;
@@ -311,7 +319,9 @@ export interface ComplaintFilters {
   search?: string;
   date_from?: string;
   date_to?: string;
+  period?: string;
   sla_breached?: boolean;
+  type?: 'all' | 'individual' | 'mass';
   page?: number;
   per_page?: number;
 }

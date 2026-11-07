@@ -15,7 +15,9 @@ class AuditLogController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        Gate::authorize('view_audit_logs');
+        if (! $request->user()->can('audit.view') && ! $request->user()->can('view_audit_logs')) {
+            abort(403, 'Akses ditolak.');
+        }
 
         $query = Activity::query()->with('causer');
 

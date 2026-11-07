@@ -42,6 +42,19 @@ class AppServiceProvider extends ServiceProvider
             return $carbon->setTimezone('Asia/Jakarta')->toIso8601String();
         });
 
+        // Superadmin bypass: Superadmin has access to ALL permissions and abilities unconditionally
+        \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
+            return ($user->hasRole('Superadmin') || $user->hasRole('superadmin')) ? true : null;
+        });
+
+        \Illuminate\Support\Facades\Gate::define('submissions.view_any_or_own', function ($user) {
+            return $user->can('submissions.view') || $user->can('submissions.view_own');
+        });
+
+        \Illuminate\Support\Facades\Gate::define('complaints.view_any_or_own', function ($user) {
+            return $user->can('complaints.view') || $user->can('complaints.view_own');
+        });
+
         Event::listen(
             SubmissionApproved::class,
             [SlaResolutionSubscriber::class, 'handleSubmissionResolved']

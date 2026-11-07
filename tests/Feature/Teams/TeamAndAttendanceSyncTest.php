@@ -35,7 +35,7 @@ class TeamAndAttendanceSyncTest extends TestCase
     public function test_team_crud_and_relational_members_assignment(): void
     {
         // 1. Create team
-        $response = $this->actingAs($this->superadmin)->postJson('/api/superadmin/teams', [
+        $response = $this->actingAs($this->superadmin)->postJson('/api/teams', [
             'name' => 'Team Alpha',
             'description' => 'Tim Area Barat',
             'is_active' => true,
@@ -55,7 +55,7 @@ class TeamAndAttendanceSyncTest extends TestCase
         $tech2->assignRole('Teknisi');
 
         // 3. Assign members via relational table
-        $assignRes = $this->actingAs($this->superadmin)->postJson("/api/superadmin/teams/{$teamId}/members", [
+        $assignRes = $this->actingAs($this->superadmin)->postJson("/api/teams/{$teamId}/members", [
             'user_ids' => [$tech1->id, $tech2->id],
         ]);
 
@@ -75,7 +75,7 @@ class TeamAndAttendanceSyncTest extends TestCase
         ]);
 
         // Verify index endpoint returns members via team_members without ketua
-        $indexRes = $this->actingAs($this->superadmin)->getJson('/api/superadmin/teams');
+        $indexRes = $this->actingAs($this->superadmin)->getJson('/api/teams');
         $indexRes->assertStatus(200);
         $teamData = collect($indexRes->json('data'))->firstWhere('id', $teamId);
         $this->assertEquals(2, $teamData['member_count']);
@@ -89,7 +89,7 @@ class TeamAndAttendanceSyncTest extends TestCase
         $tech = User::factory()->create(['name' => 'Teknisi Absen']);
 
         // Without reason should fail validation
-        $resFail = $this->actingAs($this->superadmin)->postJson('/api/admin/attendances/manual', [
+        $resFail = $this->actingAs($this->superadmin)->postJson('/api/attendances/manual', [
             'user_id' => $tech->id,
             'work_date' => '2026-10-24',
             'status' => 'hadir',
@@ -98,7 +98,7 @@ class TeamAndAttendanceSyncTest extends TestCase
             ->assertJsonValidationErrors(['reason']);
 
         // With valid reason
-        $resSuccess = $this->actingAs($this->superadmin)->postJson('/api/admin/attendances/manual', [
+        $resSuccess = $this->actingAs($this->superadmin)->postJson('/api/attendances/manual', [
             'user_id' => $tech->id,
             'work_date' => '2026-10-24',
             'status' => 'hadir',
@@ -129,13 +129,13 @@ class TeamAndAttendanceSyncTest extends TestCase
         ]);
 
         // 1. List devices (returns DeviceResource)
-        $listRes = $this->actingAs($this->superadmin)->getJson('/api/admin/devices');
+        $listRes = $this->actingAs($this->superadmin)->getJson('/api/devices');
         $listRes->assertStatus(200)
             ->assertJsonPath('data.0.device_uuid', 'UUID-PHONE-TEST-1234')
             ->assertJsonPath('data.0.status', 'pending');
 
         // 2. Approve device
-        $approveRes = $this->actingAs($this->superadmin)->putJson("/api/admin/devices/{$device->id}/approve");
+        $approveRes = $this->actingAs($this->superadmin)->putJson("/api/devices/{$device->id}/approve");
         $approveRes->assertStatus(200)
             ->assertJsonPath('data.status', 'approved')
             ->assertJsonPath('data.is_approved', true);
@@ -145,7 +145,7 @@ class TeamAndAttendanceSyncTest extends TestCase
         $this->assertNull($device->revoked_at);
 
         // 3. Revoke device
-        $revokeRes = $this->actingAs($this->superadmin)->putJson("/api/admin/devices/{$device->id}/revoke");
+        $revokeRes = $this->actingAs($this->superadmin)->putJson("/api/devices/{$device->id}/revoke");
         $revokeRes->assertStatus(200)
             ->assertJsonPath('data.status', 'revoked')
             ->assertJsonPath('data.is_approved', false);
@@ -157,7 +157,7 @@ class TeamAndAttendanceSyncTest extends TestCase
     public function test_office_locations_geofence_crud(): void
     {
         // 1. Create office location with radius
-        $res = $this->actingAs($this->superadmin)->postJson('/api/admin/office-locations', [
+        $res = $this->actingAs($this->superadmin)->postJson('/api/office-locations', [
             'name' => 'Kantor Sawojajar',
             'latitude' => -7.9824,
             'longitude' => 112.6304,
@@ -172,12 +172,12 @@ class TeamAndAttendanceSyncTest extends TestCase
         $officeId = $res->json('data.id');
 
         // 2. Get list
-        $listRes = $this->actingAs($this->superadmin)->getJson('/api/admin/office-locations');
+        $listRes = $this->actingAs($this->superadmin)->getJson('/api/office-locations');
         $listRes->assertStatus(200)
             ->assertJsonPath('success', true);
 
         // 3. Update radius
-        $updateRes = $this->actingAs($this->superadmin)->putJson("/api/admin/office-locations/{$officeId}", [
+        $updateRes = $this->actingAs($this->superadmin)->putJson("/api/office-locations/{$officeId}", [
             'radius_meters' => 100,
         ]);
         $updateRes->assertStatus(200)

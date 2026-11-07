@@ -73,7 +73,7 @@ export const SubmissionDetail: React.FC = () => {
   const { data: submission, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['salesSubmissions', 'detail', id],
     queryFn: async () => {
-      const response = await apiClient.get<any>(`/sales/submissions/${id}`);
+      const response = await apiClient.get<any>(`/submissions/${id}`);
       return submissionToFrontend(response);
     },
     enabled: !!id,
@@ -130,7 +130,7 @@ export const SubmissionDetail: React.FC = () => {
 
     try {
       await apiClient.upload<any>(
-        `/sales/submissions/${id}/upload-document`,
+        `/submissions/${id}/upload-document`,
         formData,
         (progress) => setUploadProgress(progress)
       );
@@ -201,7 +201,11 @@ export const SubmissionDetail: React.FC = () => {
     }
   };
 
-  const isSuperadmin = user?.role === 'superadmin' || user?.roles?.includes('Superadmin') || user?.roles?.includes('superadmin');
+  const canDelete =
+    user?.permissions?.includes('submissions.delete') ||
+    user?.role === 'superadmin' ||
+    user?.roles?.includes('Superadmin') ||
+    user?.roles?.includes('superadmin');
 
   const handleDeleteSubmission = async () => {
     if (!id) return;
@@ -209,7 +213,7 @@ export const SubmissionDetail: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      await apiClient.delete(`/superadmin/submissions/${id}`);
+      await apiClient.delete(`/submissions/${id}`);
       toast.success('Pengajuan berhasil dihapus!');
       queryClient.invalidateQueries({ queryKey: ['salesSubmissions'] });
       navigate('/submissions');
@@ -250,8 +254,8 @@ export const SubmissionDetail: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Superadmin Delete Button */}
-            {isSuperadmin && (
+            {/* Delete Button */}
+            {canDelete && (
               <Button
                 onClick={handleDeleteSubmission}
                 variant="outline"

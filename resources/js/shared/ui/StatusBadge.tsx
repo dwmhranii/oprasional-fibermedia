@@ -96,7 +96,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   }
 
   const variant = getStatusSemanticVariant(status);
-  const colorStyles = TOKENS.semantic[variant];
+  const colorStyles = (variant && variant in TOKENS.semantic) ? TOKENS.semantic[variant] : TOKENS.semantic.neutral;
   const displayLabel = label || getLabelForStatus(status, type);
   const Icon = getIconForStatus(status);
 

@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             OperationSeeder::class,
         ]);
 
-        // Create Test Users
+        // Create Test Users (Hanya tetapkan role awal jika pengguna belum memiliki role)
         $superadmin = User::firstOrCreate([
             'email' => 'superadmin@example.com',
         ], [
@@ -29,7 +29,10 @@ class DatabaseSeeder extends Seeder
             'phone' => '081200000001',
             'status' => 'active',
         ]);
-        $superadmin->assignRole('Superadmin');
+        if (! $superadmin->roles()->exists()) {
+            $superadmin->assignRole('superadmin');
+            $superadmin->assignRole('Superadmin');
+        }
 
         $admin = User::firstOrCreate([
             'email' => 'admin@example.com',
@@ -39,7 +42,23 @@ class DatabaseSeeder extends Seeder
             'phone' => '081200000002',
             'status' => 'active',
         ]);
-        $admin->assignRole('Admin');
+        if (! $admin->roles()->exists()) {
+            $admin->assignRole('Admin/CS');
+            $admin->assignRole('Admin');
+        }
+
+        $noc = User::firstOrCreate([
+            'email' => 'noc@example.com',
+        ], [
+            'name' => 'NOC Dispatcher',
+            'password' => bcrypt('password'),
+            'phone' => '081200000004',
+            'status' => 'active',
+        ]);
+        if (! $noc->roles()->exists()) {
+            $noc->assignRole('NOC/Dispatcher');
+            $noc->assignRole('NOC');
+        }
 
         $sales = User::firstOrCreate([
             'email' => 'sales@example.com',
@@ -49,7 +68,21 @@ class DatabaseSeeder extends Seeder
             'phone' => '081200000003',
             'status' => 'active',
         ]);
-        $sales->assignRole('Sales');
+        if (! $sales->roles()->exists()) {
+            $sales->assignRole('Sales');
+        }
+
+        $collector = User::firstOrCreate([
+            'email' => 'collector@example.com',
+        ], [
+            'name' => 'Field Collector',
+            'password' => bcrypt('password'),
+            'phone' => '081200000005',
+            'status' => 'active',
+        ]);
+        if (! $collector->roles()->exists()) {
+            $collector->assignRole('Collector');
+        }
 
         // Removed legacy Teknisi Field, replaced by the new array below.
 
@@ -73,7 +106,9 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
                 'team' => $techData['team'],
             ]);
-            $techUser->assignRole('Teknisi');
+            if (! $techUser->roles()->exists()) {
+                $techUser->assignRole('Teknisi');
+            }
         }
     }
 }

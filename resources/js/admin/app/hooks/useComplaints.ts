@@ -28,21 +28,21 @@ import { toast } from 'sonner';
  * - Laravel Envelope: { success: true, data: ... }
  */
 export const complaintService = {
-  // Admin Endpoints
+  // Complaints Endpoints
   getAdminComplaints: async (filters: ComplaintFilters = {}): Promise<{ data: ComplaintListItem[]; total: number; meta?: any }> => {
-    const res = await apiClient.get<any>('/admin/complaints', { params: filters });
+    const res = await apiClient.get<any>('/complaints', { params: filters });
     const items = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
     const total = res?.total ?? res?.meta?.total ?? items.length;
     return { data: items, total, meta: res?.meta };
   },
 
   getComplaintDetail: async (id: number | string): Promise<Complaint> => {
-    const res = await apiClient.get<any>(`/admin/complaints/${id}`);
+    const res = await apiClient.get<any>(`/complaints/${id}`);
     return (res?.data ?? res) as Complaint;
   },
 
   getComplaintStats: async (): Promise<ComplaintStats> => {
-    const res = await apiClient.get<any>('/admin/complaints/stats');
+    const res = await apiClient.get<any>('/complaints/stats');
     const d = res?.data ?? res ?? {};
     return {
       total: Number(d.total || 0),
@@ -62,7 +62,7 @@ export const complaintService = {
     if (!phone && !customerCode) {
       return { has_duplicate: false, active_complaints: [] };
     }
-    const res = await apiClient.get<any>('/admin/complaints/check-duplicate', {
+    const res = await apiClient.get<any>('/complaints/check-duplicate', {
       params: { phone, customer_code: customerCode },
     });
     const d = res?.data ?? res ?? {};
@@ -78,7 +78,7 @@ export const complaintService = {
 
   getAvailableTeams: async (area?: string): Promise<AvailableTeam[]> => {
     try {
-      const res = await apiClient.get<any>('/admin/teams/available', {
+      const res = await apiClient.get<any>('/teams/available', {
         params: area ? { area } : undefined,
       });
       const items = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
@@ -95,7 +95,7 @@ export const complaintService = {
   },
 
   getAvailableTechnicians: async (area?: string): Promise<AvailableTechnician[]> => {
-    const res = await apiClient.get<any>('/admin/technicians/available', {
+    const res = await apiClient.get<any>('/technicians/available', {
       params: area ? { area } : undefined,
     });
     const items = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
@@ -104,7 +104,7 @@ export const complaintService = {
 
   getAreaHierarchy: async (): Promise<CityAreaHierarchy[]> => {
     try {
-      const res = await apiClient.get<any>('/admin/areas/hierarchy');
+      const res = await apiClient.get<any>('/areas/hierarchy');
       const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       if (items.length > 0) return items;
     } catch {
@@ -115,7 +115,7 @@ export const complaintService = {
 
   getAreas: async (): Promise<string[]> => {
     try {
-      const res = await apiClient.get<any>('/admin/areas');
+      const res = await apiClient.get<any>('/areas');
       const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       if (items.length > 0) {
         return items.map((i: any) => (typeof i === 'string' ? i : i.name || i.area));
@@ -147,16 +147,16 @@ export const complaintService = {
         formData.append(`attachments[${index}]`, file);
       });
 
-      const res = await apiClient.post<any>('/admin/complaints', formData);
+      const res = await apiClient.post<any>('/complaints', formData);
       return (res?.data ?? res) as Complaint;
     }
 
-    const res = await apiClient.post<any>('/admin/complaints', payload);
+    const res = await apiClient.post<any>('/complaints', payload);
     return (res?.data ?? res) as Complaint;
   },
 
   assignComplaint: async (id: number | string, payload: ComplaintAssignPayload): Promise<{ complaint: Complaint; assigned_to: any }> => {
-    const res = await apiClient.post<any>(`/admin/complaints/${id}/assign`, payload);
+    const res = await apiClient.post<any>(`/complaints/${id}/assign`, payload);
     const d = res?.data ?? res ?? {};
     return {
       complaint: (d.complaint ?? d) as Complaint,
@@ -165,65 +165,65 @@ export const complaintService = {
   },
 
   resolveRemote: async (id: number | string, payload: ComplaintResolveRemotePayload): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/admin/complaints/${id}/resolve-remote`, payload);
+    const res = await apiClient.put<any>(`/complaints/${id}/resolve-remote`, payload);
     return (res?.data ?? res) as Complaint;
   },
 
   verifyAndClose: async (id: number | string, payload: ComplaintVerifyPayload): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/admin/complaints/${id}/verify-close`, payload);
+    const res = await apiClient.put<any>(`/complaints/${id}/verify-close`, payload);
     return (res?.data ?? res) as Complaint;
   },
 
   returnComplaint: async (id: number | string, reason: string): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/admin/complaints/${id}/return`, { reason });
+    const res = await apiClient.put<any>(`/complaints/${id}/return`, { reason });
     return (res?.data ?? res) as Complaint;
   },
 
   cancelComplaint: async (id: number | string, reason: string): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/admin/complaints/${id}/cancel`, { reason });
+    const res = await apiClient.put<any>(`/complaints/${id}/cancel`, { reason });
     return (res?.data ?? res) as Complaint;
   },
 
   reopenComplaint: async (id: number | string, reason: string): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/admin/complaints/${id}/reopen`, { reason });
+    const res = await apiClient.put<any>(`/complaints/${id}/reopen`, { reason });
     return (res?.data ?? res) as Complaint;
   },
 
   addNote: async (id: number | string, content: string, isInternal: boolean = true): Promise<any> => {
-    const res = await apiClient.post<any>(`/admin/complaints/${id}/notes`, { content, is_internal: isInternal });
+    const res = await apiClient.post<any>(`/complaints/${id}/notes`, { content, is_internal: isInternal });
     return res?.data ?? res;
   },
 
-  // Teknisi Endpoints
+  // Operasional Lapangan
   getTeknisiComplaints: async (filters: ComplaintFilters = {}): Promise<{ data: ComplaintListItem[]; total: number; meta?: any }> => {
-    const res = await apiClient.get<any>('/teknisi/complaints', { params: filters });
+    const res = await apiClient.get<any>('/complaints', { params: filters });
     const items = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
     const total = res?.total ?? res?.meta?.total ?? items.length;
     return { data: items, total, meta: res?.meta };
   },
 
   getTeknisiComplaintDetail: async (id: number | string): Promise<Complaint> => {
-    const res = await apiClient.get<any>(`/teknisi/complaints/${id}`);
+    const res = await apiClient.get<any>(`/complaints/${id}`);
     return (res?.data ?? res) as Complaint;
   },
 
   teknisiStart: async (id: number | string): Promise<Complaint> => {
-    const res = await apiClient.post<any>(`/teknisi/complaints/${id}/start`);
+    const res = await apiClient.post<any>(`/complaints/${id}/start`);
     return (res?.data ?? res) as Complaint;
   },
 
   teknisiSchedule: async (id: number | string, scheduledVisitAt: string): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/teknisi/complaints/${id}/schedule-visit`, { scheduled_visit_at: scheduledVisitAt });
+    const res = await apiClient.put<any>(`/complaints/${id}/schedule-visit`, { scheduled_visit_at: scheduledVisitAt });
     return (res?.data ?? res) as Complaint;
   },
 
   teknisiPending: async (id: number | string, reason: string): Promise<Complaint> => {
-    const res = await apiClient.put<any>(`/teknisi/complaints/${id}/pending-customer`, { reason });
+    const res = await apiClient.put<any>(`/complaints/${id}/pending-customer`, { reason });
     return (res?.data ?? res) as Complaint;
   },
 
   teknisiResume: async (id: number | string): Promise<Complaint> => {
-    const res = await apiClient.post<any>(`/teknisi/complaints/${id}/start`);
+    const res = await apiClient.post<any>(`/complaints/${id}/start`);
     return (res?.data ?? res) as Complaint;
   },
 
@@ -236,7 +236,7 @@ export const complaintService = {
       formData.append(`photos[${idx}]`, photo);
     });
 
-    const res = await apiClient.post<any>(`/teknisi/complaints/${id}/resolve`, formData);
+    const res = await apiClient.post<any>(`/complaints/${id}/resolve`, formData);
     return (res?.data ?? res) as Complaint;
   },
 
@@ -252,12 +252,12 @@ export const complaintService = {
     });
 
     try {
-      const res = await apiClient.post<any>(`/teknisi/complaints/${id}/phase-1`, formData);
+      const res = await apiClient.post<any>(`/complaints/${id}/phase-1`, formData);
       return (res?.data ?? res) as Complaint;
     } catch (err: any) {
       if (err?.status === 404) {
         // Fallback backward-compatible
-        const fallbackRes = await apiClient.post<any>(`/teknisi/complaints/${id}/resolve`, formData);
+        const fallbackRes = await apiClient.post<any>(`/complaints/${id}/resolve`, formData);
         return (fallbackRes?.data ?? fallbackRes) as Complaint;
       }
       throw err;
@@ -281,13 +281,13 @@ export const complaintService = {
       formData.append('accuracy', String(payload.accuracy));
     }
 
-    const res = await apiClient.post<any>(`/teknisi/complaints/${id}/phase-2-attendance`, formData);
+    const res = await apiClient.post<any>(`/complaints/${id}/phase-2-attendance`, formData);
     return res?.data ?? res;
   },
 
   // Cek Status Kehadiran Tim Lapangan
   getTeamAttendances: async (id: number | string): Promise<ComplaintTeamAttendanceResponse> => {
-    const res = await apiClient.get<any>(`/teknisi/complaints/${id}/attendances`);
+    const res = await apiClient.get<any>(`/complaints/${id}/attendances`);
     return (res?.data ?? res) as ComplaintTeamAttendanceResponse;
   },
 };
@@ -309,7 +309,7 @@ export const useComplaintDetail = (id: number | string | undefined) => {
   return useQuery({
     queryKey: ['adminComplaints', 'detail', id],
     queryFn: () => complaintService.getComplaintDetail(id!),
-    enabled: !!id,
+    enabled: !!id && id !== 'id' && id !== ':id' && id !== 'undefined',
     staleTime: 15000,
   });
 };

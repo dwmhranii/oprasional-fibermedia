@@ -92,7 +92,7 @@ export const ValidationReview: React.FC = () => {
   const { data: submission, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['adminSubmissions', 'detail', id],
     queryFn: async () => {
-      const response = await apiClient.get<any>(`/admin/submissions/${id}`);
+      const response = await apiClient.get<any>(`/submissions/${id}`);
       return submissionToFrontend(response);
     },
     enabled: !!id,
@@ -157,7 +157,7 @@ export const ValidationReview: React.FC = () => {
     }
 
     try {
-        const response = await apiClient.put<any>(`/admin/submissions/${id}/validate`, body);
+        const response = await apiClient.put<any>(`/submissions/${id}/validate`, body);
         
         setActionType(null);
         
@@ -173,7 +173,7 @@ export const ValidationReview: React.FC = () => {
             setSuccessTeam(response.data.assigned_team);
           } else {
             toast.success('Pengajuan berhasil disetujui. Otomatis dialihkan ke Manajemen Provisioning.');
-            navigate('/admin/provisionings?tab=provisioning');
+            navigate('/psb');
           }
         } else {
           toast.success(`Pengajuan berhasil diperbarui ke status: ${actionType.toUpperCase()}`);
@@ -208,7 +208,7 @@ export const ValidationReview: React.FC = () => {
     }
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/submissions')} className="mb-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/submissions')} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Antrian
         </Button>
         <Alert variant="destructive">
@@ -247,7 +247,7 @@ export const ValidationReview: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <Button variant="outline" size="icon" onClick={() => navigate('/admin/submissions')}>
+          <Button variant="outline" size="icon" onClick={() => navigate('/submissions')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -725,7 +725,7 @@ export const ValidationReview: React.FC = () => {
             <Button 
               onClick={() => {
                 setSuccessTeam(null);
-                navigate('/admin/provisionings?tab=provisioning');
+                navigate('/psb');
               }} 
               className="bg-emerald-600 hover:bg-emerald-700 text-white w-full font-semibold"
             >

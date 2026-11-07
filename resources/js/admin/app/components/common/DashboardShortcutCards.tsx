@@ -28,16 +28,21 @@ export const DashboardShortcutCards: React.FC = () => {
   const { data, isLoading } = useQuery<ShortcutsResponse>({
     queryKey: ['dashboardShortcuts'],
     queryFn: async () => {
-      return await apiClient.get<ShortcutsResponse>('/admin/dashboard/shortcuts');
+      return await apiClient.get<ShortcutsResponse>('/dashboard/shortcuts');
     },
     refetchInterval: 15000,
   });
 
-  if (isLoading || !data?.success || !data?.data) {
+  const shortcutsData =
+    (data as any)?.unassigned_complaints !== undefined
+      ? (data as any)
+      : (data as any)?.data;
+
+  if (isLoading || !shortcutsData) {
     return null;
   }
 
-  const { unassigned_complaints, isolated_customers, ready_teams } = data.data;
+  const { unassigned_complaints, isolated_customers, ready_teams } = shortcutsData;
 
   const cards = [
     {

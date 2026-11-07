@@ -63,7 +63,7 @@ export const SalesDashboard: React.FC<SalesDashboardProps> = ({ onNavigate }) =>
   } = useQuery({
     queryKey: ['salesSubmissions', 'all'],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/sales/submissions?per_page=100');
+      const response = await apiClient.get<any>('/submissions?per_page=100');
       const items = response?.data || response?.items || (Array.isArray(response) ? response : []);
       return items.map(submissionToFrontend);
     },

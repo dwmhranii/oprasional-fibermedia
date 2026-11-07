@@ -55,15 +55,29 @@ import type { ResolutionCategory } from '../../types/complaint';
 import {
   useTeknisiPhase1Complaint,
 } from '../../hooks/useComplaints';
+import { AffectedCustomersTab } from './AffectedCustomersTab';
 
 export const ComplaintDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const isSuperadmin = user?.role === 'superadmin' || user?.roles?.includes('superadmin');
-  const isAdmin = user?.role === 'admin' || user?.roles?.includes('admin');
-  const isTeknisi = user?.role === 'teknisi' || user?.roles?.includes('teknisi');
+  const isInvalidId = !id || id === 'id' || id === ':id' || id === 'undefined';
+
+  // Redirect instantly if path is literally ':id' or 'id'
+  React.useEffect(() => {
+    if (isInvalidId) {
+      navigate('/complaints', { replace: true });
+    }
+  }, [isInvalidId, navigate]);
+
+  if (isInvalidId) {
+    return null;
+  }
+
+  const isSuperadmin = user?.role === 'superadmin' || user?.roles?.includes('superadmin') || user?.roles?.includes('Superadmin');
+  const canAssign = isSuperadmin || user?.permissions?.includes('complaints.assign');
+  const canReview = isSuperadmin || user?.permissions?.includes('complaints.review');
 
   const { data: complaint, isLoading, refetch } = useComplaintDetail(id);
 
@@ -122,7 +136,7 @@ export const ComplaintDetail: React.FC = () => {
         <p className="text-xs text-gray-500 mt-1 mb-4">
           Tiket pengaduan yang Anda cari tidak tersedia atau telah dihapus.
         </p>
-        <Button variant="outline" size="sm" onClick={() => navigate(isTeknisi && !isAdmin ? '/teknisi/complaints' : '/admin/complaints')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/complaints')}>
           Kembali ke Daftar
         </Button>
       </div>
@@ -195,7 +209,7 @@ export const ComplaintDetail: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(isTeknisi && !isAdmin ? '/teknisi/complaints' : '/admin/complaints')}
+            onClick={() => navigate('/complaints')}
             className="text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" />
@@ -242,48 +256,54 @@ export const ComplaintDetail: React.FC = () => {
             {/* Action for OPEN */}
             {complaint.status === 'open' && (
               <>
-                {complaint.category !== 'billing' ? (
-                  <Button
-                    size="sm"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8"
-                    onClick={() => setIsAssignModalOpen(true)}
-                  >
-                    <UserCheck className="w-3.5 h-3.5 mr-1.5" />
-                    Tugaskan Tim {isSuperadmin ? '(Manual/Auto)' : '(Round Robin)'}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-amber-700 font-medium bg-amber-100 px-2.5 py-1 rounded">
-                    Billing diselesaikan mandiri
-                  </span>
+                {canAssign && (
+                  complaint.category !== 'billing' ? (
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8"
+                      onClick={() => setIsAssignModalOpen(true)}
+                    >
+                      <UserCheck className="w-3.5 h-3.5 mr-1.5" />
+                      Tugaskan Tim {isSuperadmin ? '(Manual/Auto)' : '(Round Robin)'}
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-amber-700 font-medium bg-amber-100 px-2.5 py-1 rounded">
+                      Billing diselesaikan mandiri
+                    </span>
+                  )
                 )}
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 text-xs h-8"
-                  onClick={() => setIsResolveRemoteModalOpen(true)}
-                >
-                  <Globe className="w-3.5 h-3.5 mr-1.5" />
-                  Selesai Remote
-                </Button>
+                {canReview && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 text-xs h-8"
+                      onClick={() => setIsResolveRemoteModalOpen(true)}
+                    >
+                      <Globe className="w-3.5 h-3.5 mr-1.5" />
+                      Selesai Remote
+                    </Button>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-rose-600 hover:bg-rose-50 text-xs h-8"
-                  onClick={() =>
-                    setReasonModalState({
-                      isOpen: true,
-                      type: 'cancel',
-                      title: 'Batalkan Tiket Pengaduan',
-                      description: 'Masukkan alasan pembatalan tiket pengaduan pelanggan ini.',
-                      confirmVariant: 'destructive',
-                    })
-                  }
-                >
-                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                  Batalkan
-                </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-rose-600 hover:bg-rose-50 text-xs h-8"
+                      onClick={() =>
+                        setReasonModalState({
+                          isOpen: true,
+                          type: 'cancel',
+                          title: 'Batalkan Tiket Pengaduan',
+                          description: 'Masukkan alasan pembatalan tiket pengaduan pelanggan ini.',
+                          confirmVariant: 'destructive',
+                        })
+                      }
+                    >
+                      <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Batalkan
+                    </Button>
+                  </>
+                )}
               </>
             )}
 
@@ -321,7 +341,7 @@ export const ComplaintDetail: React.FC = () => {
             )}
 
             {/* Action for RESOLVED: Evidence verification before close! */}
-            {complaint.status === 'resolved' && (
+            {complaint.status === 'resolved' && canReview && (
               <>
                 <Button
                   size="sm"
@@ -352,7 +372,7 @@ export const ComplaintDetail: React.FC = () => {
             )}
 
             {/* Cancel fallback */}
-            {['assigned', 'in_progress'].includes(complaint.status) && (
+            {['assigned', 'in_progress'].includes(complaint.status) && canReview && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -481,29 +501,35 @@ export const ComplaintDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Reopen Action for CLOSED ticket (<= 7 days) */}
-      {isClosed && (isAdmin || isSuperadmin) && (
-        <div className="bg-gray-100 border border-gray-200 rounded-xl p-3.5 flex items-center justify-between text-xs text-gray-700">
+      {/* Reopen Action for CLOSED / RESOLVED ticket (<= 72 jam kalender sesuai PRD v1.2) */}
+      {(isClosed || complaint.status === 'resolved') && (isAdmin || isSuperadmin) && (
+        <div className="bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-3.5 flex items-center justify-between text-xs text-gray-700 dark:text-slate-300">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>Tiket ini telah selesai dan ditutup.</span>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs h-7 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
-            onClick={() =>
-              setReasonModalState({
-                isOpen: true,
-                type: 'reopen',
-                title: 'Buka Kembali Tiket Pengaduan',
-                description: 'Pelanggan melapor kendala berulang dalam 7 hari kalender. Masukkan alasan pembukaan kembali tiket.',
-              })
-            }
-          >
-            <RotateCcw className="w-3 h-3 mr-1" />
-            Buka Kembali (Reopen)
-          </Button>
+          {complaint.can_reopen !== false ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-800 hover:bg-indigo-50"
+              onClick={() =>
+                setReasonModalState({
+                  isOpen: true,
+                  type: 'reopen',
+                  title: 'Buka Kembali Tiket Pengaduan',
+                  description: 'Sesuai PRD v1.2: Buka kembali tiket maksimal 3 x 24 jam kalender sejak selesai. SLA dihitung ulang dari awal.',
+                })
+              }
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Buka Kembali (Reopen &le;72 Jam)
+            </Button>
+          ) : (
+            <span className="text-[11px] text-muted-foreground bg-muted/60 px-2 py-1 rounded border">
+              Batas waktu buka kembali (3 &times; 24 jam kalender) telah berakhir. Wajib buat tiket baru.
+            </span>
+          )}
         </div>
       )}
 
@@ -528,6 +554,17 @@ export const ComplaintDetail: React.FC = () => {
             <ComplaintAttendanceCard
               complaint={complaint}
               onOpenAttendanceModal={() => setIsTeknisiAttendanceModalOpen(true)}
+            />
+          )}
+
+          {/* Tab: Pelanggan Terdampak (Gangguan Massal) */}
+          {(complaint.is_mass || (complaint as any).is_mass_outage || (complaint as any).affected_customers?.length) && (
+            <AffectedCustomersTab
+              incidentId={(complaint as any).incident_id}
+              complaintId={complaint.id}
+              customers={(complaint as any).affected_customers || []}
+              canManage={canReview || isSuperadmin}
+              onRefresh={refetch}
             />
           )}
 

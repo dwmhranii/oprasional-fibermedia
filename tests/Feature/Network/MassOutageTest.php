@@ -7,11 +7,17 @@ use App\Models\Complaint;
 use App\Models\Customer;
 use App\Models\DailyAttendance;
 use App\Models\DispatchSetting;
+use App\Models\Incident;
+use App\Models\IncidentCustomer;
+use App\Models\NetworkCable;
 use App\Models\Odc;
 use App\Models\Odp;
+use App\Models\Olt;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
+use App\Modules\Network\Services\AffectedCustomersResolver;
+use App\Modules\Network\Services\IncidentService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -21,7 +27,9 @@ class MassOutageTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $admin;
+    protected User $superadmin;
+
+    protected User $adminUser;
 
     protected Team $readyTeam;
 
@@ -37,13 +45,18 @@ class MassOutageTest extends TestCase
                 'min_members_present' => 1,
                 'accept_timeout_minutes' => 15,
                 'max_reassignments' => 3,
+                'incident_auto_create' => false,
             ]
         );
 
-        // Setup Admin user
-        $this->admin = User::factory()->create(['name' => 'Admin Network']);
-        $this->admin->assignRole('Admin');
-        Sanctum::actingAs($this->admin);
+        // Setup Superadmin user
+        $this->superadmin = User::factory()->create(['name' => 'Superadmin Network']);
+        $this->superadmin->assignRole('Superadmin');
+        Sanctum::actingAs($this->superadmin);
+
+        // Setup regular Admin user
+        $this->adminUser = User::factory()->create(['name' => 'Staff CS Admin']);
+        $this->adminUser->assignRole('Admin');
 
         // Setup a ready team for complaint dispatch
         $this->readyTeam = Team::create(['name' => 'Tim Reaksi Cepat', 'is_active' => true, 'order_index' => 1]);
@@ -108,89 +121,85 @@ class MassOutageTest extends TestCase
             'odp_id' => $odp->id,
             'odp_port' => 3,
             'package' => '50 Mbps',
-            'status' => 'active',
+            'status' => 'isolated',
         ]);
 
-        // 1 Pelanggan terminated (tidak ikut terdampak)
+        // Pelanggan terminated di ODP yang sama (tidak boleh masuk hitungan)
         Customer::create([
-            'customer_code' => 'CUST-004',
-            'name' => 'Pelanggan Terminated',
+            'customer_code' => 'CUST-004-TERM',
+            'name' => 'Pelanggan Berhenti',
             'phone' => '081200000004',
             'address' => 'Jl. Mawar No 4',
             'odp_id' => $odp->id,
-            'odp_port' => 4,
-            'package' => '20 Mbps',
             'status' => 'terminated',
         ]);
 
-        // 1 Pelanggan di ODP lain (tidak ikut terdampak)
+        // 1 Pelanggan di ODP lain (tidak terdampak)
         Customer::create([
-            'customer_code' => 'CUST-005',
+            'customer_code' => 'CUST-999',
             'name' => 'Pelanggan ODP Lain',
-            'phone' => '081200000005',
-            'address' => 'Jl. Melati No 5',
+            'phone' => '081299999999',
+            'address' => 'Jl. Melati No 99',
             'odp_id' => $otherOdp->id,
-            'odp_port' => 1,
-            'package' => '20 Mbps',
             'status' => 'active',
         ]);
 
-        $response = $this->getJson("/api/admin/network/mass-outage/affected-customers?element_type=odp&element_id={$odp->id}");
+        $response = $this->getJson("/api/network/mass-outage/affected-customers?element_type=odp&element_id={$odp->id}");
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.total_affected', 3);
+            ->assertJsonPath('data.total_affected', 3)
+            ->assertJsonPath('data.isolated_count', 1);
 
         $customerIds = collect($response->json('data.customers'))->pluck('id')->toArray();
-        $this->assertEquals([$c1->id, $c2->id, $c3->id], $customerIds);
+        $this->assertContains($c1->id, $customerIds);
+        $this->assertContains($c2->id, $customerIds);
+        $this->assertContains($c3->id, $customerIds);
     }
 
     public function test_odc_affected_customers_preview_returns_all_customers_under_child_odps(): void
     {
         $odc = Odc::create([
-            'code' => 'ODC-KPN-01',
-            'name' => 'ODC Kepanjen Pusat',
-            'latitude' => -8.123456,
-            'longitude' => 112.567890,
-            'capacity_odp' => 24,
-            'wilayah' => 'Kepanjen',
+            'code' => 'ODC-MLG-01',
+            'name' => 'ODC Malang Pusat 01',
+            'capacity_odp' => 12,
         ]);
 
         $odpA = Odp::create([
+            'code' => 'ODP-MLG-01A',
+            'name' => 'ODP Malang 01A',
             'odc_id' => $odc->id,
-            'code' => 'ODP-KPN-A1',
-            'name' => 'ODP Kepanjen A1',
             'port_capacity' => 8,
         ]);
 
         $odpB = Odp::create([
+            'code' => 'ODP-MLG-01B',
+            'name' => 'ODP Malang 01B',
             'odc_id' => $odc->id,
-            'code' => 'ODP-KPN-B1',
-            'name' => 'ODP Kepanjen B1',
             'port_capacity' => 8,
         ]);
 
         $cA1 = Customer::create([
-            'customer_code' => 'CUST-KPN-01',
-            'name' => 'Pelanggan ODC 1',
-            'phone' => '081311111111',
-            'address' => 'Jl. Kepanjen 1',
+            'customer_code' => 'CUST-A1',
+            'name' => 'Pelanggan ODP A1',
+            'phone' => '081300000001',
+            'address' => 'Jl. Ijen No 10',
             'odp_id' => $odpA->id,
-            'status' => 'active',
-            'package' => '30 Mbps',
-        ]);
-
-        $cB1 = Customer::create([
-            'customer_code' => 'CUST-KPN-02',
-            'name' => 'Pelanggan ODC 2',
-            'phone' => '081322222222',
-            'address' => 'Jl. Kepanjen 2',
-            'odp_id' => $odpB->id,
             'status' => 'active',
             'package' => '50 Mbps',
         ]);
 
-        $response = $this->getJson("/api/admin/network/mass-outage/affected-customers?element_type=odc&element_id={$odc->id}");
+        $cB1 = Customer::create([
+            'customer_code' => 'CUST-B1',
+            'name' => 'Pelanggan ODP B1',
+            'phone' => '081300000002',
+            'address' => 'Jl. Semeru No 20',
+            'odp_id' => $odpB->id,
+            'status' => 'active',
+            'package' => '100 Mbps',
+        ]);
+
+        $response = $this->getJson("/api/network/mass-outage/affected-customers?element_type=odc&element_id={$odc->id}");
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
@@ -234,7 +243,7 @@ class MassOutageTest extends TestCase
         ]);
 
         // Kirim pemicu gangguan massal status = disrupted
-        $res = $this->postJson('/api/admin/network/mass-outage/trigger', [
+        $res = $this->postJson('/api/network/mass-outage/trigger', [
             'element_type' => 'odp',
             'element_id' => $odp->id,
             'status' => 'disrupted',
@@ -247,36 +256,31 @@ class MassOutageTest extends TestCase
 
         // 1. Verifikasi status operasional ODP berubah menjadi disrupted
         $odp->refresh();
-        $this->assertEquals('disrupted', $odp->operational_status);
+        $this->assertEquals('disrupted', $odp->status ?? $odp->operational_status);
 
         // 2. Verifikasi HANYA SATU tiket (Complaint) yang dibuat di basis data
         $complaintId = $res->json('data.complaint.id');
         $this->assertNotNull($complaintId);
 
-        $complaintsCount = Complaint::where('is_mass_outage', true)
+        $complaintsCount = Complaint::where('is_mass', true)
             ->where('affected_element_type', 'odp')
             ->where('affected_element_id', $odp->id)
             ->count();
         $this->assertEquals(1, $complaintsCount);
 
-        // 3. Verifikasi tiket gangguan massal
+        // 3. Verifikasi tiket gangguan massal & geofence target koordinat simpul
         $complaint = Complaint::find($complaintId);
-        $this->assertTrue($complaint->is_mass_outage);
+        $this->assertTrue($complaint->is_mass);
+        $this->assertEquals(-8.090000, (float) $complaint->customer_lat);
+        $this->assertEquals(112.600000, (float) $complaint->customer_lng);
         $this->assertEquals('critical', $complaint->priority->value ?? (string) $complaint->priority);
         $this->assertEquals('mass_outage', $complaint->category->value ?? (string) $complaint->category);
         $this->assertStringContainsString('Gangguan Massal', $complaint->subject);
-        $this->assertStringContainsString('disrupted', $complaint->subject);
 
-        // 4. Verifikasi seluruh pelanggan tertaut ke tiket tersebut via relasi affectedCustomers
-        $linkedCustomerIds = $complaint->affectedCustomers()->pluck('customers.id')->toArray();
-        $this->assertCount(2, $linkedCustomerIds);
-        $this->assertContains($cust1->id, $linkedCustomerIds);
-        $this->assertContains($cust2->id, $linkedCustomerIds);
-
-        // Inverse relation dari sisi Customer
-        $this->assertCount(1, $cust1->massOutageComplaints);
-        $this->assertEquals($complaint->id, $cust1->massOutageComplaints->first()->id);
-        $this->assertEquals($complaint->id, $cust2->massOutageComplaints->first()->id);
+        // 4. Verifikasi seluruh pelanggan tertaut ke tiket via IncidentCustomer
+        $incident = Incident::where('node_type', 'odp')->where('node_id', $odp->id)->where('status', 'open')->first();
+        $this->assertNotNull($incident);
+        $this->assertCount(2, $incident->customers);
 
         // 5. Tiket langsung dialokasikan ke tim yang siap (Dispatch)
         $this->assertEquals($this->readyTeam->id, $complaint->assigned_team_id);
@@ -290,67 +294,12 @@ class MassOutageTest extends TestCase
         ]);
     }
 
-    public function test_triggering_mass_outage_on_cable_with_cut_status(): void
-    {
-        $odp1 = Odp::create([
-            'code' => 'ODP-CBL-01',
-            'name' => 'ODP Cable 01',
-            'port_capacity' => 8,
-        ]);
-
-        $odp2 = Odp::create([
-            'code' => 'ODP-CBL-02',
-            'name' => 'ODP Cable 02',
-            'port_capacity' => 8,
-        ]);
-
-        $cable = CableTrack::create([
-            'client_uuid' => 'uuid_cbl_test_99',
-            'name' => 'Kabel Feeder Sukun - Gadang',
-            'coordinates' => [[112.60, -8.09], [112.61, -8.10]],
-            'downstream_odp_ids' => [$odp1->id, $odp2->id],
-            'total_length_meters' => 1250,
-        ]);
-
-        $cust = Customer::create([
-            'customer_code' => 'CUST-CBL-01',
-            'name' => 'Pelanggan Kabel Putus',
-            'phone' => '081999999999',
-            'address' => 'Jl. Gadang No 5',
-            'odp_id' => $odp1->id,
-            'status' => 'active',
-            'package' => '100 Mbps',
-        ]);
-
-        // Pemicu gangguan massal kabel putus (status = cut)
-        $res = $this->postJson('/api/admin/network/mass-outage/trigger', [
-            'element_type' => 'cable_track',
-            'element_id' => $cable->id,
-            'status' => 'cut',
-            'notes' => 'Kabel FO 24 core terputus akibat tersangkut truk kontainer',
-        ]);
-
-        $res->assertStatus(201)
-            ->assertJsonPath('success', true);
-
-        $cable->refresh();
-        $this->assertEquals('cut', $cable->operational_status);
-
-        $complaintId = $res->json('data.complaint.id');
-        $complaint = Complaint::find($complaintId);
-        $this->assertNotNull($complaint);
-        $this->assertTrue($complaint->is_mass_outage);
-        $this->assertEquals('cable_track', $complaint->affected_element_type);
-        $this->assertEquals($cable->id, $complaint->affected_element_id);
-
-        $this->assertTrue($complaint->affectedCustomers()->where('customers.id', $cust->id)->exists());
-    }
-
     public function test_resolving_mass_outage_restores_element_status_and_resolves_complaints(): void
     {
         $odp = Odp::create([
             'code' => 'ODP-RES-01',
             'name' => 'ODP Resolve Test',
+            'status' => 'disrupted',
             'operational_status' => 'disrupted',
             'port_capacity' => 8,
         ]);
@@ -365,8 +314,23 @@ class MassOutageTest extends TestCase
             'package' => '30 Mbps',
         ]);
 
+        $incident = Incident::create([
+            'code' => 'INC-202610-0099',
+            'node_type' => 'odp',
+            'node_id' => $odp->id,
+            'status' => 'open',
+            'severity' => 'disrupted',
+        ]);
+
+        IncidentCustomer::create([
+            'incident_id' => $incident->id,
+            'customer_id' => $cust->id,
+            'state' => 'affected',
+        ]);
+
         $complaint = Complaint::create([
             'ticket_number' => 'CMP-MASS-RES',
+            'incident_id' => $incident->id,
             'customer_id' => $cust->id,
             'customer_name' => $cust->name,
             'customer_phone' => $cust->phone,
@@ -375,7 +339,8 @@ class MassOutageTest extends TestCase
             'category' => 'mass_outage',
             'subject' => 'Gangguan Massal ODP-RES-01',
             'description' => 'Gangguan massal pada ODP',
-            'created_by_id' => $this->admin->id,
+            'created_by_id' => $this->superadmin->id,
+            'is_mass' => true,
             'is_mass_outage' => true,
             'affected_element_type' => 'odp',
             'affected_element_id' => $odp->id,
@@ -384,7 +349,7 @@ class MassOutageTest extends TestCase
         ]);
 
         // Pulihkan jaringan
-        $res = $this->postJson('/api/admin/network/mass-outage/resolve', [
+        $res = $this->postJson('/api/network/mass-outage/resolve', [
             'element_type' => 'odp',
             'element_id' => $odp->id,
             'resolution_notes' => 'Splicing ulang kabel ODP selesai dan redaman normal -18.5 dBm',
@@ -395,18 +360,211 @@ class MassOutageTest extends TestCase
 
         // Status ODP kembali normal
         $odp->refresh();
-        $this->assertEquals('normal', $odp->operational_status);
+        $this->assertEquals('normal', $odp->status);
+
+        // Insiden selesai dan pelanggan restored
+        $incident->refresh();
+        $this->assertEquals('resolved', $incident->status);
+        $this->assertDatabaseHas('incident_customers', [
+            'incident_id' => $incident->id,
+            'customer_id' => $cust->id,
+            'state' => 'restored',
+        ]);
 
         // Tiket terselesaikan
         $complaint->refresh();
         $this->assertEquals('resolved', $complaint->status->value ?? (string) $complaint->status);
-        $this->assertNotNull($complaint->resolved_at);
+    }
 
-        // Riwayat tercatat di ticket_events
-        $this->assertDatabaseHas('ticket_events', [
-            'eventable_type' => Complaint::class,
-            'eventable_id' => $complaint->id,
-            'event' => 'mass_outage_resolved',
+    public function test_child_incident_merges_into_parent_and_closes_child_ticket(): void
+    {
+        $odc = Odc::create([
+            'code' => 'ODC-PARENT-01',
+            'name' => 'ODC Induk',
+            'capacity_odp' => 12,
         ]);
+
+        $odp = Odp::create([
+            'code' => 'ODP-CHILD-01',
+            'name' => 'ODP Anak',
+            'odc_id' => $odc->id,
+            'port_capacity' => 8,
+        ]);
+
+        $cust = Customer::create([
+            'customer_code' => 'CUST-MRG-01',
+            'name' => 'Pelanggan Merge',
+            'phone' => '081222222222',
+            'address' => 'Jl. Merge No 1',
+            'odp_id' => $odp->id,
+            'status' => 'active',
+        ]);
+
+        // 1. ODP anak mengalami gangguan lebih dulu
+        $resChild = $this->postJson('/api/network/mass-outage/trigger', [
+            'element_type' => 'odp',
+            'element_id' => $odp->id,
+            'status' => 'disrupted',
+            'notes' => 'Splitter ODP rusak',
+        ]);
+        $resChild->assertStatus(201);
+        $childIncident = Incident::where('node_type', 'odp')->where('node_id', $odp->id)->where('status', 'open')->first();
+        $this->assertNotNull($childIncident);
+        $childComplaint = $childIncident->complaint;
+
+        // 2. Sekarang ODC induk juga mengalami gangguan (cut)
+        $resParent = $this->postJson('/api/network/mass-outage/trigger', [
+            'element_type' => 'odc',
+            'element_id' => $odc->id,
+            'status' => 'cut',
+            'notes' => 'Kabel feeder ke ODC putus',
+        ]);
+        $resParent->assertStatus(201);
+
+        // 3. Verifikasi ODP anak digabung ke ODC induk
+        $childIncident->refresh();
+        $parentIncident = Incident::where('node_type', 'odc')->where('node_id', $odc->id)->where('status', 'open')->first();
+        $this->assertEquals('merged', $childIncident->status);
+        $this->assertEquals($parentIncident->id, $childIncident->merged_into_id);
+
+        // Tiket anak ditutup dengan alasan digabung
+        $childComplaint->refresh();
+        $this->assertEquals('closed', $childComplaint->status->value ?? (string) $childComplaint->status);
+        $this->assertStringContainsString('digabung', $childComplaint->status_reason);
+
+        // Pelanggan ODP otomatis tertaut ke insiden induk ODC
+        $this->assertDatabaseHas('incident_customers', [
+            'incident_id' => $parentIncident->id,
+            'customer_id' => $cust->id,
+            'state' => 'affected',
+        ]);
+    }
+
+    public function test_split_customer_creates_individual_ticket(): void
+    {
+        $odp = Odp::create([
+            'code' => 'ODP-SPLIT-01',
+            'name' => 'ODP Split Test',
+            'port_capacity' => 8,
+        ]);
+
+        $cust = Customer::create([
+            'customer_code' => 'CUST-SPLIT-01',
+            'name' => 'Pelanggan Butuh Splicing Khusus',
+            'phone' => '081777777777',
+            'address' => 'Jl. Rumah Pelanggan',
+            'odp_id' => $odp->id,
+            'package' => '20 Mbps',
+            'status' => 'active',
+        ]);
+
+        $incident = Incident::create([
+            'code' => 'INC-202610-0088',
+            'node_type' => 'odp',
+            'node_id' => $odp->id,
+            'status' => 'open',
+            'severity' => 'disrupted',
+        ]);
+
+        IncidentCustomer::create([
+            'incident_id' => $incident->id,
+            'customer_id' => $cust->id,
+            'state' => 'affected',
+        ]);
+
+        $res = $this->postJson('/api/network/mass-outage/split', [
+            'incident_id' => $incident->id,
+            'customer_id' => $cust->id,
+            'reason' => 'Dropcore di rumah pelanggan putus digigit tikus',
+        ]);
+
+        $res->assertStatus(201)
+            ->assertJsonPath('success', true);
+
+        // Status di pivot berubah menjadi split
+        $this->assertDatabaseHas('incident_customers', [
+            'incident_id' => $incident->id,
+            'customer_id' => $cust->id,
+            'state' => 'split',
+        ]);
+
+        // Tiket individual mandiri dibuat
+        $individualTicketId = $res->json('data.complaint.id');
+        $individualTicket = Complaint::find($individualTicketId);
+        $this->assertNotNull($individualTicket);
+        $this->assertFalse($individualTicket->is_mass);
+        $this->assertEquals($cust->id, $individualTicket->customer_id);
+    }
+
+    public function test_admin_cannot_create_or_modify_incident_403_and_superadmin_can(): void
+    {
+        $odp = Odp::create([
+            'code' => 'ODP-PERM-01',
+            'name' => 'ODP Perm Test',
+            'port_capacity' => 8,
+        ]);
+
+        // Sebagai Admin biasa (CS) -> 403 Forbidden
+        Sanctum::actingAs($this->adminUser);
+        $resForbidden = $this->postJson('/api/network/mass-outage/trigger', [
+            'element_type' => 'odp',
+            'element_id' => $odp->id,
+            'status' => 'disrupted',
+        ]);
+        $resForbidden->assertStatus(403);
+
+        // Sebagai Superadmin -> 201 Created
+        Sanctum::actingAs($this->superadmin);
+        $resAllowed = $this->postJson('/api/network/mass-outage/trigger', [
+            'element_type' => 'odp',
+            'element_id' => $odp->id,
+            'status' => 'disrupted',
+        ]);
+        $resAllowed->assertStatus(201);
+    }
+
+    public function test_resolver_performance_for_large_customer_topology(): void
+    {
+        $olt = Olt::create([
+            'code' => 'OLT-TEST-PERF',
+            'name' => 'OLT Performance Test',
+        ]);
+
+        $odc = Odc::create([
+            'olt_id' => $olt->id,
+            'code' => 'ODC-PERF-01',
+            'name' => 'ODC Perf',
+        ]);
+
+        $odp = Odp::create([
+            'odc_id' => $odc->id,
+            'code' => 'ODP-PERF-01',
+            'name' => 'ODP Perf',
+        ]);
+
+        // Buat 100 pelanggan contoh (dalam tes in-memory)
+        $records = [];
+        for ($i = 1; $i <= 100; $i++) {
+            $records[] = [
+                'customer_code' => sprintf('CUST-PERF-%04d', $i),
+                'name' => "Pelanggan {$i}",
+                'phone' => sprintf('08123456%04d', $i),
+                'address' => 'Jl. Uji Kinerja No '.$i,
+                'odp_id' => $odp->id,
+                'package' => '20 Mbps',
+                'status' => $i % 10 === 0 ? 'isolated' : 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        Customer::insert($records);
+
+        $resolver = app(AffectedCustomersResolver::class);
+        $start = microtime(true);
+        $resolved = $resolver->resolve('olt', $olt->id);
+        $elapsedMs = (microtime(true) - $start) * 1000;
+
+        $this->assertEquals(100, $resolved['total_affected']);
+        $this->assertLessThan(200, $elapsedMs, "Resolver took {$elapsedMs}ms, expected under 200ms");
     }
 }

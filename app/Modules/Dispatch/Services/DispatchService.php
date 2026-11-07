@@ -42,7 +42,8 @@ class DispatchService
             // 2. Ambil konfigurasi dispatch
             $timeoutMinutes = (int) $this->getSetting($queueType, 'accept_timeout_menit', 15);
             $minMembersPresent = (int) $this->getSetting(null, 'min_members_present', 1);
-            $maxOpenTickets = $this->getSetting($queueType, 'max_open_tickets_per_team', null);
+            $maxOpenTicketsSetting = $this->getSetting($queueType, 'max_open_tickets_per_team', null);
+            $maxOpenTickets = $maxOpenTicketsSetting !== null ? (int) $maxOpenTicketsSetting : 1;
 
             // 3. Ambil tim aktif berurutan menurut order_index
             $teams = Team::where('is_active', true)
@@ -154,6 +155,7 @@ class DispatchService
                 if (! $ticket->teknisi_id && $teamMembers->isNotEmpty()) {
                     $ticket->teknisi_id = $teamMembers->first()->id;
                 }
+                $ticket->sla_target_minutes = $ticket->sla_target_minutes ?: 1440;
                 $ticket->save();
 
                 // Pastikan anggota tim memiliki TaskAssignment
@@ -168,6 +170,7 @@ class DispatchService
                 }
             } elseif ($ticket instanceof Complaint) {
                 $ticket->save();
+                app(\App\Services\ComplaintSlaService::class)->setTimers($ticket);
 
                 $actorId = $options['actor_id'] ?? auth()->id() ?? $ticket->created_by_id ?? User::first()?->id;
 
@@ -176,7 +179,7 @@ class DispatchService
                     'technician_id' => $selectedTeam->activeUsers->first()?->id ?? User::first()?->id,
                     'assigned_team' => $selectedTeam->name,
                     'assigned_by_id' => $actorId,
-                    'assigned_by_role' => auth()->user()?->hasRole('Superadmin') ? 'superadmin' : 'system',
+                    'assigned_by_role' => auth()->user()?->can('dispatch.manage') ? 'admin' : 'system',
                     'is_manual_assignment' => false,
                     'status' => 'assigned',
                     'notes' => $options['reason'] ?? 'Penugasan otomatis round-robin',
@@ -259,6 +262,7 @@ class DispatchService
                 if (! $ticket->teknisi_id && $teamMembers->isNotEmpty()) {
                     $ticket->teknisi_id = $teamMembers->first()->id;
                 }
+                $ticket->sla_target_minutes = $ticket->sla_target_minutes ?: 1440;
                 $ticket->save();
 
                 foreach ($teamMembers as $member) {
@@ -272,6 +276,7 @@ class DispatchService
                 }
             } elseif ($ticket instanceof Complaint) {
                 $ticket->save();
+                app(\App\Services\ComplaintSlaService::class)->setTimers($ticket);
 
                 ComplaintAssignment::create([
                     'complaint_id' => $ticket->id,
@@ -345,7 +350,7 @@ class DispatchService
                 || (int) $user->team_id === (int) $team->id
                 || $user->team === $team->name;
 
-            if (! $isMember && ! $user->hasRole(['Admin', 'Superadmin'])) {
+            if (! $isMember && ! $user->can('complaints.manage')) {
                 throw new \DomainException('Hanya personil tim terkait yang dapat menerima tiket.');
             }
 
@@ -358,7 +363,7 @@ class DispatchService
                 ->whereNull('check_out_at')
                 ->exists();
 
-            if (! $hasCheckedIn && ! $user->hasRole(['Admin', 'Superadmin'])) {
+            if (! $hasCheckedIn && ! $user->can('complaints.manage')) {
                 throw new \DomainException('Anda harus absen masuk hari ini sebelum menerima tiket.');
             }
 

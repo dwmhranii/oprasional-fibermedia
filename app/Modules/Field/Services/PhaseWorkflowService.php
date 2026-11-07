@@ -619,19 +619,37 @@ class PhaseWorkflowService
      */
     public function approveReview($ticket, User $reviewer, ?string $note = null): void
     {
+        $oldStatus = (string) ($ticket->status instanceof \BackedEnum ? $ticket->status->value : $ticket->status);
         $ticket->review_status = 'approved';
         $ticket->reviewed_by = $reviewer->id;
         $ticket->reviewed_at = now();
         $ticket->review_note = $note;
+
+        if ($ticket instanceof Task) {
+            $ticket->status = TaskStatus::COMPLETED;
+            $ticket->completed_at = now();
+            // PRD v1.2: Aktivasi pelanggan setelah BAST disetujui Admin
+            $customer = $ticket->provisioning?->submission?->customer;
+            if ($customer) {
+                $customer->status = 'active';
+                $customer->save();
+            }
+        } elseif ($ticket instanceof Complaint) {
+            $ticket->status = ComplaintStatus::RESOLVED;
+            $ticket->resolved_at = now();
+        }
+
         $ticket->save();
+
+        $newStatus = (string) ($ticket->status instanceof \BackedEnum ? $ticket->status->value : $ticket->status);
 
         DB::table('ticket_events')->insert([
             'eventable_type' => get_class($ticket),
             'eventable_id' => $ticket->id,
             'actor_id' => $reviewer->id,
             'event' => 'review_approved',
-            'from_status' => (string) ($ticket->status instanceof \BackedEnum ? $ticket->status->value : $ticket->status),
-            'to_status' => (string) ($ticket->status instanceof \BackedEnum ? $ticket->status->value : $ticket->status),
+            'from_status' => $oldStatus,
+            'to_status' => $newStatus,
             'payload' => json_encode(['note' => $note]),
             'occurred_at' => now(),
         ]);

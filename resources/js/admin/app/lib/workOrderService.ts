@@ -23,7 +23,7 @@ export const workOrderService = {
     if (filters?.date) params.date = filters.date;
     if (filters?.search?.trim()) params.search = filters.search.trim();
 
-    const response = await apiClient.get<any>('/teknisi/work-orders', params);
+    const response = await apiClient.get<any>('/work-orders', params);
     
     const data = Array.isArray(response) ? response : (Array.isArray(response?.data) ? response.data : []);
     return {
@@ -34,22 +34,22 @@ export const workOrderService = {
 
   /**
    * 7.2. Detail Spesifik Work Order
-   * GET /teknisi/work-orders/{id}
+   * GET /work-orders/{id}
    */
   getTeknisiWorkOrderDetail: async (id: string): Promise<any> => {
-    return apiClient.get<any>(`/teknisi/work-orders/${encodeURIComponent(id)}`);
+    return apiClient.get<any>(`/work-orders/${encodeURIComponent(id)}`);
   },
 
   /**
-   * 7.3. Live Fleet Map & Tracking Lapangan (Admin & Superadmin)
-   * GET /admin/tracking/live-map
+   * 7.3. Live Fleet Map & Tracking Lapangan
+   * GET /tracking/live-map
    */
   getAdminLiveFleetMap: async (filters?: { team?: string; type?: string }): Promise<LiveFleetMapData> => {
     const params: Record<string, string> = {};
     if (filters?.team && filters.team !== 'all') params.team = filters.team;
     if (filters?.type && filters.type !== 'all') params.type = filters.type;
 
-    const response = await apiClient.get<any>('/admin/tracking/live-map', params);
+    const response = await apiClient.get<any>('/tracking/live-map', params);
     
     // Normalize structure
     const data = response && typeof response === 'object' && 'summary' in response ? response : (response?.data || {});
@@ -66,8 +66,8 @@ export const workOrderService = {
   },
 
   /**
-   * 7.4. Seluruh Daftar Work Order untuk Admin & Superadmin (Pantau Terpadu)
-   * GET /admin/work-orders
+   * 7.4. Seluruh Daftar Work Order (Pantau Terpadu)
+   * GET /work-orders
    */
   getAdminWorkOrders: async (filters?: WorkOrderFilters): Promise<{ data: WorkOrderItem[]; counts: any; total: number }> => {
     const params: Record<string, string> = {};
@@ -78,7 +78,7 @@ export const workOrderService = {
     if (filters?.date) params.date = filters.date;
     if (filters?.search?.trim()) params.search = filters.search.trim();
 
-    const response = await apiClient.get<any>('/admin/work-orders', params);
+    const response = await apiClient.get<any>('/work-orders', params);
     
     const data = Array.isArray(response) ? response : (Array.isArray(response?.data) ? response.data : []);
     const counts = response?.counts || {

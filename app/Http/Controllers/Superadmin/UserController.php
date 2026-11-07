@@ -141,6 +141,12 @@ class UserController extends Controller
         $user->save();
 
         if (isset($validated['role'])) {
+            if (($user->hasRole('Superadmin') || $user->hasRole('superadmin')) && ! in_array(strtolower($validated['role']), ['superadmin'])) {
+                $superadminCount = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Superadmin', 'superadmin']))->where('status', 'active')->count();
+                if ($superadminCount <= 1) {
+                    return response()->json(['message' => 'Tidak dapat menurunkan role pengguna terakhir dengan role Superadmin.'], 422);
+                }
+            }
             $user->syncRoles([$validated['role']]);
         }
 
@@ -151,12 +157,63 @@ class UserController extends Controller
             ->response();
     }
 
+    /**
+     * PATCH /api/users/{user}/role
+     * Ubah role pengguna (satu role utama per pengguna).
+     */
+    public function updateRole(Request $request, User $user): JsonResponse
+    {
+        $this->authorize('update', $user);
+
+        $validated = $request->validate([
+            'role' => 'required|string|exists:roles,name',
+        ]);
+
+        $newRole = $validated['role'];
+        $oldRole = $user->getRoleNames()->first() ?? 'Tidak ada';
+
+        if (($user->hasRole('Superadmin') || $user->hasRole('superadmin')) && ! in_array(strtolower($newRole), ['superadmin'])) {
+            $superadminCount = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Superadmin', 'superadmin']))->where('status', 'active')->count();
+            if ($superadminCount <= 1) {
+                return response()->json([
+                    'message' => 'Tidak dapat menurunkan role pengguna Superadmin terakhir di sistem.',
+                ], 422);
+            }
+        }
+
+        $user->syncRoles([$newRole]);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+        activity('access_control')
+            ->causedBy($request->user())
+            ->performedOn($user)
+            ->withProperties([
+                'user' => $user->name,
+                'old_role' => $oldRole,
+                'new_role' => $newRole,
+            ])
+            ->log("Role pengguna {$user->name} diubah dari {$oldRole} menjadi {$newRole} oleh {$request->user()->name}");
+
+        return response()->json([
+            'success' => true,
+            'message' => "Role pengguna '{$user->name}' berhasil diubah menjadi '{$newRole}'.",
+            'data' => new UserResource($user->load(['roles', 'currentTeam'])),
+        ]);
+    }
+
     public function destroy(User $user): JsonResponse
     {
         $this->authorize('delete', $user);
 
         if ($user->id === auth()->id()) {
             return response()->json(['message' => 'Cannot delete yourself'], 400);
+        }
+
+        if ($user->hasRole('Superadmin') || $user->hasRole('superadmin')) {
+            $superadminCount = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Superadmin', 'superadmin']))->count();
+            if ($superadminCount <= 1) {
+                return response()->json(['message' => 'Tidak dapat menghapus pengguna terakhir dengan role Superadmin.'], 422);
+            }
         }
 
         $userName = $user->name;
@@ -180,10 +237,10 @@ class UserController extends Controller
                 return response()->json(['message' => 'Cannot deactivate yourself'], 400);
             }
 
-            if ($user->hasRole('Superadmin')) {
-                $superadminCount = User::role('Superadmin')->where('status', 'active')->count();
+            if ($user->hasRole('Superadmin') || $user->hasRole('superadmin')) {
+                $superadminCount = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Superadmin', 'superadmin']))->where('status', 'active')->count();
                 if ($superadminCount <= 1) {
-                    return response()->json(['message' => 'Cannot deactivate the last active superadmin'], 400);
+                    return response()->json(['message' => 'Cannot deactivate the last active superadmin'], 422);
                 }
             }
 

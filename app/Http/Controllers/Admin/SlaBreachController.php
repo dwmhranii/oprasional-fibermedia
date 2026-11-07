@@ -11,7 +11,7 @@ class SlaBreachController extends Controller
 {
     public function index(Request $request)
     {
-        Gate::authorize('view_sla');
+        $this->authorizeAccess();
         $query = SlaBreach::with('entity')->latest('detected_at');
 
         if ($request->filled('breach_type')) {
@@ -42,7 +42,7 @@ class SlaBreachController extends Controller
 
     public function show($id)
     {
-        Gate::authorize('view_sla');
+        $this->authorizeAccess();
         $breach = SlaBreach::with('entity')->findOrFail($id);
 
         return response()->json([
@@ -53,7 +53,7 @@ class SlaBreachController extends Controller
 
     public function summary()
     {
-        Gate::authorize('view_sla');
+        $this->authorizeAccess();
         $totalOpen = SlaBreach::whereNull('resolved_at')->count();
         $totalResolved = SlaBreach::whereNotNull('resolved_at')->count();
 
@@ -71,5 +71,12 @@ class SlaBreachController extends Controller
                 'delayed_installation_count' => $delayedInstallationCount,
             ],
         ]);
+    }
+
+    private function authorizeAccess(): void
+    {
+        if (! Gate::allows('view_sla') && ! Gate::allows('kpi.view')) {
+            abort(403, 'Akses ke SLA breach ditolak.');
+        }
     }
 }

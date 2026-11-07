@@ -53,8 +53,9 @@ export const CustomerMap: React.FC<CustomerMapProps> = ({ lat, lng, customerName
           <div className="h-[200px] md:h-[400px] w-full rounded-lg overflow-hidden border border-gray-200 z-0 relative">
             <MapContainer center={[defaultLat, defaultLng]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, USGS, Fibermedia Ops'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={19}
               />
               <MapEvents />
             </MapContainer>
@@ -84,8 +85,9 @@ export const CustomerMap: React.FC<CustomerMapProps> = ({ lat, lng, customerName
       <div className="h-[200px] md:h-[400px] w-full rounded-lg overflow-hidden border border-gray-200 z-0 relative">
         <MapContainer center={[lat, lng]} zoom={15} scrollWheelZoom={interactive} style={{ height: '100%', width: '100%' }}>
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, USGS, Fibermedia Ops'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+            maxZoom={19}
           />
           <MapEvents />
           <Marker position={[lat, lng]}>

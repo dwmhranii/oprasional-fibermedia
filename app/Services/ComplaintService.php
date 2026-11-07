@@ -225,23 +225,40 @@ class ComplaintService
     }
 
     /**
-     * Buka kembali tiket (Status: REOPENED, maksimal 7 hari sejak closed).
+     * Buka kembali tiket (Status: REOPENED, maksimal 3 x 24 jam sejak selesai sesuai PRD Final v1.2).
      */
-    public function reopen(Complaint $complaint, string $reason, User $actor): Complaint
+    public function reopen(Complaint $complaint, string $reason, User $actor, array $extra = []): Complaint
     {
         $this->assertCanTransitionTo($complaint, ComplaintStatus::REOPENED);
 
-        if ($complaint->closed_at && $complaint->closed_at->diffInDays(now()) > 7) {
-            throw new \DomainException('Tiket hanya dapat dibuka kembali dalam 7 hari kalender sejak ditutup.');
+        $doneAt = $complaint->closed_at ?? $complaint->resolved_at;
+        if ($doneAt && $doneAt->diffInHours(now()) > 72) {
+            throw new \DomainException('Tiket hanya dapat dibuka kembali maksimal 3 x 24 jam setelah selesai. Silakan buat tiket pengaduan baru.');
         }
 
-        return DB::transaction(function () use ($complaint, $reason, $actor) {
+        return DB::transaction(function () use ($complaint, $reason, $actor, $extra) {
             $fromStatus = $complaint->status->value;
 
-            $complaint->update([
+            $updateData = [
                 'status' => ComplaintStatus::REOPENED,
                 'status_reason' => $reason,
-            ]);
+                'reopened_at' => now(),
+                'reopened_by_id' => $actor->id,
+                'reopen_count' => ($complaint->reopen_count ?? 0) + 1,
+                'is_sla_breached' => false,
+            ];
+
+            if (! empty($extra['priority'])) {
+                $updateData['priority'] = $extra['priority'];
+            }
+            if (! empty($extra['complaint_type_id'])) {
+                $updateData['complaint_type_id'] = $extra['complaint_type_id'];
+            }
+
+            $complaint->update($updateData);
+
+            // PRD Final v1.2: Saat reopen, SLA dihitung ulang dari awal memakai prioritas/jenis gangguan terbaru
+            $this->slaService->resetTimersForReopen($complaint);
 
             ComplaintLog::create([
                 'complaint_id' => $complaint->id,
@@ -260,20 +277,36 @@ class ComplaintService
     }
 
     /**
-     * Menunggu pelanggan (Status: PENDING_CUSTOMER, SLA dijeda).
+     * Jeda tiket / menunggu pelanggan (Status: PENDING_CUSTOMER, SLA dijeda).
+     * Mendukung 5 alasan baku PRD Final v1.2.
      */
-    public function pauseForCustomer(Complaint $complaint, string $reason, User $actor): Complaint
+    public function pauseForCustomer(Complaint $complaint, string $reason, User $actor, array $extra = []): Complaint
     {
         $this->assertCanTransitionTo($complaint, ComplaintStatus::PENDING_CUSTOMER);
 
-        return DB::transaction(function () use ($complaint, $reason, $actor) {
+        return DB::transaction(function () use ($complaint, $reason, $actor, $extra) {
             $fromStatus = $complaint->status->value;
 
-            $complaint->update([
+            $updateData = [
                 'status' => ComplaintStatus::PENDING_CUSTOMER,
                 'status_reason' => $reason,
-            ]);
-            $complaint->pauseSla();
+                'sla_paused_at' => now(),
+            ];
+
+            if (! empty($extra['pause_reason_id'])) {
+                $updateData['pause_reason_id'] = $extra['pause_reason_id'];
+            }
+            if (! empty($extra['pause_photo_path'])) {
+                $updateData['pause_photo_path'] = $extra['pause_photo_path'];
+            }
+            if (isset($extra['pause_lat'])) {
+                $updateData['pause_lat'] = $extra['pause_lat'];
+            }
+            if (isset($extra['pause_lng'])) {
+                $updateData['pause_lng'] = $extra['pause_lng'];
+            }
+
+            $complaint->update($updateData);
 
             ComplaintLog::create([
                 'complaint_id' => $complaint->id,
@@ -301,10 +334,31 @@ class ComplaintService
         return DB::transaction(function () use ($complaint, $actor) {
             $fromStatus = $complaint->status->value;
 
-            $complaint->update([
-                'status' => ComplaintStatus::IN_PROGRESS,
-            ]);
-            $complaint->resumeSla();
+            if ($complaint->sla_paused_at) {
+                $operatingHoursSvc = app(\App\Services\SlaOperatingHoursService::class);
+                $pausedOperatingMinutes = $operatingHoursSvc->getOperatingMinutesBetween($complaint->sla_paused_at, now());
+
+                if ($complaint->sla_resolve_due_at && $pausedOperatingMinutes > 0) {
+                    $complaint->sla_resolve_due_at = $operatingHoursSvc->addOperatingMinutes(
+                        $complaint->sla_resolve_due_at,
+                        $pausedOperatingMinutes
+                    );
+                }
+
+                if ($complaint->response_deadline_at && ! $complaint->accepted_at && $pausedOperatingMinutes > 0) {
+                    $complaint->response_deadline_at = $operatingHoursSvc->addOperatingMinutes(
+                        $complaint->response_deadline_at,
+                        $pausedOperatingMinutes
+                    );
+                }
+
+                $pausedSeconds = now()->diffInSeconds($complaint->sla_paused_at);
+                $complaint->sla_paused_seconds = ($complaint->sla_paused_seconds ?? 0) + $pausedSeconds;
+                $complaint->sla_paused_at = null;
+            }
+
+            $complaint->status = ComplaintStatus::IN_PROGRESS;
+            $complaint->save();
 
             ComplaintLog::create([
                 'complaint_id' => $complaint->id,

@@ -69,6 +69,10 @@ export const CustomerDetail: React.FC = () => {
     user?.roles?.includes('Superadmin') ||
     user?.roles?.includes('superadmin');
 
+  const canUpdate = isSuperadmin || user?.permissions?.includes('customers.update');
+  const canDelete = isSuperadmin || user?.permissions?.includes('customers.delete');
+  const canViewSecret = isSuperadmin || user?.permissions?.includes('customers.view_secret');
+
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showSpkModal, setShowSpkModal] = useState(false);
   const [showBastModal, setShowBastModal] = useState(false);
@@ -91,7 +95,7 @@ export const CustomerDetail: React.FC = () => {
   const { data: customerResponse, isLoading, isError, refetch } = useQuery({
     queryKey: ['adminCustomer', 'detail', id],
     queryFn: async () => {
-      const res = await apiClient.get<any>(`/admin/customers/${id}`);
+      const res = await apiClient.get<any>(`/customers/${id}`);
       return res.data || res;
     },
     enabled: !!id,
@@ -102,7 +106,7 @@ export const CustomerDetail: React.FC = () => {
   // Status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ status, notes }: { status: string; notes: string }) => {
-      return await apiClient.patch(`/admin/customers/${id}/status`, { status, notes });
+      return await apiClient.patch(`/customers/${id}/status`, { status, notes });
     },
     onSuccess: (data: any) => {
       toast.success(data?.message || 'Status pelanggan berhasil diperbarui');
@@ -124,13 +128,13 @@ export const CustomerDetail: React.FC = () => {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      return await apiClient.delete(`/admin/customers/${id}`);
+      return await apiClient.delete(`/customers/${id}`);
     },
     onSuccess: () => {
       toast.success('Data pelanggan berhasil dihapus dari sistem');
       setIsDeleteDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['adminCustomers'] });
-      navigate('/admin/customers');
+      navigate('/customers');
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Gagal menghapus data pelanggan');
@@ -149,7 +153,7 @@ export const CustomerDetail: React.FC = () => {
   const handleViewSecrets = async () => {
     setIsLoadingSecret(true);
     try {
-      const res = await apiClient.get<any>(`/admin/customers/${id}/secrets`);
+      const res = await apiClient.get<any>(`/customers/${id}/secrets`);
       const payload = res.data || res;
       setSecretData(payload);
       setIsSecretModalOpen(true);
@@ -212,7 +216,7 @@ export const CustomerDetail: React.FC = () => {
   if (isError || !customer) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/customers')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/customers')}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Daftar Pelanggan
         </Button>
         <Card className="p-8 text-center border-rose-200 bg-rose-50/50">
@@ -268,7 +272,7 @@ export const CustomerDetail: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <Button variant="outline" size="icon" onClick={() => navigate('/admin/customers')}>
+          <Button variant="outline" size="icon" onClick={() => navigate('/customers')}>
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Button>
           <div>
@@ -303,38 +307,44 @@ export const CustomerDetail: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-          >
-            <Edit className="w-3.5 h-3.5" /> Ubah Data
-          </Button>
+          {canUpdate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            >
+              <Edit className="w-3.5 h-3.5" /> Ubah Data
+            </Button>
+          )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleViewSecrets}
-            disabled={isLoadingSecret}
-            className="flex items-center gap-1.5 text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
-            title="Buka NIK mentah dan password kredensial"
-          >
-            {isLoadingSecret ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5 text-amber-600" />}
-            Buka Kredensial Rahasia
-          </Button>
+          {canViewSecret && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewSecrets}
+              disabled={isLoadingSecret}
+              className="flex items-center gap-1.5 text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
+              title="Buka NIK mentah dan password kredensial"
+            >
+              {isLoadingSecret ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5 text-amber-600" />}
+              Buka Kredensial Rahasia
+            </Button>
+          )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setNewStatus(customer.status || 'active');
-              setIsStatusDialogOpen(true);
-            }}
-            className="text-xs flex items-center gap-1.5"
-          >
-            <Activity className="w-3.5 h-3.5 text-slate-500" /> Ubah Status
-          </Button>
+          {canUpdate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setNewStatus(customer.status || 'active');
+                setIsStatusDialogOpen(true);
+              }}
+              className="text-xs flex items-center gap-1.5"
+            >
+              <Activity className="w-3.5 h-3.5 text-slate-500" /> Ubah Status
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -354,7 +364,7 @@ export const CustomerDetail: React.FC = () => {
             <FileCheck className="w-3.5 h-3.5" /> Cetak BAST
           </Button>
 
-          {isSuperadmin && (
+          {canDelete && (
             <Button
               variant="outline"
               size="sm"

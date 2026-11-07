@@ -35,7 +35,7 @@ class WorkOrderService
      */
     public function getTechnicianWorkOrders(User $user, array $filters = []): Collection
     {
-        $isPrivileged = $user->hasRole(['Admin', 'Superadmin']);
+        $isPrivileged = $user->can('workorders.view');
         $team = $user->team;
         $userId = $user->id;
 

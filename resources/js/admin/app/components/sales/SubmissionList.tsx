@@ -62,7 +62,7 @@ export const SubmissionList: React.FC = () => {
     if (!isConfirmed) return;
 
     try {
-      await apiClient.delete(`/superadmin/submissions/${id}`);
+      await apiClient.delete(`/submissions/${id}`);
       toast.success('Pengajuan berhasil dihapus!');
       refetch();
     } catch (error: any) {
@@ -92,7 +92,7 @@ export const SubmissionList: React.FC = () => {
       { page, status: statusFilter, search: debouncedSearch, dateFrom, dateTo, sortBy, sortOrder },
     ],
     queryFn: async () => {
-      let url = `/sales/submissions?page=${page}&per_page=10`;
+      let url = `/submissions?page=${page}&per_page=10`;
       if (statusFilter && statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }

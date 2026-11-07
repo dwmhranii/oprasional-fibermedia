@@ -56,7 +56,7 @@ import {
 import { toast } from 'sonner';
 
 export const PackagesManagement: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isSuperadmin: authIsSuperadmin, can } = useAuth();
   const [packages, setPackages] = useState<Package[]>([]);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,10 +82,10 @@ export const PackagesManagement: React.FC = () => {
     is_active: true,
   });
 
-  // Check admin/superadmin role
-  const isAdmin = user?.role === 'admin';
-  const isSuperadmin = user?.role === 'superadmin';
-  const isAdminOrSuperadmin = isAdmin || isSuperadmin;
+  // Check admin/superadmin role and permissions
+  const isSuperadmin = authIsSuperadmin || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || can('catalog.manage');
+  const isAdminOrSuperadmin = isSuperadmin || isAdmin || can('catalog.view');
 
   const fetchPackagesList = async () => {
     try {

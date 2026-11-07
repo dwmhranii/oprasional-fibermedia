@@ -89,7 +89,7 @@ export const NewSubmissionForm: React.FC<NewSubmissionFormProps> = ({ onNavigate
     queryKey: ['submission', id],
     queryFn: async () => {
       if (!id) return null;
-      const response = await apiClient.get<any>(`/sales/submissions/${id}`);
+      const response = await apiClient.get<any>(`/submissions/${id}`);
       return response.data;
     },
     enabled: !!id,
@@ -244,7 +244,7 @@ export const NewSubmissionForm: React.FC<NewSubmissionFormProps> = ({ onNavigate
 
       if (id) {
         // Update existing submission
-        await apiClient.put<any>(`/sales/submissions/${id}`, payload);
+        await apiClient.put<any>(`/submissions/${id}`, payload);
 
         // Upload any newly selected files for existing submission
         const filesToUpload = [
@@ -262,7 +262,7 @@ export const NewSubmissionForm: React.FC<NewSubmissionFormProps> = ({ onNavigate
 
             toast.info(`Mengunggah ${item.label}...`);
             await apiClient.upload<any>(
-              `/sales/submissions/${submissionId}/upload-document`,
+              `/submissions/${submissionId}/upload-document`,
               fileFormData
             );
           }
@@ -324,8 +324,8 @@ export const NewSubmissionForm: React.FC<NewSubmissionFormProps> = ({ onNavigate
           formData.append('other_photo', values.otherPhoto);
         }
 
-        // 3. Single Atomic HTTP Request to POST /api/sales/submissions
-        const subResponse = await apiClient.upload<any>('/sales/submissions', formData);
+        // 3. Single Atomic HTTP Request to POST /api/submissions
+        const subResponse = await apiClient.upload<any>('/submissions', formData);
         submissionId = subResponse.id || subResponse.data?.id || subResponse.submission?.id;
       }
 

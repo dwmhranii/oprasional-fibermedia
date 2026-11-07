@@ -1,3 +1,5 @@
+export * from './designTokens';
+
 /**
  * FIBERMEDIA-OPS DESIGN TOKENS
  * Standar terpadu warna, tipografi, spasi, radius, bayangan, dan ukuran ikon

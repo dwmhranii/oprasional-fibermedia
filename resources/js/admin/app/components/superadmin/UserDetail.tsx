@@ -71,10 +71,10 @@ export const UserDetail: React.FC = () => {
     queryKey: ['users', 'detail', id],
     queryFn: async () => {
       try {
-        const response = await apiClient.get<any>(`/superadmin/users/${id}`);
+        const response = await apiClient.get<any>(`/users/${id}`);
         return userToFrontend(response);
       } catch {
-        const response = await apiClient.get<any>('/superadmin/users?per_page=100');
+        const response = await apiClient.get<any>('/users?per_page=100');
         const list = (response.data || []).map(userToFrontend);
         const matched = list.find((u: any) => String(u.id) === String(id));
         if (!matched) throw new Error('Pengguna tidak ditemukan.');
@@ -89,7 +89,7 @@ export const UserDetail: React.FC = () => {
     queryKey: ['auditLogs', 'user', id],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<any>(`/admin/audit-logs?causer_id=${id}`);
+        const res = await apiClient.get<any>(`/audit-logs?causer_id=${id}`);
         return res.data || res.items || (Array.isArray(res) ? res : []);
       } catch (err) {
         console.warn('Failed to fetch user audit logs:', err);
@@ -125,7 +125,7 @@ export const UserDetail: React.FC = () => {
     if (!user) return;
     setIsSubmitting(true);
     try {
-      await apiClient.put(`/superadmin/users/${user.id}`, editForm);
+      await apiClient.put(`/users/${user.id}`, editForm);
       toast.success(`Profil '${editForm.name}' berhasil diperbarui`);
       setShowEditModal(false);
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -152,7 +152,7 @@ export const UserDetail: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
-      await apiClient.post(`/superadmin/users/${user.id}/reset-password`, {
+      await apiClient.post(`/users/${user.id}/reset-password`, {
         password: passwordForm.password,
         password_confirmation: passwordForm.password_confirmation,
       });
@@ -172,7 +172,7 @@ export const UserDetail: React.FC = () => {
     if (!user) return;
     const newStatus = user.status === 'active' ? 'inactive' : 'active';
     try {
-      await apiClient.patch(`/superadmin/users/${user.id}/status`, { status: newStatus });
+      await apiClient.patch(`/users/${user.id}/status`, { status: newStatus });
       toast.success(
         `Status akun @${user.username} diubah menjadi ${newStatus === 'active' ? 'AKTIF' : 'NONAKTIF'}`
       );
@@ -234,7 +234,7 @@ export const UserDetail: React.FC = () => {
     }
     return (
       <div className="space-y-6 max-w-4xl mx-auto py-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/superadmin/users')} className="mb-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/access/users')} className="mb-2">
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Daftar Staf
         </Button>
         <Alert variant="destructive">
@@ -262,7 +262,7 @@ export const UserDetail: React.FC = () => {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => navigate('/superadmin/users')}
+              onClick={() => navigate('/access/users')}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl"
             >
               <ArrowLeft className="w-5 h-5" />

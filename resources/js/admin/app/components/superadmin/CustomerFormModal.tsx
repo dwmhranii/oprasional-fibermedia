@@ -189,7 +189,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     queryKey: ['adminTeams', 'form'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<any>('/admin/teams');
+        const res = await apiClient.get<any>('/teams');
         return res.data || res;
       } catch {
         return [];
@@ -207,7 +207,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     queryKey: ['adminUsers', 'form'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<any>('/admin/users');
+        const res = await apiClient.get<any>('/users');
         return res.data || res;
       } catch {
         return [];
@@ -233,6 +233,16 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
   // GPS Location Pin
   const handleGetLocation = () => {
+    if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      setFormData((prev) => ({
+        ...prev,
+        latitude: '-8.0814130',
+        longitude: '112.6377890',
+      }));
+      toast.info('GPS diblokir browser HTTP (non-HTTPS). Koordinat default area Bululawang (-8.081413, 112.637789) diisikan otomatis.');
+      return;
+    }
+
     if (!navigator.geolocation) {
       toast.error('Browser tidak mendukung geolokasi GPS.');
       return;
@@ -248,7 +258,24 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
         toast.success(`Koordinat ditemukan: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
       },
       (err) => {
-        toast.error(`Gagal mendapatkan lokasi: ${err.message}`);
+        let errorMsg = 'Gagal mendapatkan lokasi GPS.';
+        if (err.message && (err.message.toLowerCase().includes('secure origin') || err.message.toLowerCase().includes('secure origins'))) {
+          errorMsg = 'Fitur GPS diblokir browser karena halaman dibuka tanpa HTTPS. Koordinat area Bululawang diisikan otomatis.';
+          if (!formData.latitude && !formData.longitude) {
+            setFormData((prev) => ({
+              ...prev,
+              latitude: '-8.0814130',
+              longitude: '112.6377890',
+            }));
+          }
+        } else if (err.code === 1) {
+          errorMsg = 'Izin akses lokasi GPS ditolak oleh browser atau sistem perangkat.';
+        } else if (err.code === 2) {
+          errorMsg = 'Sinyal lokasi GPS tidak tersedia saat ini.';
+        } else if (err.code === 3) {
+          errorMsg = 'Waktu permintaan koordinat GPS habis (timeout).';
+        }
+        toast.error(errorMsg);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -258,9 +285,9 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   const saveMutation = useMutation({
     mutationFn: async (payload: any) => {
       if (isEdit) {
-        return await apiClient.put(`/admin/customers/${customer.id}`, payload);
+        return await apiClient.put(`/customers/${customer.id}`, payload);
       }
-      return await apiClient.post('/admin/customers', payload);
+      return await apiClient.post('/customers', payload);
     },
     onSuccess: (res: any) => {
       toast.success(
@@ -337,8 +364,12 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     if (formData.odp_port) payload.odp_port = parseInt(formData.odp_port, 10);
     if (formData.debt) payload.debt = parseFloat(formData.debt);
     if (formData.wilayah.trim()) payload.wilayah = formData.wilayah.trim();
-    if (formData.installed_by_team_id) payload.installed_by_team_id = parseInt(formData.installed_by_team_id, 10);
-    if (formData.sales_id) payload.sales_id = parseInt(formData.sales_id, 10);
+    if (formData.installed_by_team_id && formData.installed_by_team_id !== 'none') {
+      payload.installed_by_team_id = parseInt(formData.installed_by_team_id, 10);
+    }
+    if (formData.sales_id && formData.sales_id !== 'none') {
+      payload.sales_id = parseInt(formData.sales_id, 10);
+    }
     if (formData.notes.trim()) payload.notes = formData.notes.trim();
 
     saveMutation.mutate(payload);
@@ -761,13 +792,14 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
               <div>
                 <Label className="text-xs font-medium text-slate-700">Tim Pemasang (Teknisi)</Label>
                 <Select
-                  value={formData.installed_by_team_id}
-                  onValueChange={(val) => setFormData({ ...formData, installed_by_team_id: val })}
+                  value={formData.installed_by_team_id || 'none'}
+                  onValueChange={(val) => setFormData({ ...formData, installed_by_team_id: val === 'none' ? '' : val })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Pilih Tim Pemasang" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Tanpa Tim Pemasang (Opsional)</SelectItem>
                     {teamsList.map((tm) => (
                       <SelectItem key={tm.id} value={String(tm.id)}>
                         {tm.name}
@@ -775,18 +807,22 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Riwayat tim teknisi untuk pelanggan langsung/lama. Penugasan round-robin otomatis berlaku pada tiket Work Order PSB.
+                </p>
               </div>
 
               <div>
                 <Label className="text-xs font-medium text-slate-700">Sales / Marketing</Label>
                 <Select
-                  value={formData.sales_id}
-                  onValueChange={(val) => setFormData({ ...formData, sales_id: val })}
+                  value={formData.sales_id || 'none'}
+                  onValueChange={(val) => setFormData({ ...formData, sales_id: val === 'none' ? '' : val })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Pilih Sales" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Tanpa Sales (Langsung / Migrasi)</SelectItem>
                     {usersList.map((u) => (
                       <SelectItem key={u.id} value={String(u.id)}>
                         {u.name} ({u.role || 'User'})
@@ -794,6 +830,9 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Pencatatan sales pengakuisisi pelanggan langsung atau data migrasi.
+                </p>
               </div>
 
               <div className="md:col-span-2">

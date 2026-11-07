@@ -34,7 +34,11 @@ class UserResource extends JsonResource
             ] : null,
             'roles' => $this->roles->pluck('name'),
             'role' => $this->roles->first()?->name,
-            'permissions' => $this->whenLoaded('permissions', fn () => $this->permissions->pluck('name')),
+            'is_superadmin' => (bool) ($this->hasRole('Superadmin') || $this->hasRole('superadmin')),
+            'has_pwa_access' => (bool) ($this->hasRole('Superadmin') || $this->hasRole('superadmin') || $this->can('pwa.access')),
+            'permissions' => ($this->hasRole('Superadmin') || $this->hasRole('superadmin'))
+                ? \Spatie\Permission\Models\Permission::pluck('name')
+                : $this->getAllPermissions()->pluck('name'),
             'coverage_areas' => $this->coverage_areas ?? [],
             'max_active_complaints' => (int) ($this->max_active_complaints ?? 5),
             'availability' => $this->availability ?? 'active',

@@ -249,7 +249,7 @@ export const AdminWorkOrderList: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/admin/tracking/live-map')}
+            onClick={() => navigate('/network/map')}
             className="text-xs h-9 text-indigo-700 border-indigo-200 hover:bg-indigo-50 font-bold"
           >
             <Radio className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />

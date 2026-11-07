@@ -65,7 +65,7 @@ export const ValidationQueue: React.FC<ValidationQueueProps> = ({ isEmbedded = f
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['adminSubmissions', 'list', { page, status: statusFilter, search: debouncedSearch, dateFrom, dateTo, sortBy, sortOrder }],
     queryFn: async () => {
-      let url = `/admin/submissions?page=${page}&per_page=10`;
+      let url = `/submissions?page=${page}&per_page=10`;
       if (statusFilter && statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
@@ -97,22 +97,22 @@ export const ValidationQueue: React.FC<ValidationQueueProps> = ({ isEmbedded = f
   // Query stats totals from admin endpoint using status filter checks
   const { data: totalPending } = useQuery({
     queryKey: ['adminSubmissions', 'stats', 'pending'],
-    queryFn: () => apiClient.get<any>('/admin/submissions?status=pending&per_page=1'),
+    queryFn: () => apiClient.get<any>('/submissions?status=pending&per_page=1'),
   });
 
   const { data: totalApproved } = useQuery({
     queryKey: ['adminSubmissions', 'stats', 'approved'],
-    queryFn: () => apiClient.get<any>('/admin/submissions?status=approved&per_page=1'),
+    queryFn: () => apiClient.get<any>('/submissions?status=approved&per_page=1'),
   });
 
   const { data: totalRejected } = useQuery({
     queryKey: ['adminSubmissions', 'stats', 'rejected'],
-    queryFn: () => apiClient.get<any>('/admin/submissions?status=rejected&per_page=1'),
+    queryFn: () => apiClient.get<any>('/submissions?status=rejected&per_page=1'),
   });
 
   const { data: totalNeedInfo } = useQuery({
     queryKey: ['adminSubmissions', 'stats', 'need_info'],
-    queryFn: () => apiClient.get<any>('/admin/submissions?status=need_info&per_page=1'),
+    queryFn: () => apiClient.get<any>('/submissions?status=need_info&per_page=1'),
   });
 
   const getStatusBadge = (status: string) => {
@@ -416,7 +416,7 @@ export const ValidationQueue: React.FC<ValidationQueueProps> = ({ isEmbedded = f
                 </TableHeader>
                 <TableBody>
                   {filteredSubmissions.map((sub: any) => (
-                    <TableRow key={sub.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60 cursor-pointer" onClick={() => navigate(`/admin/submissions/${sub.id}`)}>
+                    <TableRow key={sub.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60 cursor-pointer" onClick={() => navigate(`/submissions/${sub.id}`)}>
                       <TableCell className="font-semibold">{sub.submissionNumber}</TableCell>
                       <TableCell>{sub.customer.name}</TableCell>
                       <TableCell className="font-mono text-sm">
@@ -434,7 +434,7 @@ export const ValidationQueue: React.FC<ValidationQueueProps> = ({ isEmbedded = f
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/submissions/${sub.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/submissions/${sub.id}`); }}
                           className="bg-blue-50/60 hover:bg-blue-600 hover:text-white border-blue-200 text-blue-700 text-xs font-semibold transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5 mr-1" />
@@ -444,7 +444,7 @@ export const ValidationQueue: React.FC<ValidationQueueProps> = ({ isEmbedded = f
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/tasks/${sub.taskId}`); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/work-orders/${sub.taskId}`); }}
                             className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                           >
                             <Users className="w-4 h-4 mr-1" />

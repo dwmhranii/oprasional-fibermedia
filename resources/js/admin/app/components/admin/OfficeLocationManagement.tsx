@@ -35,7 +35,7 @@ export const OfficeLocationManagement: React.FC = () => {
   const { data: officesResponse, isLoading, refetch } = useQuery({
     queryKey: ['office-locations'],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/office-locations');
+      const res = await apiClient.get<any>('/office-locations');
       return res?.data || (Array.isArray(res) ? res : []);
     },
   });
@@ -79,9 +79,9 @@ export const OfficeLocationManagement: React.FC = () => {
       };
 
       if (editingOffice) {
-        return await apiClient.put(`/admin/office-locations/${editingOffice.id}`, payload);
+        return await apiClient.put(`/office-locations/${editingOffice.id}`, payload);
       } else {
-        return await apiClient.post('/admin/office-locations', payload);
+        return await apiClient.post('/office-locations', payload);
       }
     },
     onSuccess: () => {
@@ -96,7 +96,7 @@ export const OfficeLocationManagement: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.delete(`/admin/office-locations/${id}`);
+      return await apiClient.delete(`/office-locations/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['office-locations'] });

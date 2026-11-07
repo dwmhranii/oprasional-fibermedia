@@ -124,7 +124,7 @@ export const SalesSubmissionsView: React.FC<SalesSubmissionsViewProps> = ({
     if (!token) return;
     setIsLoading(true);
     try {
-      const res = await fetch('/api/sales/submissions', {
+      const res = await fetch('/api/submissions', {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
@@ -161,7 +161,7 @@ export const SalesSubmissionsView: React.FC<SalesSubmissionsViewProps> = ({
     if (!nik && !phone && (!lat || !lng)) return;
     setIsCheckingDuplicate(true);
     try {
-      const res = await fetch('/api/sales/submissions/check-duplicate', {
+      const res = await fetch('/api/submissions/check-duplicate', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -261,7 +261,7 @@ export const SalesSubmissionsView: React.FC<SalesSubmissionsViewProps> = ({
     setFormAlert(null);
 
     try {
-      const res = await fetch('/api/sales/submissions', {
+      const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -287,7 +287,7 @@ export const SalesSubmissionsView: React.FC<SalesSubmissionsViewProps> = ({
       }
     } catch (err) {
       if (!navigator.onLine) {
-        await enqueueOfflineRequest('/api/sales/submissions', 'POST', payload, token);
+        await enqueueOfflineRequest('/api/submissions', 'POST', payload, token);
         setIsFormOpen(false);
         resetForm();
         alert('Offline: Pengajuan disimpan di antrean Dexie dan akan otomatis dikirim saat online.');

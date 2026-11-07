@@ -67,6 +67,7 @@ return new class extends Migration
             Schema::table('customers', function (Blueprint $table) {
                 $table->unique('username');
             });
+            DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS customers_odp_port_unique ON customers (odp_id, odp_port) WHERE odp_id IS NOT NULL AND odp_port IS NOT NULL AND deleted_at IS NULL AND status <> 'terminated'");
         }
 
         $this->backfill();

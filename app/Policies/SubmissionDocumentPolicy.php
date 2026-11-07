@@ -12,7 +12,7 @@ class SubmissionDocumentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view_any_submissions') || $user->hasPermissionTo('view_own_submissions');
+        return $user->can('submissions.view') || $user->can('submissions.view_own') || $user->can('view_any_submissions') || $user->can('view_own_submissions');
     }
 
     /**
@@ -20,11 +20,12 @@ class SubmissionDocumentPolicy
      */
     public function view(User $user, SubmissionDocument $submissionDocument): bool
     {
-        if ($user->hasPermissionTo('view_any_submissions')) {
+        if ($user->can('submissions.view') || $user->can('view_any_submissions')) {
             return true;
         }
 
-        return $user->hasPermissionTo('view_own_submissions') && $submissionDocument->submission->user_id === $user->id;
+        return ($user->can('submissions.view_own') || $user->can('view_own_submissions'))
+            && $submissionDocument->submission->user_id === $user->id;
     }
 
     /**
@@ -32,7 +33,7 @@ class SubmissionDocumentPolicy
      */
     public function create(User $user): bool
     {
-        return false; // Creation is handled via Submission upload document flow
+        return false;
     }
 
     /**
@@ -72,6 +73,6 @@ class SubmissionDocumentPolicy
      */
     public function review(User $user, SubmissionDocument $submissionDocument): bool
     {
-        return $user->hasPermissionTo('validate_submissions');
+        return $user->can('submissions.approve') || $user->can('validate_submissions');
     }
 }

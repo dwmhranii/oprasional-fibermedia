@@ -64,7 +64,7 @@ export const AnalyticsDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['analytics', 'kpi', queryParams],
     queryFn: async () => {
-      let url = '/admin/analytics/kpi';
+      let url = '/analytics/kpi';
       const params = new URLSearchParams();
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
@@ -85,7 +85,7 @@ export const AnalyticsDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['analytics', 'funnel', queryParams],
     queryFn: async () => {
-      let url = '/admin/analytics/funnel';
+      let url = '/analytics/funnel';
       const params = new URLSearchParams();
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
@@ -106,7 +106,7 @@ export const AnalyticsDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['analytics', 'regional', { ...queryParams, group_by: groupBy }],
     queryFn: async () => {
-      let url = '/admin/analytics/regional';
+      let url = '/analytics/regional';
       const params = new URLSearchParams();
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);

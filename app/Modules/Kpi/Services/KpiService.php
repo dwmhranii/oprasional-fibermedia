@@ -64,8 +64,13 @@ class KpiService
     public function generateWhatsAppRatingLink(string $ticketType, int $ticketId): array
     {
         $ticket = $ticketType === 'psb'
-            ? Task::with(['provisioning.submission.customer', 'provisioning.submission', 'assignedTeam'])->findOrFail($ticketId)
-            : Complaint::with(['customer', 'assignedTeam'])->findOrFail($ticketId);
+            ? Task::with(['provisioning.submission.customer', 'provisioning.submission', 'assignedTeam'])->find($ticketId)
+            : Complaint::with(['customer', 'assignedTeam'])->find($ticketId);
+
+        if (! $ticket) {
+            $label = $ticketType === 'psb' ? 'Pemasangan Baru (PSB)' : 'Tiket Pengaduan';
+            throw new \DomainException("Data {$label} dengan ID #{$ticketId} tidak ditemukan di sistem.");
+        }
 
         $customerName = 'Pelanggan';
         $customerPhone = '';
@@ -85,6 +90,10 @@ class KpiService
         $cleanPhone = preg_replace('/\D+/', '', (string) $customerPhone);
         if (str_starts_with($cleanPhone, '0')) {
             $cleanPhone = '62'.substr($cleanPhone, 1);
+        }
+
+        if (empty($cleanPhone) || strlen($cleanPhone) < 8) {
+            throw new \DomainException("Nomor WhatsApp pelanggan untuk tiket #{$ticketNumber} tidak tersedia atau belum diisi.");
         }
 
         $teamName = $ticket->assignedTeam?->name ?? 'Teknisi Fibermedia';

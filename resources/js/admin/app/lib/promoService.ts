@@ -77,7 +77,7 @@ export const promoService = {
       const params: Record<string, string> = {};
       if (status) params.status = status;
       if (search) params.search = search;
-      const res = await apiClient.get<any>('/admin/promos', { params });
+      const res = await apiClient.get<any>('/promos', { params });
       return {
         data: res.data || res.items || res,
         summary: res.summary || {
@@ -112,7 +112,7 @@ export const promoService = {
   // Create new promo code (Admin)
   createPromo: async (promoData: Partial<PromoCode>): Promise<PromoCode> => {
     try {
-      const res = await apiClient.post<any>('/admin/promos', promoData);
+      const res = await apiClient.post<any>('/promos', promoData);
       return res.data || res;
     } catch (err: any) {
       console.error('API create promo failed:', err);
@@ -139,7 +139,7 @@ export const promoService = {
   // Toggle promo status active/inactive (Admin)
   toggleStatus: async (id: string | number): Promise<PromoCode> => {
     try {
-      const res = await apiClient.patch<any>(`/admin/promos/${id}/toggle-status`, {});
+      const res = await apiClient.patch<any>(`/promos/${id}/toggle-status`, {});
       return res.data || res;
     } catch (err) {
       const target = defaultMockPromos.find((p) => String(p.id) === String(id));
@@ -154,7 +154,7 @@ export const promoService = {
   // Delete promo code (Admin)
   deletePromo: async (id: string | number): Promise<boolean> => {
     try {
-      await apiClient.delete<any>(`/admin/promos/${id}`);
+      await apiClient.delete<any>(`/promos/${id}`);
       return true;
     } catch (err) {
       const idx = defaultMockPromos.findIndex((p) => String(p.id) === String(id));

@@ -12,7 +12,7 @@ class ProvisioningPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('manage_provisioning');
+        return $user->can('psb.view') || $user->can('manage_provisioning');
     }
 
     /**
@@ -20,7 +20,7 @@ class ProvisioningPolicy
      */
     public function view(User $user, Provisioning $provisioning): bool
     {
-        return $user->hasPermissionTo('manage_provisioning');
+        return $user->can('psb.view') || $user->can('manage_provisioning');
     }
 
     /**
@@ -28,7 +28,7 @@ class ProvisioningPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('manage_provisioning');
+        return $user->can('psb.view') || $user->can('manage_provisioning');
     }
 
     /**
@@ -36,7 +36,7 @@ class ProvisioningPolicy
      */
     public function update(User $user, Provisioning $provisioning): bool
     {
-        return $user->hasPermissionTo('manage_provisioning');
+        return $user->can('psb.view') || $user->can('manage_provisioning');
     }
 
     /**
@@ -44,6 +44,6 @@ class ProvisioningPolicy
      */
     public function retry(User $user, Provisioning $provisioning): bool
     {
-        return $user->hasPermissionTo('manage_provisioning');
+        return $user->can('psb.view') || $user->can('manage_provisioning');
     }
 }

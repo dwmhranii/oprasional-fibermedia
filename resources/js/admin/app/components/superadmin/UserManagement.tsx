@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -52,6 +52,7 @@ import {
   Trash2,
   AlertCircle,
   RefreshCw,
+  Shield,
 } from 'lucide-react';
 import { apiClient, ApiError } from '../../lib/api';
 import { userToFrontend } from '../../lib/mappers';
@@ -118,6 +119,34 @@ export const UserManagement: React.FC = () => {
     password_confirmation: '',
   });
 
+  // Role switcher modal state
+  const [roleModalUser, setRoleModalUser] = useState<any>(null);
+  const [targetRole, setTargetRole] = useState<string>('');
+
+  const { data: availableRolesData } = useQuery({
+    queryKey: ['access-roles-list'],
+    queryFn: async () => {
+      const res = await apiClient.get<any>('/roles');
+      return (Array.isArray(res) ? res : res?.data || []) as any[];
+    },
+  });
+  const availableRoles = availableRolesData || [];
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
+      return await apiClient.patch(`/users/${userId}/role`, { role });
+    },
+    onSuccess: (res: any) => {
+      showToast.success(res?.message || 'Role pengguna berhasil diubah!');
+      setRoleModalUser(null);
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      refetch();
+    },
+    onError: (err: any) => {
+      showToast.error(err?.response?.data?.message || 'Gagal mengubah role pengguna.');
+    },
+  });
+
   // Query users
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['adminUsers', page, debouncedSearch, roleFilter, statusFilter, dateFrom, dateTo, sortBy, sortOrder],
@@ -133,25 +162,27 @@ export const UserManagement: React.FC = () => {
       if (sortBy) params.append('sort_by', sortBy);
       if (sortOrder) params.append('sort_order', sortOrder);
 
-      const response = await apiClient.get<any>(`/superadmin/users?${params.toString()}`);
+      const response = await apiClient.get<any>(`/users?${params.toString()}`);
+      const rawList = Array.isArray(response) ? response : (response?.data || []);
       return {
-        users: (response.data || []).map(userToFrontend),
-        meta: response.meta || {
+        users: rawList.map(userToFrontend),
+        meta: response?.meta || {
           current_page: 1,
           last_page: 1,
           per_page: 10,
-          total: (response.data || []).length,
+          total: rawList.length,
         },
       };
     },
   });
 
   // Query stats
-  const { data: allUsersData, isLoading: isStatsLoading, isError: isStatsError } = useQuery({
+  const { data: allUsersData, isLoading: isStatsLoading, isError: isStatsError, error: statsError } = useQuery({
     queryKey: ['users', 'stats'],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/superadmin/users?per_page=100');
-      return (response.data || []).map(userToFrontend);
+      const response = await apiClient.get<any>('/users?per_page=100');
+      const rawList = Array.isArray(response) ? response : (response?.data || []);
+      return rawList.map(userToFrontend);
     },
   });
 
@@ -164,20 +195,28 @@ export const UserManagement: React.FC = () => {
   };
 
   const isAnyError = isError || isStatsError;
+  const activeError = error || statsError;
 
   const handleRetry = () => {
     queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+    queryClient.invalidateQueries({ queryKey: ['users', 'stats'] });
+    queryClient.invalidateQueries({ queryKey: ['access-roles-list'] });
+    refetch();
   };
 
   const getRoleBadge = (role: string) => {
+    const normRole = (role || '').toLowerCase();
     const roleConfig: Record<string, { label: string; badgeClass: string }> = {
       sales: { label: 'Sales', badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
       admin: { label: 'Admin', badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
+      'admin/cs': { label: 'Admin / CS', badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
       teknisi: { label: 'Teknisi', badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
       superadmin: { label: 'Superadmin', badgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800' },
+      noc: { label: 'NOC Dispatcher', badgeClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800' },
+      'noc/dispatcher': { label: 'NOC Dispatcher', badgeClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800' },
+      collector: { label: 'Kolektor', badgeClass: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-800' },
     };
 
-    const normRole = (role || '').toLowerCase();
     const config = roleConfig[normRole] || { label: role || 'Pengguna', badgeClass: 'bg-slate-50 text-slate-700 dark:bg-slate-900/40 dark:text-slate-400 border-slate-200 dark:border-slate-800' };
 
     return (
@@ -224,7 +263,7 @@ export const UserManagement: React.FC = () => {
     }
 
     try {
-      await apiClient.post('/superadmin/users', payload);
+      await apiClient.post('/users', payload);
       showToast.success('Pengguna baru berhasil ditambahkan!');
 
       setShowCreateModal(false);
@@ -275,7 +314,7 @@ export const UserManagement: React.FC = () => {
     }
 
     try {
-      await apiClient.put(`/superadmin/users/${selectedUser.id}`, payload);
+      await apiClient.put(`/users/${selectedUser.id}`, payload);
       showToast.success('Informasi pengguna berhasil diperbarui!');
 
       setShowEditModal(false);
@@ -307,7 +346,7 @@ export const UserManagement: React.FC = () => {
         payload.password_confirmation = passwordForm.password_confirmation || passwordForm.password;
       }
 
-      const res = await apiClient.post<any>(`/superadmin/users/${selectedUser.id}/reset-password`, payload);
+      const res = await apiClient.post<any>(`/users/${selectedUser.id}/reset-password`, payload);
       const tempPass = res?.data?.temporary_password || res?.temporary_password || res?.data?.password || res?.password;
 
       if (tempPass) {
@@ -336,7 +375,7 @@ export const UserManagement: React.FC = () => {
     const actionText = newStatus === 'active' ? 'mengaktifkan kembali' : 'menonaktifkan';
 
     try {
-      await apiClient.patch(`/superadmin/users/${userToToggle.id}/status`, {
+      await apiClient.patch(`/users/${userToToggle.id}/status`, {
         status: newStatus,
       });
       showToast.success(`Berhasil ${actionText} akun ${userToToggle.name}`);
@@ -344,7 +383,7 @@ export const UserManagement: React.FC = () => {
       refetch();
     } catch (err) {
       try {
-        await apiClient.put(`/superadmin/users/${userToToggle.id}`, {
+        await apiClient.put(`/users/${userToToggle.id}`, {
           status: newStatus,
           name: userToToggle.name,
           email: userToToggle.email,
@@ -367,7 +406,7 @@ export const UserManagement: React.FC = () => {
     if (!deleteTargetUser) return;
 
     try {
-      await apiClient.delete(`/superadmin/users/${deleteTargetUser.id}`);
+      await apiClient.delete(`/users/${deleteTargetUser.id}`);
       showToast.success(`Pengguna ${deleteTargetUser.name || deleteTargetUser.email} berhasil dihapus!`);
       setDeleteTargetUser(null);
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
@@ -432,7 +471,7 @@ export const UserManagement: React.FC = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Gagal Memuat Data</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 items-start mt-2">
-            <p>{error instanceof Error ? error.message : 'Terjadi kesalahan saat memproses data pengguna dari backend.'}</p>
+            <p>{activeError instanceof Error ? activeError.message : 'Terjadi kesalahan saat memproses data pengguna dari backend.'}</p>
             <Button variant="outline" size="sm" onClick={handleRetry}>
               <RefreshCw className="w-4 h-4 mr-2" /> {ACTIONS.reload}
             </Button>
@@ -547,9 +586,10 @@ export const UserManagement: React.FC = () => {
           <Table>
             <TableHeader>
               <tr className="border-b border-border bg-muted/40">
-                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Nama & Username</TableHead>
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Nama & Tim</TableHead>
                 <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Email & Telepon</TableHead>
                 <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Peran</TableHead>
+                <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Akses PWA</TableHead>
                 <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Status</TableHead>
                 <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Aksi</TableHead>
               </tr>
@@ -558,14 +598,14 @@ export const UserManagement: React.FC = () => {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, rIdx) => (
                   <TableRow key={rIdx} className="animate-pulse">
-                    <TableCell colSpan={5} className="py-4">
+                    <TableCell colSpan={6} className="py-4">
                       <div className="h-4 bg-muted rounded w-3/4" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
                     <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
                     <p className="text-base font-medium text-foreground">{MESSAGES.emptyData}</p>
                     <p className="text-xs text-muted-foreground mt-1">{MESSAGES.emptySearchResult}</p>
@@ -583,7 +623,17 @@ export const UserManagement: React.FC = () => {
                         </Avatar>
                         <div>
                           <p className="font-semibold text-sm text-foreground">{user.name || user.nama_lengkap}</p>
-                          <p className="text-xs text-muted-foreground font-mono">@{user.username}</p>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="font-mono">@{user.username}</span>
+                            {user.team && (
+                              <>
+                                <span>•</span>
+                                <span className="text-primary font-medium">
+                                  {typeof user.team === 'object' ? user.team.name : user.team}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
@@ -601,7 +651,19 @@ export const UserManagement: React.FC = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell>{getRoleBadge(user.displayRole || (user.roles && user.roles[0]) || user.role)}</TableCell>
+                    <TableCell>
+                      {(user.has_pwa_access || user.permissions?.includes('pwa.access') || ['superadmin', 'admin', 'teknisi', 'sales'].includes(user.role?.toLowerCase())) ? (
+                        <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          /pwa
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px] bg-muted text-muted-foreground border-border">
+                          Tidak
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <StatusBadge status={user.status} size="sm" />
                     </TableCell>
@@ -610,7 +672,7 @@ export const UserManagement: React.FC = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => navigate(`/superadmin/users/${user.id}`)}
+                          onClick={() => navigate(`/access/users/${user.id}`)}
                           className="text-xs font-medium"
                         >
                           <Eye className="w-3.5 h-3.5 mr-1" /> {ACTIONS.viewDetails}
@@ -622,6 +684,14 @@ export const UserManagement: React.FC = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="text-xs">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setRoleModalUser(user);
+                                setTargetRole(user.role || 'Sales');
+                              }}
+                            >
+                              <Shield className="w-4 h-4 mr-2 opacity-70" /> Ganti Role Pengguna
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedUser(user);
@@ -918,6 +988,77 @@ export const UserManagement: React.FC = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ganti Role Modal Dialog */}
+      <Dialog open={!!roleModalUser} onOpenChange={(open) => !open && setRoleModalUser(null)}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <span>Ganti Role Pengguna</span>
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Ubah peran wewenang operasional untuk akun: <strong className="text-foreground">{roleModalUser?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Pilih Role Baru</Label>
+              <Select value={targetRole} onValueChange={setTargetRole}>
+                <SelectTrigger className="bg-background border-border text-foreground text-sm font-medium">
+                  <SelectValue placeholder="Pilih Role" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {availableRoles.length > 0 ? (
+                    availableRoles.map((r: any) => (
+                      <SelectItem key={r.id || r.name} value={r.name} className="text-sm">
+                        {r.name} {r.is_system ? '(Sistem)' : '(Kustom)'}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value="Superadmin">Superadmin</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Teknisi">Teknisi</SelectItem>
+                      <SelectItem value="Sales">Sales</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Perubahan wewenang akan langsung berlaku pada permintaan data berikutnya.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setRoleModalUser(null)}
+              disabled={updateRoleMutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={() => {
+                if (roleModalUser && targetRole) {
+                  updateRoleMutation.mutate({ userId: roleModalUser.id, role: targetRole });
+                }
+              }}
+              disabled={!targetRole || updateRoleMutation.isPending}
+              className="bg-primary text-primary-foreground font-semibold"
+            >
+              {updateRoleMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan Role Baru'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

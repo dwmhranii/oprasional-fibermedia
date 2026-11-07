@@ -101,7 +101,7 @@ export const TaskDetail: React.FC = () => {
   /**
    * [!IMPORTANT]
    * **HIGH: Missing Deferred Manual BFASS Credential UI**
-   * According to the frozen Backend API Documentation, passing `manual_provisioning` during `/validate` is optional. If omitted, the Admin must provide it later using the `PUT /api/admin/provisionings/{id}/bfass-credentials` endpoint to trigger Task Assignment. The frontend's `ProvisioningDetail.tsx` is currently missing this form entirely. It must be built to support the deferred BFASS entry workflow.
+   * According to the Backend API Documentation, passing `manual_provisioning` during `/validate` is optional. If omitted, the Admin must provide it later using the `PUT /api/provisionings/{id}/bfass-credentials` endpoint to trigger Task Assignment. The frontend's `ProvisioningDetail.tsx` is currently missing this form entirely. It must be built to support the deferred BFASS entry workflow.
    */
 
   // Use the shared task endpoint
@@ -146,7 +146,7 @@ export const TaskDetail: React.FC = () => {
     }
     setIsApproving(true);
     try {
-      await apiClient.put(`/admin/task-assignments/${selectedAssignment.id}/approve`, {
+      await apiClient.put(`/task-assignments/${selectedAssignment.id}/approve`, {
         status: 'approved'
       });
       toast.success('Bukti tugas teknisi berhasil disetujui.');
@@ -172,7 +172,7 @@ export const TaskDetail: React.FC = () => {
     }
     setIsRejecting(true);
     try {
-      await apiClient.put(`/admin/task-assignments/${selectedAssignment.id}/return`, {
+      await apiClient.put(`/task-assignments/${selectedAssignment.id}/return`, {
         notes: rejectReason.trim()
       });
       toast.success('Tugas teknisi berhasil ditolak dan dikembalikan.');

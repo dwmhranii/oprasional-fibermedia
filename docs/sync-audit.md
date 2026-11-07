@@ -72,6 +72,9 @@ Berdasarkan inspeksi rute `App.tsx` dan komponen `resources/js/admin` serta `res
 | `kpi_settings` & `kpi_snapshots` | Model `KpiSetting.php`, `KpiSnapshot.php`, Resource `KpiSettingResource.php`, `KpiSnapshotResource.php`. | Dashboard `KpiDashboard` (`/admin/kpi`) dengan bobot terversi, rating WhatsApp, dan pemicu snapshot. | **SINKRON** |
 | `customers` | Model `Customer.php` (35 kolom), Resource `CustomerResource.php`, `CustomerSecretResource.php`. | Halaman `CustomerManagement.tsx` dengan CRUD 35 kolom, NIK bertopeng, modal kredensial rahasia, dan Excel import/export. | **SINKRON** |
 | `teams` & `team_members` | Model `Team.php`, `TeamMember.php`, Resource `TeamResource.php`. Seluruh anggota tim setara (tanpa ketua). | Halaman `TeamManagement.tsx` dan `TeamAttendanceRecap.tsx` berbasis relasi pivot `team_members`. | **SINKRON** |
+| `incidents` | Model `Incident.php`, Migrasi `2026_10_26_000001_create_incidents_and_mass_outage_tables.php`, Service `IncidentService.php`, Controller `MassOutageController.php`, Resource `IncidentResource.php`. | Indikator marker peta berkedip (`NetworkMapView`), Modal Pratinjau Dampak & Ubah Status (`NodeStatusChangeModal`), Kartu Dashboard (`DashboardStatCardsRow`), dan Filter Tiket Massal (`ComplaintFilterBar`). | **SINKRON (Selisih: 0)** |
+| `incident_customers` | Model `IncidentCustomer.php`, Migrasi `2026_10_26_000001_create_incidents_and_mass_outage_tables.php`, Resolver `AffectedCustomersResolver.php`. | Tab "Pelanggan Terdampak" (`AffectedCustomersTab`) di Detail Pengaduan Massal (`ComplaintDetail`), pemisahan ke tiket mandiri, ekspor CSV, dan link WhatsApp. | **SINKRON (Selisih: 0)** |
+
 
 ### 2.4 Panggilan Endpoint FE Tanpa Handler / Field Mismatch
 1. **Endpoint Status / Reassign Task**: Komponen `AdminTaskDetail` memanggil `PATCH /api/admin/tasks/{id}/reassign` &mdash; endpoint ini tersedia di `ProvisioningController::reassignTask`.

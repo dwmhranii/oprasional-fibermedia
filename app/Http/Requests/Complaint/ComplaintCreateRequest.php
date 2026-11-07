@@ -28,6 +28,8 @@ class ComplaintCreateRequest extends FormRequest
             'whatsapp_message' => 'nullable|string',
             'attachments' => 'required|array|min:1|max:5',
             'attachments.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+            'link_to_incident' => 'nullable|boolean',
+            'incident_id' => 'nullable|integer',
         ];
     }
 

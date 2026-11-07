@@ -55,7 +55,7 @@ export const SalesReportPage: React.FC = () => {
   // Fetch submissions dataset for report analytics
   const { data: submissionsData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['salesSubmissions', 'report', dateRange],
-    queryFn: () => apiClient.get<any>('/sales/submissions?per_page=200'),
+    queryFn: () => apiClient.get<any>('/submissions?per_page=200'),
   });
 
   const items = useMemo(() => {

@@ -53,7 +53,7 @@ export const TaskComplete: React.FC = () => {
   // Fetch task detail with auto polling for team sync
   const { data: task, isLoading: isTaskLoading, isError, error, refetch } = useQuery({
     queryKey: ['tasks', 'detail', id],
-    queryFn: () => apiClient.get<any>(`/teknisi/tasks/${id}`),
+    queryFn: () => apiClient.get<any>(`/tasks/${id}`),
     enabled: !!id,
     staleTime: 1000 * 5,
     refetchInterval: 5000,
@@ -134,7 +134,7 @@ export const TaskComplete: React.FC = () => {
     if (coords?.accuracy !== undefined && coords.accuracy !== 0) {
       formData.append('accuracy', String(coords.accuracy));
     }
-    return apiClient.upload<any>(`/teknisi/tasks/${id}/upload-photo`, formData);
+    return apiClient.upload<any>(`/tasks/${id}/upload-photo`, formData);
   };
 
   const handleSharedUploadSuccess = () => {
@@ -154,7 +154,7 @@ export const TaskComplete: React.FC = () => {
   const handleStep1Submit = async () => {
     setIsSubmittingPhase1(true);
     try {
-      await apiClient.post(`/teknisi/tasks/${id}/phase-1`);
+      await apiClient.post(`/tasks/${id}/phase-1`);
       toast.success('Verifikasi bersama berhasil disubmit (Tahap 1 Selesai)!');
       queryClient.invalidateQueries({ queryKey: ['tasks', 'detail', id] });
     } catch (err) {
@@ -182,7 +182,7 @@ export const TaskComplete: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await apiClient.post(`/teknisi/tasks/${id}/phase-2`, {
+      await apiClient.post(`/tasks/${id}/phase-2`, {
         completion_notes: notes.trim(),
         latitude: gpsData.latitude,
         longitude: gpsData.longitude,
@@ -213,7 +213,7 @@ export const TaskComplete: React.FC = () => {
     }
     return (
       <div className="space-y-6 max-w-xl mx-auto py-8 px-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/teknisi/tasks')} className="mb-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/work-orders')} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Daftar Tugas
         </Button>
         <Alert variant="destructive">
@@ -272,7 +272,7 @@ export const TaskComplete: React.FC = () => {
 
               <div className="w-full flex flex-col gap-2.5">
                 <Button 
-                  onClick={() => navigate('/teknisi/tasks')} 
+                  onClick={() => navigate('/work-orders')} 
                   className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -280,7 +280,7 @@ export const TaskComplete: React.FC = () => {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => navigate(`/teknisi/tasks/${task.id}`)} 
+                  onClick={() => navigate(`/work-orders/${task.id}`)} 
                   className="w-full h-11 text-gray-700 text-sm hover:bg-gray-50"
                 >
                   Lihat Detail Tugas Ini
@@ -308,7 +308,7 @@ export const TaskComplete: React.FC = () => {
         <Button 
           variant="outline" 
           size="icon" 
-          onClick={() => navigate(`/teknisi/tasks/${task.id}`)} 
+          onClick={() => navigate(`/work-orders/${task.id}`)} 
           disabled={isSubmitting || isSubmittingPhase1} 
           className="h-10 w-10 shrink-0 rounded-xl border-gray-200"
         >
@@ -692,7 +692,7 @@ export const TaskComplete: React.FC = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate(`/teknisi/tasks/${task.id}`)} 
+                onClick={() => navigate(`/work-orders/${task.id}`)} 
                 disabled={isSubmitting} 
                 className="w-1/3 sm:w-auto min-h-[46px] rounded-xl text-xs sm:text-sm font-medium"
               >

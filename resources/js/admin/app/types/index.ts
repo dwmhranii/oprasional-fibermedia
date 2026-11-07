@@ -13,6 +13,7 @@ export interface User {
   // Legacy field for backward compatibility in UI
   name?: string;
   role?: UserRole;
+  displayRole?: string;
   phone?: string;
   avatar?: string;
   last_login_at?: string;

@@ -64,7 +64,7 @@ export const SalesReport: React.FC = () => {
   // Fetch submissions dataset for sales reporting
   const { data: submissionsData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['adminSubmissions', 'report', dateRange],
-    queryFn: () => apiClient.get<any>('/admin/submissions?per_page=500'),
+    queryFn: () => apiClient.get<any>('/submissions?per_page=500'),
   });
 
   if (isLoading) {

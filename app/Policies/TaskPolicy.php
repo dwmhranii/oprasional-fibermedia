@@ -12,7 +12,10 @@ class TaskPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('assign_tasks') || $user->hasPermissionTo('view_assigned_tasks');
+        return $user->can('workorders.view')
+            || $user->can('tasks.view_assigned')
+            || $user->can('assign_tasks')
+            || $user->can('view_assigned_tasks');
     }
 
     /**
@@ -20,7 +23,7 @@ class TaskPolicy
      */
     public function view(User $user, Task $task): bool
     {
-        if ($user->hasRole(['Superadmin', 'Admin']) || $user->hasPermissionTo('assign_tasks')) {
+        if ($user->can('workorders.view') || $user->can('complaints.assign') || $user->can('assign_tasks')) {
             return true;
         }
 
@@ -28,7 +31,7 @@ class TaskPolicy
         $isInAssignedTeam = ($user->team && $task->assigned_team && $user->team === $task->assigned_team);
         $hasAssignment = $task->assignments()->where('user_id', $user->id)->exists();
 
-        return ($user->hasPermissionTo('view_assigned_tasks') || $user->hasRole('Teknisi'))
+        return ($user->can('tasks.view_assigned') || $user->can('view_assigned_tasks'))
             && ($isAssignedDirectly || $isInAssignedTeam || $hasAssignment);
     }
 
@@ -37,7 +40,7 @@ class TaskPolicy
      */
     public function assign(User $user): bool
     {
-        return $user->hasRole(['Superadmin', 'Admin']) || $user->hasPermissionTo('assign_tasks');
+        return $user->can('complaints.assign') || $user->can('assign_tasks');
     }
 
     /**
@@ -45,7 +48,7 @@ class TaskPolicy
      */
     public function updateStatus(User $user, Task $task): bool
     {
-        if ($user->hasRole(['Superadmin', 'Admin']) || $user->hasPermissionTo('assign_tasks')) {
+        if ($user->can('complaints.assign') || $user->can('assign_tasks')) {
             return true;
         }
 
@@ -53,7 +56,7 @@ class TaskPolicy
         $isInAssignedTeam = ($user->team && $task->assigned_team && $user->team === $task->assigned_team);
         $hasAssignment = $task->assignments()->where('user_id', $user->id)->exists();
 
-        return ($user->hasPermissionTo('update_task_status') || $user->hasRole('Teknisi'))
+        return ($user->can('tasks.update_status') || $user->can('update_task_status'))
             && ($isAssignedDirectly || $isInAssignedTeam || $hasAssignment);
     }
 
@@ -62,16 +65,7 @@ class TaskPolicy
      */
     public function uploadPhoto(User $user, Task $task): bool
     {
-        if ($user->hasRole(['Superadmin', 'Admin']) || $user->hasPermissionTo('assign_tasks')) {
-            return true;
-        }
-
-        $isAssignedDirectly = ($task->teknisi_id === $user->id);
-        $isInAssignedTeam = ($user->team && $task->assigned_team && $user->team === $task->assigned_team);
-        $hasAssignment = $task->assignments()->where('user_id', $user->id)->exists();
-
-        return ($user->hasPermissionTo('update_task_status') || $user->hasRole('Teknisi'))
-            && ($isAssignedDirectly || $isInAssignedTeam || $hasAssignment);
+        return $this->updateStatus($user, $task);
     }
 
     /**
@@ -79,6 +73,6 @@ class TaskPolicy
      */
     public function reassign(User $user, Task $task): bool
     {
-        return $user->hasRole(['Superadmin', 'Admin']) || $user->hasPermissionTo('assign_tasks');
+        return $user->can('complaints.assign') || $user->can('assign_tasks');
     }
 }

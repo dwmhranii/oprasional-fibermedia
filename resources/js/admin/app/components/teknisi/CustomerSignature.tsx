@@ -23,7 +23,7 @@ export const CustomerSignature: React.FC<CustomerSignatureProps> = ({ taskId, ex
       const formData = new FormData();
       formData.append('signature', blob, 'signature.png');
       
-      const response = await apiClient.upload<any>(`/teknisi/tasks/${taskId}/upload-signature`, formData);
+      const response = await apiClient.upload<any>(`/tasks/${taskId}/upload-signature`, formData);
       return response;
     },
     onSuccess: () => {

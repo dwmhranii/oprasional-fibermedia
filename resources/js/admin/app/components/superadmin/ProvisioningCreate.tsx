@@ -68,7 +68,7 @@ export const ProvisioningCreate: React.FC = () => {
   const { data: approvedSubmissions, isLoading: isSubsLoading, isError: isSubsError, refetch: refetchSubs } = useQuery({
     queryKey: ['adminSubmissions', 'completedList'],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/admin/submissions?status=completed&per_page=100');
+      const response = await apiClient.get<any>('/submissions?status=completed&per_page=100');
       return (response.data || []).map(submissionToFrontend);
     },
   });
@@ -77,7 +77,7 @@ export const ProvisioningCreate: React.FC = () => {
   const { data: selectedSubDetail, isLoading: isDetailLoading, isError: isDetailError, refetch: refetchDetail } = useQuery({
     queryKey: ['adminSubmissions', 'detail', selectedSubId],
     queryFn: async () => {
-      const response = await apiClient.get<any>(`/admin/submissions/${selectedSubId}`);
+      const response = await apiClient.get<any>(`/submissions/${selectedSubId}`);
       return submissionToFrontend(response);
     },
     enabled: !!selectedSubId,
@@ -124,14 +124,14 @@ export const ProvisioningCreate: React.FC = () => {
     };
 
     try {
-      const response = await apiClient.post<any>('/admin/provisionings', payload);
+      const response = await apiClient.post<any>('/provisionings', payload);
       toast.success('Provisioning berhasil dikonfigurasi dan dikirim ke antrean BFASS!');
       
       // Invalidate react-query cache and refresh
       queryClient.invalidateQueries({ queryKey: ['adminProvisionings'] });
       
       // Navigate to listing view
-      navigate('/admin/provisionings');
+      navigate('/psb');
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.getFirstError() || 'Gagal menyimpan konfigurasi provisioning');
@@ -150,7 +150,7 @@ export const ProvisioningCreate: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center space-x-3">
-        <Button variant="outline" size="icon" onClick={() => navigate('/admin/provisionings')}>
+        <Button variant="outline" size="icon" onClick={() => navigate('/psb')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
@@ -374,7 +374,7 @@ export const ProvisioningCreate: React.FC = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/admin/provisionings')}
+                  onClick={() => navigate('/psb')}
                   disabled={isSubmitting}
                 >
                   Batal

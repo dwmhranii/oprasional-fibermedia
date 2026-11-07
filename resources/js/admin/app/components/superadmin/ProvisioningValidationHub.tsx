@@ -57,7 +57,7 @@ export const ProvisioningValidationHub: React.FC<ProvisioningValidationHubProps>
     queryKey: ['adminSubmissions', 'stats', 'pending', 'hub'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<any>('/admin/submissions?status=pending&per_page=1');
+        const res = await apiClient.get<any>('/submissions?status=pending&per_page=1');
         return res?.meta?.total ?? 0;
       } catch {
         return 0;
@@ -71,7 +71,7 @@ export const ProvisioningValidationHub: React.FC<ProvisioningValidationHubProps>
     queryKey: ['adminProvisionings', 'stats', 'active', 'hub'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<any>('/admin/provisionings?status=in_progress&per_page=1');
+        const res = await apiClient.get<any>('/provisionings?status=in_progress&per_page=1');
         return res?.meta?.total ?? 0;
       } catch {
         return 0;

@@ -123,6 +123,9 @@ class Submission extends Model
                 }
             }
         });
+
+        static::saved(fn () => \App\Services\DashboardService::clearCache());
+        static::deleted(fn () => \App\Services\DashboardService::clearCache());
     }
 
     public static function generateSubmissionNumber(): string

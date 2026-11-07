@@ -33,30 +33,61 @@ class CustomerController extends Controller
         $filename = 'data-pelanggan-fibermedia-'.date('Y-m-d').'.xlsx';
 
         $user = $request->user();
-        $canViewSecrets = $user && ($user->can('customers.view_secret') || $user->hasRole(['Superadmin', 'superadmin']));
+        $canViewSecrets = $user && $user->can('customers.view_secret');
 
         return Excel::download(new CustomersExport($status, $search, $canViewSecrets), $filename);
     }
 
     /**
-     * Download sample Excel template for customer import
+     * Download sample Excel / CSV template for customer import (35 columns).
      */
-    public function importTemplate(): BinaryFileResponse
+    public function importTemplate(Request $request)
     {
-        return Excel::download(new CustomerTemplateExport, 'template-import-pelanggan.xlsx');
+        $format = strtolower((string) $request->query('format', 'xlsx'));
+        if ($format === 'csv') {
+            return Excel::download(new CustomerTemplateExport, 'template-import-pelanggan-35-kolom.csv', \Maatwebsite\Excel\Excel::CSV, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]);
+        }
+
+        return Excel::download(new CustomerTemplateExport, 'template-import-pelanggan-35-kolom.xlsx');
     }
 
     /**
-     * Import customers from Excel / CSV file with 35 columns and error report
+     * Import customers from Excel / CSV file with 35 columns, dry-run mode, and error report.
      */
     public function import(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:20480',
+            'dry_run' => 'nullable|boolean',
         ]);
 
         $file = $request->file('file');
-        $import = new CustomersImport;
+        $isDryRun = $request->boolean('dry_run');
+
+        // Deteksi delimiter otomatis jika berkas CSV
+        $delimiter = ',';
+        $ext = strtolower($file->getClientOriginalExtension());
+        if ($ext === 'csv' || $ext === 'txt') {
+            $handle = @fopen($file->getRealPath(), 'r');
+            if ($handle) {
+                $firstLine = fgets($handle);
+                fclose($handle);
+                if ($firstLine) {
+                    $delims = [
+                        ',' => substr_count($firstLine, ','),
+                        ';' => substr_count($firstLine, ';'),
+                        "\t" => substr_count($firstLine, "\t"),
+                    ];
+                    arsort($delims);
+                    $delimiter = array_key_first($delims) ?: ',';
+                }
+            }
+        }
+
+        $strictNik = ! $request->boolean('lenient_nik', true);
+        $import = new CustomersImport($isDryRun, $delimiter, $strictNik);
 
         try {
             Excel::import($import, $file);
@@ -64,9 +95,11 @@ class CustomerController extends Controller
             $imported = $import->getImportedCount();
             $updated = $import->getUpdatedCount();
             $skipped = $import->getSkippedCount();
+            $duplicates = $import->getDuplicateCount();
+            $portConflicts = $import->getPortConflictCount();
             $errors = $import->getErrors();
 
-            $msg = "Import selesai: {$imported} pelanggan baru ditambahkan";
+            $msg = $isDryRun ? "Simulasi selesai (Dry-Run): {$imported} pelanggan siap diimpor" : "Impor selesai: {$imported} pelanggan baru ditambahkan";
             if ($updated > 0) {
                 $msg .= ", {$updated} diperbarui";
             }
@@ -79,9 +112,12 @@ class CustomerController extends Controller
                 'success' => true,
                 'message' => $msg,
                 'data' => [
+                    'dry_run' => $isDryRun,
                     'imported' => $imported,
                     'updated' => $updated,
                     'skipped' => $skipped,
+                    'duplicates' => $duplicates,
+                    'port_conflicts' => $portConflicts,
                     'total_processed' => $imported + $updated + $skipped,
                     'errors' => $errors,
                 ],
@@ -89,7 +125,7 @@ class CustomerController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memproses file Excel: '.$e->getMessage(),
+                'message' => 'Gagal memproses berkas impor: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -112,7 +148,11 @@ class CustomerController extends Controller
 
         // Filter: Status
         if ($request->filled('status') && $request->input('status') !== 'all') {
-            $query->where('status', $request->input('status'));
+            if ($request->input('status') === 'terminated') {
+                $query->whereIn('status', ['terminated', 'held']);
+            } else {
+                $query->where('status', $request->input('status'));
+            }
         }
 
         // Filter: Wilayah
@@ -258,23 +298,7 @@ class CustomerController extends Controller
     public function showSecrets(Request $request, Customer $customer): CustomerSecretResource
     {
         $user = $request->user();
-
-        $canView = false;
-        if ($user) {
-            if ($user->hasRole(['Superadmin', 'superadmin'])) {
-                $canView = true;
-            } else {
-                try {
-                    $canView = $user->hasPermissionTo('customers.view_secret', 'web')
-                        || $user->can('customers.view_secret')
-                        || $user->getAllPermissions()->contains('name', 'customers.view_secret');
-                } catch (\Throwable) {
-                    $canView = false;
-                }
-            }
-        }
-
-        if (! $canView) {
+        if (! $user || ! $user->can('customers.view_secret')) {
             abort(403, 'Anda tidak memiliki izin (customers.view_secret) untuk melihat data sensitif pelanggan.');
         }
 
@@ -303,8 +327,25 @@ class CustomerController extends Controller
         ]);
 
         $oldStatus = $customer->status;
+        $targetStatus = $validated['status'];
+
+        if ($targetStatus === 'terminated' && $customer->odp_id && $customer->odp_port) {
+            // PRD v1.2: Port ODP ditahan 30 hari kalender setelah pelanggan terminated
+            $targetStatus = 'held';
+
+            \App\Models\OdpPortHistory::create([
+                'odp_id' => $customer->odp_id,
+                'port_number' => (int) $customer->odp_port,
+                'customer_id' => $customer->id,
+                'action' => 'held',
+                'held_until' => now()->addDays(30),
+                'notes' => 'Port ODP ditahan selama 30 hari kalender setelah pelanggan berhenti berlangganan (terminated).',
+                'created_by_id' => $request->user()?->id,
+            ]);
+        }
+
         $customer->update([
-            'status' => $validated['status'],
+            'status' => $targetStatus,
         ]);
 
         activity('customer')
@@ -358,7 +399,7 @@ class CustomerController extends Controller
      */
     public function destroy(Request $request, Customer $customer): JsonResponse
     {
-        if (! $request->user()->hasRole('Superadmin') && ! $request->user()->hasRole('superadmin')) {
+        if (! $request->user()?->can('customers.delete')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Hanya Superadmin yang memiliki izin untuk menghapus data pelanggan.',
@@ -393,7 +434,7 @@ class CustomerController extends Controller
         $total = Customer::count();
         $active = Customer::where('status', 'active')->count();
         $suspended = Customer::where('status', 'suspended')->count();
-        $terminated = Customer::where('status', 'terminated')->count();
+        $terminated = Customer::whereIn('status', ['terminated', 'held'])->count();
 
         return response()->json([
             'success' => true,

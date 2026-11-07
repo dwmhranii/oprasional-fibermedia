@@ -24,14 +24,37 @@ class DeviceController extends Controller
         $user = $request->user();
 
         $device = Device::firstOrNew(['device_uuid' => $validated['device_uuid']]);
+
+        // Batasi maksimal 2 perangkat terdaftar per akun sesuai PRD Final v1.2
+        if (! $device->exists) {
+            $activeDeviceCount = Device::where('user_id', $user->id)
+                ->whereNull('revoked_at')
+                ->count();
+
+            if ($activeDeviceCount >= 2) {
+                if (config('app.env') !== 'production') {
+                    Device::where('user_id', $user->id)
+                        ->whereNull('revoked_at')
+                        ->orderBy('last_seen_at', 'asc')
+                        ->first()
+                        ?->update(['revoked_at' => now()]);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Batas maksimal 2 perangkat per akun telah tercapai. Hubungi administrator untuk mencabut perangkat lama.',
+                    ], 422);
+                }
+            }
+        }
+
         $device->user_id = $user->id;
-        $device->label = $validated['label'] ?? $device->label ?? 'Mobile Device';
+        $device->label = $validated['label'] ?? $device->label ?? 'Perangkat Mobile';
         $device->model = $validated['model'] ?? $device->model;
         $device->platform = $validated['platform'] ?? $device->platform;
         $device->last_seen_at = now();
 
-        // Auto approve in local or non-production environment
-        if (! $device->exists && (config('app.env') !== 'production' || $user->hasRole('Superadmin'))) {
+        // Auto approve in local or non-production environment or if user can manage devices
+        if (! $device->exists && (config('app.env') !== 'production' || $user->can('devices.manage'))) {
             $device->approved_at = now();
             $device->approved_by_id = $user->id;
         }
@@ -112,6 +135,9 @@ class DeviceController extends Controller
         $device->update([
             'revoked_at' => now(),
         ]);
+
+        // Sesuai PRD Final v1.2: Mencabut perangkat menghapus token seketika
+        $device->user?->tokens()->delete();
 
         return response()->json([
             'success' => true,

@@ -138,9 +138,9 @@ export const TeknisiWorkOrderList: React.FC = () => {
 
   const handleOpenDetail = (wo: WorkOrderItem) => {
     if (wo.type === 'psb') {
-      navigate(`/teknisi/tasks/${wo.raw_id}`);
+      navigate(`/work-orders/${wo.raw_id}`);
     } else {
-      navigate(`/teknisi/complaints/${wo.raw_id}`);
+      navigate(`/complaints/${wo.raw_id}`);
     }
   };
 

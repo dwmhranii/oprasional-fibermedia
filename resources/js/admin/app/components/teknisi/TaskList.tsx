@@ -59,7 +59,7 @@ export const TaskList: React.FC = () => {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['tasks', 'list', user?.id, { page, status: statusFilter, search: debouncedSearch, dateFrom, dateTo, sortBy, sortOrder }],
     queryFn: async () => {
-      let url = `/teknisi/tasks?page=${page}&per_page=10`;
+      let url = `/tasks?page=${page}&per_page=10`;
       if (statusFilter && statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
@@ -306,7 +306,7 @@ export const TaskList: React.FC = () => {
                     }
 
                     return (
-                      <TableRow key={task.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors" onClick={() => navigate(`/teknisi/tasks/${task.id}`)}>
+                      <TableRow key={task.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors" onClick={() => navigate(`/work-orders/${task.id}`)}>
                         <TableCell className="font-semibold font-mono text-sm">
                           {task.task_number || `TSK-${task.id}`}
                         </TableCell>
@@ -346,7 +346,7 @@ export const TaskList: React.FC = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/teknisi/tasks/${task.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/work-orders/${task.id}`); }}
                         >
                           <Eye className="w-4 h-4 mr-1" />
                           Detail
@@ -355,7 +355,7 @@ export const TaskList: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/tasks/${task.id}`); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/work-orders/${task.id}`); }}
                             className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                           >
                             <Users className="w-4 h-4 mr-1" />

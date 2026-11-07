@@ -31,7 +31,7 @@ export const DocumentReviewCard: React.FC<DocumentReviewCardProps> = ({
 
   const mutation = useMutation({
     mutationFn: async ({ status, reviewNotes }: { status: 'approved' | 'rejected', reviewNotes: string }) => {
-      const response = await apiClient.put<any>(`/admin/documents/${document.id}/review`, {
+      const response = await apiClient.put<any>(`/documents/${document.id}/review`, {
         status,
         review_notes: reviewNotes
       });

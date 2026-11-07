@@ -101,12 +101,12 @@ export const packageService = {
   },
 
   /**
-   * Create a new package (Admin / Superadmin)
-   * POST /api/admin/packages
+   * Create a new package
+   * POST /api/packages
    */
   createPackage: async (data: Partial<Package>): Promise<any> => {
     try {
-      return await apiClient.post('/admin/packages', data);
+      return await apiClient.post('/packages', data);
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -116,12 +116,12 @@ export const packageService = {
   },
 
   /**
-   * Update package details (Admin / Superadmin)
-   * PUT /api/admin/packages/{id}
+   * Update package details
+   * PUT /packages/{id}
    */
   updatePackage: async (id: number | string, data: Partial<Package>): Promise<any> => {
     try {
-      return await apiClient.put(`/admin/packages/${id}`, data);
+      return await apiClient.put(`/packages/${id}`, data);
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -131,12 +131,12 @@ export const packageService = {
   },
 
   /**
-   * Toggle package active status (Admin / Superadmin)
-   * PATCH /api/admin/packages/{id}/toggle-active
+   * Toggle package active status
+   * PATCH /packages/{id}/toggle-active
    */
   togglePackageActive: async (id: number | string): Promise<any> => {
     try {
-      return await apiClient.patch(`/admin/packages/${id}/toggle-active`);
+      return await apiClient.patch(`/packages/${id}/toggle-active`);
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -146,12 +146,12 @@ export const packageService = {
   },
 
   /**
-   * Delete package (RESTRICTED TO SUPERADMIN ONLY)
-   * DELETE /api/admin/packages/{id}
+   * Delete package
+   * DELETE /packages/{id}
    */
   deletePackage: async (id: number | string): Promise<any> => {
     try {
-      return await apiClient.delete(`/admin/packages/${id}`);
+      return await apiClient.delete(`/packages/${id}`);
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -161,12 +161,12 @@ export const packageService = {
   },
 
   /**
-   * Trigger manual package synchronization from remote website (Admin/Superadmin only)
-   * POST /api/admin/packages/sync
+   * Trigger manual package synchronization
+   * POST /packages/sync
    */
   syncPackages: async (): Promise<SyncPackagesResult> => {
     try {
-      const response = await apiClient.post<SyncPackagesResult>('/admin/packages/sync');
+      const response = await apiClient.post<SyncPackagesResult>('/packages/sync');
       return response;
     } catch (error) {
       if (error instanceof ApiError) {

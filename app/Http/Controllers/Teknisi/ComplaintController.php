@@ -34,7 +34,7 @@ class ComplaintController extends Controller
     private function canTechnicianAccess(Request $request, Complaint $complaint): bool
     {
         $user = $request->user();
-        if ($user->hasRole(['Admin', 'Superadmin'])) {
+        if ($user->can('complaints.manage') || $user->can('complaints.view_all')) {
             return true;
         }
 
@@ -64,7 +64,7 @@ class ComplaintController extends Controller
         $userId = $user->id;
         $userTeam = $user->team;
 
-        $isPrivileged = $user->hasRole(['Admin', 'Superadmin']);
+        $isPrivileged = $user->can('complaints.manage') || $user->can('complaints.view_all');
         $query = Complaint::query();
 
         if (! $isPrivileged) {

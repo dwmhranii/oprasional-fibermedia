@@ -47,16 +47,19 @@ import {
 import { ACTIONS, TERMS, MESSAGES } from '@shared/i18n/id';
 import { formatNumber } from '@shared/lib/formatters';
 
-export const KpiDashboard: React.FC = () => {
+interface KpiDashboardProps {
+  defaultTab?: 'teams' | 'sales' | 'settings';
+  initialRatingOpen?: boolean;
+}
+
+export const KpiDashboard: React.FC<KpiDashboardProps> = ({ defaultTab = 'teams', initialRatingOpen = false }) => {
   const queryClient = useQueryClient();
 
   // Period state in YYYY-MM
   const currentMonthStr = new Date().toISOString().substring(0, 7);
   const [period, setPeriod] = useState<string>(currentMonthStr);
-  const [activeTab, setActiveTab] = useState<'teams' | 'sales' | 'settings'>('teams');
-
-  // WhatsApp Rating Modal state
-  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'teams' | 'sales' | 'settings'>(defaultTab);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(initialRatingOpen);
   const [ratingTicketType, setRatingTicketType] = useState<'psb' | 'complaint'>('complaint');
   const [ratingTicketId, setRatingTicketId] = useState<string>('');
   const [ratingScore, setRatingScore] = useState<number>(5);
@@ -90,7 +93,7 @@ export const KpiDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['kpiOverview', period],
     queryFn: async () => {
-      const res = await apiClient.get<any>(`/admin/kpi/overview?period=${period}`);
+      const res = await apiClient.get<any>(`/kpi/overview?period=${period}`);
       return res?.data ?? res;
     },
   });
@@ -99,7 +102,7 @@ export const KpiDashboard: React.FC = () => {
   const { data: settingsData, refetch: refetchSettings } = useQuery({
     queryKey: ['kpiSettings'],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/kpi/settings');
+      const res = await apiClient.get<any>('/kpi/settings');
       return res?.data ?? res;
     },
   });
@@ -107,7 +110,7 @@ export const KpiDashboard: React.FC = () => {
   // 3. Mutation: Calculate / Recalculate Monthly Snapshot
   const calculateSnapshotMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post<any>('/admin/kpi/snapshots/calculate', { period });
+      const res = await apiClient.post<any>('/kpi/snapshot', { period });
       return res?.data ?? res;
     },
     onSuccess: (data) => {
@@ -131,7 +134,7 @@ export const KpiDashboard: React.FC = () => {
       } else {
         payload.task_id = Number(ratingTicketId);
       }
-      const res = await apiClient.post<any>('/admin/kpi/ratings', payload);
+      const res = await apiClient.post<any>('/kpi/rating', payload);
       return res?.data ?? res;
     },
     onSuccess: () => {
@@ -155,7 +158,7 @@ export const KpiDashboard: React.FC = () => {
         weights: settingsCategory === 'team' ? teamWeights : salesWeights,
         notes: settingsNotes || `Pembaruan bobot ${settingsCategory} oleh admin`,
       };
-      const res = await apiClient.put<any>('/admin/kpi/settings', payload);
+      const res = await apiClient.put<any>('/kpi/settings', payload);
       return res?.data ?? res;
     },
     onSuccess: (data) => {
@@ -175,8 +178,8 @@ export const KpiDashboard: React.FC = () => {
       return;
     }
     try {
-      const typeParam = ratingTicketType === 'complaint' ? 'complaint' : 'task';
-      const res = await apiClient.get<any>(`/admin/kpi/ratings/wa-link?ticket_type=${typeParam}&ticket_id=${ratingTicketId}`);
+      const typeParam = ratingTicketType === 'complaint' ? 'complaint' : 'psb';
+      const res = await apiClient.get<any>(`/kpi/whatsapp-link?ticket_type=${typeParam}&ticket_id=${ratingTicketId}`);
       const data = res?.data ?? res;
       setWaLinkData(data);
       showToast.success('Tautan WhatsApp Siap', 'Tautan wa.me berhasil dibuat dengan nomor pelanggan.');

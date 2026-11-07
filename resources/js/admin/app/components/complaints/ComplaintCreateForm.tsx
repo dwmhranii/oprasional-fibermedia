@@ -179,7 +179,7 @@ export const ComplaintCreateForm: React.FC = () => {
   const handleAssignModalClose = () => {
     setIsAssignModalOpen(false);
     if (createdComplaint) {
-      navigate(`/admin/complaints/${createdComplaint.id}`);
+      navigate(`/complaints/${createdComplaint.id}`);
     }
   };
 
@@ -210,7 +210,7 @@ export const ComplaintCreateForm: React.FC = () => {
       });
 
       if (category === 'billing') {
-        navigate(`/admin/complaints/${res.id}`);
+        navigate(`/complaints/${res.id}`);
       } else {
         setCreatedComplaint(res);
         setIsAssignModalOpen(true);
@@ -228,7 +228,7 @@ export const ComplaintCreateForm: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/admin/complaints')}
+            onClick={() => navigate('/complaints')}
             className="text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" />
@@ -243,7 +243,7 @@ export const ComplaintCreateForm: React.FC = () => {
       {duplicateData?.has_duplicate && (
         <ComplaintDuplicateAlert
           duplicates={duplicateData.active_complaints}
-          onViewTicket={(id) => navigate(`/admin/complaints/${id}`)}
+          onViewTicket={(id) => navigate(`/complaints/${id}`)}
         />
       )}
 
@@ -642,7 +642,7 @@ export const ComplaintCreateForm: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate('/admin/complaints')}
+            onClick={() => navigate('/complaints')}
             disabled={createMutation.isPending}
             className="dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
           >
@@ -679,19 +679,19 @@ export const ComplaintCreateForm: React.FC = () => {
         onClose={() => {
           setIsAssignSuccessModalOpen(false);
           if (assignedSuccessComplaint) {
-            navigate(`/admin/complaints/${assignedSuccessComplaint.id}`);
+            navigate(`/complaints/${assignedSuccessComplaint.id}`);
           }
         }}
         complaint={assignedSuccessComplaint}
         onViewDetail={() => {
           setIsAssignSuccessModalOpen(false);
           if (assignedSuccessComplaint) {
-            navigate(`/admin/complaints/${assignedSuccessComplaint.id}`);
+            navigate(`/complaints/${assignedSuccessComplaint.id}`);
           }
         }}
         onBackToList={() => {
           setIsAssignSuccessModalOpen(false);
-          navigate('/admin/complaints');
+          navigate('/complaints');
         }}
       />
     </div>

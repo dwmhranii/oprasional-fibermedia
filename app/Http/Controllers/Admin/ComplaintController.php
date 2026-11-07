@@ -31,10 +31,19 @@ class ComplaintController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $complaints = Complaint::with(['createdBy', 'currentAssignment.technician'])
+        $user = $request->user();
+        $query = Complaint::with(['createdBy', 'currentAssignment.technician'])
             ->filter($request->all())
-            ->orderByDesc('created_at')
-            ->paginate($request->input('per_page', 20));
+            ->orderByDesc('created_at');
+
+        if ($user && ! $user->can('complaints.view')) {
+            $query->where(function ($q) use ($user) {
+                $q->where('created_by_id', $user->id)
+                    ->orWhere('created_by', $user->name);
+            });
+        }
+
+        $complaints = $query->paginate($request->input('per_page', 20));
 
         return ComplaintResource::collection($complaints);
     }
@@ -201,9 +210,37 @@ class ComplaintController extends Controller
             ->latest('id')
             ->first();
 
+        // Cek apakah pelanggan berada di bawah gangguan massal yang sedang aktif
+        $openIncident = null;
+        $customer = Customer::where(function ($q) use ($phone, $code) {
+            if ($phone) {
+                $q->orWhere('phone', $phone);
+            }
+            if ($code) {
+                $q->orWhere('customer_code', $code);
+            }
+        })->first();
+
+        if ($customer && $customer->odp_id) {
+            $inc = $this->findOpenIncidentForOdp($customer->odp_id);
+            if ($inc) {
+                $openIncident = [
+                    'id' => $inc->id,
+                    'code' => $inc->code,
+                    'node_type' => $inc->node_type,
+                    'node_name' => $inc->node?->name ?? strtoupper($inc->node_type)." #{$inc->node_id}",
+                    'complaint_id' => $inc->complaint?->id,
+                    'ticket_number' => $inc->complaint?->ticket_number,
+                    'summary' => $inc->summary,
+                ];
+            }
+        }
+
         return response()->json([
             'has_duplicate' => (bool) $existing,
             'existing_ticket' => $existing ? new ComplaintResource($existing) : null,
+            'has_open_incident' => (bool) $openIncident,
+            'open_incident' => $openIncident,
         ]);
     }
 
@@ -212,6 +249,38 @@ class ComplaintController extends Controller
      */
     public function store(ComplaintCreateRequest $request): JsonResponse
     {
+        // Jika admin memilih untuk menautkan ke gangguan massal yang sedang aktif
+        if ($request->boolean('link_to_incident')) {
+            $incidentId = $request->input('incident_id');
+            $customer = Customer::where('phone', $request->input('customer_phone'))
+                ->orWhere('customer_code', $request->input('customer_code'))
+                ->first();
+
+            $incident = null;
+            if ($incidentId) {
+                $incident = Incident::where('id', $incidentId)->where('status', 'open')->first();
+            } elseif ($customer && $customer->odp_id) {
+                $incident = $this->findOpenIncidentForOdp($customer->odp_id);
+            }
+
+            if ($incident && $customer) {
+                DB::table('incident_customers')->insertOrIgnore([
+                    'incident_id' => $incident->id,
+                    'customer_id' => $customer->id,
+                    'state' => 'affected',
+                    'first_seen_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                if ($incident->complaint) {
+                    return (new ComplaintDetailResource($incident->complaint->load(['customer', 'createdBy'])))
+                        ->response()
+                        ->setStatusCode(200);
+                }
+            }
+        }
+
         $complaint = $this->complaintService->create($request->validated(), $request->user());
 
         return (new ComplaintDetailResource($complaint->load(['customer', 'createdBy'])))
@@ -220,10 +289,44 @@ class ComplaintController extends Controller
     }
 
     /**
+     * Cari insiden terbuka yang memengaruhi suatu ODP.
+     */
+    protected function findOpenIncidentForOdp(int $odpId): ?Incident
+    {
+        $inc = Incident::where('node_type', 'odp')->where('node_id', $odpId)->where('status', 'open')->first();
+        if ($inc) {
+            return $inc;
+        }
+
+        $odp = Odp::find($odpId);
+        if ($odp && $odp->odc_id) {
+            $inc = Incident::where('node_type', 'odc')->where('node_id', $odp->odc_id)->where('status', 'open')->first();
+            if ($inc) {
+                return $inc;
+            }
+
+            $odc = Odc::find($odp->odc_id);
+            if ($odc && $odc->olt_id) {
+                $inc = Incident::where('node_type', 'olt')->where('node_id', $odc->olt_id)->where('status', 'open')->first();
+                if ($inc) {
+                    return $inc;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * GET /api/admin/complaints/{complaint}
      */
-    public function show(Complaint $complaint): ComplaintDetailResource
+    public function show(Complaint $complaint, Request $request): ComplaintDetailResource
     {
+        $user = $request->user();
+        if ($user && ! $user->can('complaints.view') && (int) $complaint->created_by_id !== (int) $user->id && $complaint->created_by !== $user->name) {
+            abort(403, 'Anda hanya dapat melihat tiket pengaduan yang Anda ajukan sendiri.');
+        }
+
         $complaint->load([
             'customer',
             'createdBy',
@@ -247,14 +350,13 @@ class ComplaintController extends Controller
         $team = $request->validated('team');
         $technicianId = $request->validated('technician_id');
 
-        // RBAC Enforcement: Admin DILARANG memilih manual!
-        if (! $user->hasRole('Superadmin') && ($team || $technicianId)) {
+        if (! $user->can('complaints.assign')) {
             return response()->json([
-                'message' => 'Hak akses ditolak: Role Admin wajib menggunakan penugasan otomatis Round Robin Antar Tim.',
+                'message' => 'Hak akses ditolak: Anda tidak memiliki izin untuk menugaskan tiket pengaduan.',
             ], 403);
         }
 
-        $assignment = $user->hasRole('Superadmin')
+        $assignment = ($team || $technicianId)
             ? $this->assignmentService->assignAsSuperadmin($complaint, $team, $technicianId, $request->validated('notes'), $user)
             : $this->assignmentService->assignAsAdmin($complaint, $request->validated('notes'), $user);
 
@@ -323,39 +425,82 @@ class ComplaintController extends Controller
     }
 
     /**
-     * PUT /api/admin/complaints/{complaint}/reopen
+     * PUT/POST /api/complaints/{complaint}/reopen
      */
-    public function reopen(ComplaintReasonRequest $request, Complaint $complaint): JsonResponse
+    public function reopen(Request $request, Complaint $complaint): JsonResponse
     {
-        $reopened = $this->complaintService->reopen($complaint, $request->validated('reason'), $request->user());
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+            'priority' => 'nullable|in:critical,high,medium,low',
+            'complaint_type_id' => 'nullable|exists:complaint_types,id',
+        ]);
+
+        try {
+            $reopened = $this->complaintService->reopen($complaint, $validated['reason'], $request->user(), $validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tiket pengaduan dibuka kembali dan SLA dihitung ulang dari awal.',
+                'complaint' => new ComplaintDetailResource($reopened->load(['logs.actor'])),
+            ]);
+        } catch (\DomainException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * PUT/POST /api/complaints/{complaint}/pause
+     */
+    public function pause(Request $request, Complaint $complaint): JsonResponse
+    {
+        $validated = $request->validate([
+            'pause_reason_id' => 'required|exists:pause_reasons,id',
+            'notes' => 'required|string|max:500',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+        ]);
+
+        $extra = [
+            'pause_reason_id' => $validated['pause_reason_id'],
+            'pause_lat' => $validated['latitude'] ?? null,
+            'pause_lng' => $validated['longitude'] ?? null,
+        ];
+
+        $paused = $this->complaintService->pauseForCustomer($complaint, $validated['notes'], $request->user(), $extra);
 
         return response()->json([
-            'message' => 'Tiket pengaduan dibuka kembali.',
-            'complaint' => new ComplaintDetailResource($reopened->load(['logs.actor'])),
+            'success' => true,
+            'message' => 'Status diubah ke Menunggu Pelanggan (SLA timer dijeda).',
+            'complaint' => new ComplaintDetailResource($paused->load(['logs.actor', 'pauseReason'])),
         ]);
     }
 
     /**
-     * PUT /api/admin/complaints/{complaint}/pending-customer
+     * PUT/POST /api/complaints/{complaint}/pending-customer
      */
     public function pendingCustomer(ComplaintReasonRequest $request, Complaint $complaint): JsonResponse
     {
         $pending = $this->complaintService->pauseForCustomer($complaint, $request->validated('reason'), $request->user());
 
         return response()->json([
+            'success' => true,
             'message' => 'Status diubah ke Menunggu Pelanggan (SLA timer dijeda).',
-            'complaint' => new ComplaintDetailResource($pending->load(['logs.actor'])),
+            'complaint' => new ComplaintDetailResource($pending->load(['logs.actor', 'pauseReason'])),
         ]);
     }
 
     /**
-     * PUT /api/admin/complaints/{complaint}/resume
+     * PUT/POST /api/complaints/{complaint}/resume
      */
     public function resumeFromPending(Request $request, Complaint $complaint): JsonResponse
     {
         $resumed = $this->complaintService->resumeFromPending($complaint, $request->user());
 
         return response()->json([
+            'success' => true,
             'message' => 'Penanganan tiket dilanjutkan (SLA timer diteruskan).',
             'complaint' => new ComplaintDetailResource($resumed->load(['logs.actor'])),
         ]);

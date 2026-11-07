@@ -12,12 +12,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 class Task extends Model
 {
-    use Filterable, HasFactory, LogsActivity;
+    use Filterable, HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'task_number',
@@ -64,6 +65,10 @@ class Task extends Model
         'has_port_conflict',
         'selected_odp_id',
         'selected_odp_port',
+        'sla_target_minutes',
+        'pause_reason_id',
+        'paused_at',
+        'total_paused_minutes',
     ];
 
     protected $casts = [
@@ -73,6 +78,7 @@ class Task extends Model
         'departed_at' => 'datetime',
         'arrived_at' => 'datetime',
         'started_at' => 'datetime',
+        'paused_at' => 'datetime',
         'phase_1_submitted_at' => 'datetime',
         'completed_at' => 'datetime',
         'location_captured_at' => 'datetime',
@@ -151,6 +157,9 @@ class Task extends Model
 
     protected static function booted()
     {
+        static::saved(fn () => \App\Services\DashboardService::clearCache());
+        static::deleted(fn () => \App\Services\DashboardService::clearCache());
+
         static::created(function ($task) {
             // Seed default checklist items
             $defaultItems = [

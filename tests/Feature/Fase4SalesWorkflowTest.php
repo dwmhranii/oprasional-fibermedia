@@ -104,7 +104,7 @@ class Fase4SalesWorkflowTest extends TestCase
             'total_price' => 155000,
         ];
 
-        $response = $this->postJson('/api/sales/submissions', $payload);
+        $response = $this->postJson('/api/submissions', $payload);
 
         // MUST NOT hard block -> HTTP 201 Created
         $response->assertStatus(201)
@@ -156,7 +156,7 @@ class Fase4SalesWorkflowTest extends TestCase
             'total_price' => 125000,
         ];
 
-        $response = $this->postJson('/api/sales/submissions', $payload);
+        $response = $this->postJson('/api/submissions', $payload);
 
         $response->assertStatus(201);
         $data = $response->json('data');
@@ -201,7 +201,7 @@ class Fase4SalesWorkflowTest extends TestCase
             'total_price' => 125000,
         ];
 
-        $response = $this->postJson('/api/sales/submissions', $payload);
+        $response = $this->postJson('/api/submissions', $payload);
 
         $response->assertStatus(201);
         $data = $response->json('data');
@@ -226,7 +226,7 @@ class Fase4SalesWorkflowTest extends TestCase
             'status' => 'active',
         ]);
 
-        $res = $this->postJson('/api/sales/submissions/check-duplicate', [
+        $res = $this->postJson('/api/submissions/check-duplicate', [
             'nik' => '3201015555550005',
             'phone' => '081234111222',
         ]);
@@ -283,23 +283,23 @@ class Fase4SalesWorkflowTest extends TestCase
 
         // 1. Sales 1 views list
         Sanctum::actingAs($sales1);
-        $res1 = $this->getJson('/api/sales/submissions');
+        $res1 = $this->getJson('/api/submissions');
         $res1->assertStatus(200);
         $ids1 = collect($res1->json('data'))->pluck('id')->toArray();
         $this->assertContains($submission1->id, $ids1);
         $this->assertNotContains($submission2->id, $ids1);
 
         // Sales 1 views single submission 1 -> 200 OK
-        $view1 = $this->getJson("/api/sales/submissions/{$submission1->id}");
+        $view1 = $this->getJson("/api/submissions/{$submission1->id}");
         $view1->assertStatus(200);
 
         // Sales 1 views submission 2 -> 403 Forbidden
-        $view2 = $this->getJson("/api/sales/submissions/{$submission2->id}");
+        $view2 = $this->getJson("/api/submissions/{$submission2->id}");
         $view2->assertStatus(403);
 
         // 2. Sales 2 views list
         Sanctum::actingAs($sales2);
-        $res2 = $this->getJson('/api/sales/submissions');
+        $res2 = $this->getJson('/api/submissions');
         $res2->assertStatus(200);
         $ids2 = collect($res2->json('data'))->pluck('id')->toArray();
         $this->assertContains($submission2->id, $ids2);
@@ -355,7 +355,7 @@ class Fase4SalesWorkflowTest extends TestCase
         $admin->assignRole('Admin');
         Sanctum::actingAs($admin);
 
-        $response = $this->postJson("/api/admin/submissions/{$submission->id}/validate", [
+        $response = $this->postJson("/api/submissions/{$submission->id}/validate", [
             'action' => 'approved',
             'validation_notes' => 'Berkas valid dan lengkap',
         ]);
@@ -411,14 +411,14 @@ class Fase4SalesWorkflowTest extends TestCase
         Sanctum::actingAs($admin);
 
         // 1. Reject without reason -> 422
-        $resFail = $this->postJson("/api/admin/submissions/{$submission->id}/validate", [
+        $resFail = $this->postJson("/api/submissions/{$submission->id}/validate", [
             'action' => 'rejected',
         ]);
         $resFail->assertStatus(422)
             ->assertJsonValidationErrors(['rejection_reason']);
 
         // 2. Reject with reason -> 200 OK
-        $resSuccess = $this->postJson("/api/admin/submissions/{$submission->id}/validate", [
+        $resSuccess = $this->postJson("/api/submissions/{$submission->id}/validate", [
             'action' => 'rejected',
             'rejection_reason' => 'Foto KTP tidak terbaca jelas / buram',
         ]);
@@ -465,7 +465,7 @@ class Fase4SalesWorkflowTest extends TestCase
 
         $this->assertNotNull($attendance);
         $this->assertNotNull($attendance->check_in_at);
-        $this->assertEquals('hadir', $attendance->status);
+        $this->assertContains($attendance->status, ['hadir', 'field_checkin']);
 
         // 2. Check-out
         $checkOutRes = $this->postJson('/api/attendance/check-out', [

@@ -83,7 +83,7 @@ export const teamService = {
    */
   async getTeams(): Promise<Team[]> {
     try {
-      const response = await apiClient.get<any>('/superadmin/teams');
+      const response = await apiClient.get<any>('/teams');
       const items = Array.isArray(response?.data)
         ? response.data
         : Array.isArray(response)
@@ -91,9 +91,9 @@ export const teamService = {
         : [];
       return items.map(normalizeTeam);
     } catch (err: any) {
-      // Fallback to available teams if superadmin endpoint is in transition
+      // Fallback to available teams if endpoint is in transition
       try {
-        const fallback = await apiClient.get<any>('/admin/teams/available');
+        const fallback = await apiClient.get<any>('/teams/available');
         const fallbackItems = Array.isArray(fallback?.data)
           ? fallback.data
           : Array.isArray(fallback)
@@ -113,7 +113,7 @@ export const teamService = {
    * Get single team detail with members
    */
   async getTeam(id: number | string): Promise<Team> {
-    const response = await apiClient.get<any>(`/superadmin/teams/${id}`);
+    const response = await apiClient.get<any>(`/teams/${id}`);
     const data = response?.data || response;
     return normalizeTeam(data);
   },
@@ -122,7 +122,7 @@ export const teamService = {
    * Create a new team
    */
   async createTeam(payload: CreateTeamPayload): Promise<Team> {
-    const response = await apiClient.post<any>('/superadmin/teams', {
+    const response = await apiClient.post<any>('/teams', {
       name: payload.name.trim(),
       description: payload.description?.trim() || null,
       is_active: payload.is_active ?? true,
@@ -135,7 +135,7 @@ export const teamService = {
    * Update team name, description, or active status
    */
   async updateTeam(id: number | string, payload: UpdateTeamPayload): Promise<Team> {
-    const response = await apiClient.put<any>(`/superadmin/teams/${id}`, {
+    const response = await apiClient.put<any>(`/teams/${id}`, {
       name: payload.name.trim(),
       description: payload.description?.trim() || null,
       is_active: payload.is_active,
@@ -149,11 +149,11 @@ export const teamService = {
    */
   async toggleTeamStatus(id: number | string, currentStatus?: boolean): Promise<any> {
     try {
-      return await apiClient.patch(`/superadmin/teams/${id}/toggle`);
+      return await apiClient.patch(`/teams/${id}/toggle`);
     } catch (err) {
       // Fallback to PUT if PATCH toggle is not supported
       if (currentStatus !== undefined) {
-        return await apiClient.put(`/superadmin/teams/${id}`, {
+        return await apiClient.put(`/teams/${id}`, {
           is_active: !currentStatus,
         });
       }
@@ -165,7 +165,7 @@ export const teamService = {
    * Assign or update member technicians in a team
    */
   async updateTeamMembers(id: number | string, userIds: number[]): Promise<any> {
-    return await apiClient.post(`/superadmin/teams/${id}/members`, {
+    return await apiClient.post(`/teams/${id}/members`, {
       user_ids: userIds,
     });
   },
@@ -174,7 +174,7 @@ export const teamService = {
    * Delete team (if applicable)
    */
   async deleteTeam(id: number | string): Promise<any> {
-    return await apiClient.delete(`/superadmin/teams/${id}`);
+    return await apiClient.delete(`/teams/${id}`);
   },
 
   /**
@@ -182,7 +182,7 @@ export const teamService = {
    */
   async getAllTechnicians(): Promise<TeamMember[]> {
     try {
-      const response = await apiClient.get<any>('/superadmin/users?role=teknisi&per_page=100');
+      const response = await apiClient.get<any>('/users?role=teknisi&per_page=100');
       const items = Array.isArray(response?.data)
         ? response.data
         : Array.isArray(response)
@@ -198,8 +198,8 @@ export const teamService = {
         status: u.status || 'active',
       }));
     } catch {
-      // Fallback to available technicians
-      const res = await apiClient.get<any>('/admin/technicians/available');
+      // Fallback to available teams/technicians
+      const res = await apiClient.get<any>('/teams/available');
       const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       return items.map((u: any) => ({
         id: u.id,

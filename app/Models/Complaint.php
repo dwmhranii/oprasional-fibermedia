@@ -14,12 +14,32 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 class Complaint extends Model
 {
-    use Filterable, HasFactory, LogsActivity;
+    use Filterable, HasFactory, LogsActivity, SoftDeletes;
+
+    /**
+     * Resolve the route binding for the model by ID or ticket_number.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if (empty($value) || $value === 'id' || $value === ':id') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            $record = $this->where($field ?? $this->getRouteKeyName(), $value)->first();
+            if ($record) {
+                return $record;
+            }
+        }
+
+        return $this->where('ticket_number', $value)->first();
+    }
 
     protected $fillable = [
         'ticket_number',
@@ -35,9 +55,18 @@ class Complaint extends Model
         'whatsapp_message',
         'attachments',
         'category',
+        'complaint_type_id',
         'subject',
         'description',
         'priority',
+        'sla_target_minutes',
+        'pause_reason_id',
+        'pause_photo_path',
+        'pause_lat',
+        'pause_lng',
+        'reopened_at',
+        'reopened_by_id',
+        'reopen_count',
         'phase_1_completed_at',
         'phase_2_completed_at',
         'status',
@@ -73,6 +102,8 @@ class Complaint extends Model
         'reviewed_at',
         'review_note',
         'is_mass_outage',
+        'is_mass',
+        'incident_id',
         'affected_element_type',
         'affected_element_id',
     ];
@@ -87,8 +118,14 @@ class Complaint extends Model
         'resolution_category' => ResolutionCategory::class,
         'is_sla_breached' => 'boolean',
         'is_mass_outage' => 'boolean',
+        'is_mass' => 'boolean',
         'customer_lat' => 'float',
         'customer_lng' => 'float',
+        'sla_target_minutes' => 'integer',
+        'pause_lat' => 'float',
+        'pause_lng' => 'float',
+        'reopened_at' => 'datetime',
+        'reopen_count' => 'integer',
         'sla_paused_seconds' => 'integer',
         'sla_response_due_at' => 'datetime',
         'sla_resolve_due_at' => 'datetime',
@@ -113,7 +150,33 @@ class Complaint extends Model
             ->setDescriptionForEvent(fn (string $e) => "Complaint has been {$e}");
     }
 
+    protected static function booted(): void
+    {
+        static::saved(fn () => \App\Services\DashboardService::clearCache());
+        static::deleted(fn () => \App\Services\DashboardService::clearCache());
+    }
+
     // ── Relationships ──────────────────────────────────────────────
+    public function complaintType(): BelongsTo
+    {
+        return $this->belongsTo(ComplaintType::class);
+    }
+
+    public function pauseReason(): BelongsTo
+    {
+        return $this->belongsTo(PauseReason::class);
+    }
+
+    public function reopenedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reopened_by_id');
+    }
+
+    public function incident(): BelongsTo
+    {
+        return $this->belongsTo(Incident::class);
+    }
+
     public function affectedCustomers()
     {
         return $this->belongsToMany(Customer::class, 'complaint_affected_customers', 'complaint_id', 'customer_id')
@@ -196,7 +259,36 @@ class Complaint extends Model
     public function scopeFilter(Builder $query, array $filters): Builder
     {
         if (! empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            if ($filters['status'] === 'unassigned') {
+                $query->where(function ($q) {
+                    $q->where('status', 'unassigned')
+                        ->orWhere(fn ($sub) => $sub->whereNull('assigned_team_id')->whereIn('status', ['open', 'unassigned']));
+                });
+            } elseif ($filters['status'] === 'escalated_to_admin') {
+                $maxOper = (int) (\App\Models\DispatchSetting::getEffective()->max_oper ?? 3);
+                $query->where(function ($q) use ($maxOper) {
+                    $q->where('status', 'escalated_to_admin')
+                        ->orWhere(fn ($sub) => $sub->where('reassign_count', '>=', $maxOper)->whereNotIn('status', ['resolved', 'closed', 'cancelled']));
+                });
+            } else {
+                $query->where('status', $filters['status']);
+            }
+        }
+
+        if (! empty($filters['period'])) {
+            match ($filters['period']) {
+                'today' => $query->whereDate('created_at', now()->toDateString()),
+                '7d' => $query->whereBetween('created_at', [now()->subDays(6)->startOfDay(), now()->endOfDay()]),
+                '30d' => $query->whereBetween('created_at', [now()->subDays(29)->startOfDay(), now()->endOfDay()]),
+                default => null,
+            };
+        }
+
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
+        }
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
         if (! empty($filters['area'])) {
@@ -217,6 +309,21 @@ class Complaint extends Model
 
         if (isset($filters['is_sla_breached']) && $filters['is_sla_breached'] !== '') {
             $query->where('is_sla_breached', filter_var($filters['is_sla_breached'], FILTER_VALIDATE_BOOLEAN));
+        }
+
+        if (! empty($filters['type'])) {
+            if ($filters['type'] === 'mass') {
+                $query->where(function ($q) {
+                    $q->where('is_mass', true)
+                        ->orWhere('is_mass_outage', true)
+                        ->orWhere('category', 'mass_outage');
+                });
+            } elseif ($filters['type'] === 'individual') {
+                $query->where(function ($q) {
+                    $q->where('is_mass', false)
+                        ->where('is_mass_outage', false);
+                });
+            }
         }
 
         if (! empty($filters['search'])) {
@@ -244,6 +351,7 @@ class Complaint extends Model
             ]),
             ComplaintStatus::ASSIGNED => in_array($newStatus, [
                 ComplaintStatus::IN_PROGRESS,
+                ComplaintStatus::PENDING_CUSTOMER,
                 ComplaintStatus::CANCELLED,
             ]),
             ComplaintStatus::IN_PROGRESS => in_array($newStatus, [
@@ -258,14 +366,17 @@ class Complaint extends Model
                 ComplaintStatus::CANCELLED,
             ]),
             ComplaintStatus::PENDING_CUSTOMER => in_array($newStatus, [
+                ComplaintStatus::ASSIGNED,
                 ComplaintStatus::IN_PROGRESS,
+                ComplaintStatus::CANCELLED,
             ]),
             ComplaintStatus::RESOLVED => in_array($newStatus, [
                 ComplaintStatus::CLOSED,      // Verifikasi & Close
                 ComplaintStatus::IN_PROGRESS, // Return ke teknisi
+                ComplaintStatus::REOPENED,    // Reopen dalam 72 jam
             ]),
             ComplaintStatus::CLOSED => in_array($newStatus, [
-                ComplaintStatus::REOPENED,    // Maksimal 7 hari
+                ComplaintStatus::REOPENED,    // Reopen maksimal 3 x 24 jam (PRD Final v1.2)
             ]),
             ComplaintStatus::REOPENED => in_array($newStatus, [
                 ComplaintStatus::ASSIGNED,
@@ -276,6 +387,22 @@ class Complaint extends Model
     }
 
     // ── SLA Helpers ──────────────────────────────────────────────────
+    public function canBeReopened(): bool
+    {
+        $statusValue = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
+        if (! in_array($statusValue, [ComplaintStatus::CLOSED->value, ComplaintStatus::RESOLVED->value, 'closed', 'resolved'])) {
+            return false;
+        }
+
+        $doneAt = $this->closed_at ?? $this->resolved_at;
+        if (! $doneAt) {
+            return false;
+        }
+
+        // PRD Final v1.2: Maksimal 3 x 24 jam (72 jam kalender) setelah selesai
+        return now()->diffInHours($doneAt) <= 72;
+    }
+
     public function pauseSla(): void
     {
         if (! $this->sla_paused_at) {

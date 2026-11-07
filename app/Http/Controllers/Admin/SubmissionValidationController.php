@@ -30,8 +30,12 @@ class SubmissionValidationController extends Controller
     {
         Gate::authorize('viewAny', Submission::class);
 
-        // Admin views all submissions, optionally filtered by status
+        // Admin views all submissions, sales views their own, optionally filtered by status
         $query = Submission::query()->with(['user', 'submissionDocuments.reviews']);
+
+        if ($user = $request->user()) {
+            $query->forUser($user);
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
@@ -141,6 +145,16 @@ class SubmissionValidationController extends Controller
 
             return $submission;
         });
+
+        activity('submission_approval')
+            ->performedOn($submission)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'status' => $newStatus->value,
+                'rejection_reason' => $validated['rejection_reason'] ?? null,
+                'validation_notes' => $validated['validation_notes'] ?? null,
+            ])
+            ->log("Submission {$submission->submission_number} updated to {$newStatus->value} by " . (Auth::user()?->name ?? 'System'));
 
         $submission->user->notify(new SubmissionValidatedNotification($submission));
 

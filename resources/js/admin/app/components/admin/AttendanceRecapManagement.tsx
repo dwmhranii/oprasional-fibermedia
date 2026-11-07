@@ -62,7 +62,7 @@ export const AttendanceRecapManagement: React.FC = () => {
   const { data: teamsData } = useQuery<any>({
     queryKey: ['teams', 'list'],
     queryFn: async () => {
-      const res = await apiClient.get('/superadmin/teams');
+      const res = await apiClient.get('/teams');
       return res?.data || res || [];
     },
   });
@@ -71,7 +71,7 @@ export const AttendanceRecapManagement: React.FC = () => {
   const { data, isLoading, refetch, isRefetching } = useQuery<{ success: boolean; data: RecapResponseData }>({
     queryKey: ['attendanceRecap', selectedMonth, selectedTeam],
     queryFn: async () => {
-      let url = `/admin/attendances/recap?month=${selectedMonth}`;
+      let url = `/attendances/recap?month=${selectedMonth}`;
       if (selectedTeam !== 'all') {
         url += `&team_id=${selectedTeam}`;
       }
@@ -80,7 +80,7 @@ export const AttendanceRecapManagement: React.FC = () => {
   });
 
   const handleExportExcel = () => {
-    let url = `/api/admin/attendances/recap/export?month=${selectedMonth}`;
+    let url = `/api/attendances/recap/export?month=${selectedMonth}`;
     if (selectedTeam !== 'all') {
       url += `&team_id=${selectedTeam}`;
     }
@@ -88,7 +88,10 @@ export const AttendanceRecapManagement: React.FC = () => {
     window.location.href = url;
   };
 
-  const recapData = data?.data;
+  const recapData: RecapResponseData | undefined =
+    (data as any)?.summary !== undefined
+      ? (data as unknown as RecapResponseData)
+      : (data as any)?.data;
 
   return (
     <div className="space-y-6">

@@ -34,7 +34,7 @@ class TicketReviewController extends Controller
 
         $hasPermission = false;
         try {
-            $hasPermission = $user->hasPermissionTo('tickets.review') || $user->hasRole('Superadmin');
+            $hasPermission = $user->can('tickets.review') || $user->can('complaints.review');
         } catch (\Throwable) {
             $hasPermission = false;
         }

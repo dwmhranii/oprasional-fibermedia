@@ -95,7 +95,7 @@ export const RoleManagement: React.FC = () => {
   const { data: roles, isLoading: isLoadingRoles, refetch: refetchRoles } = useQuery({
     queryKey: ['superadmin', 'roles'],
     queryFn: async () => {
-      const response = await apiClient.get<{ data: RoleApiData[] }>('/superadmin/roles');
+      const response = await apiClient.get<{ data: RoleApiData[] }>('/roles');
       return response.data || [];
     },
   });
@@ -104,7 +104,7 @@ export const RoleManagement: React.FC = () => {
   const { data: users, isLoading: isLoadingUsers, refetch: refetchUsers } = useQuery({
     queryKey: ['superadmin', 'users', 'all'],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/superadmin/users?per_page=100');
+      const response = await apiClient.get<any>('/users?per_page=100');
       const list = response.data || response || [];
       return Array.isArray(list) ? list : list.data || [];
     },
@@ -115,7 +115,7 @@ export const RoleManagement: React.FC = () => {
     if (!selectedUser || !targetRole) return;
     try {
       setIsUpdating(true);
-      await apiClient.put(`/superadmin/users/${selectedUser.id}`, {
+      await apiClient.put(`/users/${selectedUser.id}`, {
         role: targetRole,
       });
       toast.success(`Role Pengguna '${selectedUser.name}' Berhasil Diubah ke '${targetRole.toUpperCase()}'`);

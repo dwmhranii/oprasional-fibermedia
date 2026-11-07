@@ -56,14 +56,13 @@ export const NotificationBell: React.FC = () => {
       case 'submission_validated':
         return submission_id ? `/submissions/${submission_id}` : '/submissions';
       case 'provisioning_completed':
-        return provisioning_id ? `/admin/provisionings/${provisioning_id}` : '/admin/provisionings';
+        return provisioning_id ? `/psb/${provisioning_id}` : '/psb';
       case 'task_assigned':
       case 'technician_returned':
       case 'technician_approved':
-        // Adjust task path based on typical role mappings if needed; defaulting to teknisi tasks for now.
-        return task_id ? `/teknisi/tasks/${task_id}` : '/teknisi/tasks';
+        return task_id ? `/work-orders/${task_id}` : '/work-orders';
       case 'sla_breach':
-        return sla_id ? `/admin/sla-breaches/${sla_id}` : '/admin/sla-breaches';
+        return sla_id ? `/sla-breaches/${sla_id}` : '/sla-breaches';
       default:
         return null;
     }

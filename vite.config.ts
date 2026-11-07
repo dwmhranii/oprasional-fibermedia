@@ -10,12 +10,17 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      scope: '/pwa/',
+      base: '/pwa/',
       devOptions: {
         enabled: true
       },
       workbox: {
         importScripts: ['/sw-push.js'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        cacheId: 'fm-pwa',
+        navigateFallback: '/pwa',
+        navigateFallbackAllowlist: [/^\/pwa/],
       },
       includeAssets: ['logo-fibermedia.png', 'sw-push.js'],
       manifest: {
@@ -25,6 +30,8 @@ export default defineConfig({
         theme_color: '#0284c7',
         background_color: '#ffffff',
         display: 'standalone',
+        start_url: '/pwa/',
+        scope: '/pwa/',
         icons: [
           {
             src: '/logo-fibermedia.png',
@@ -55,6 +62,7 @@ export default defineConfig({
     },
   },
   build: {
+    emptyOutDir: true,
     rollupOptions: {
       input: {
         admin: path.resolve(__dirname, 'index.html'),

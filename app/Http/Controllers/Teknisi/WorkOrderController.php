@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Teknisi;
 
+use App\Enums\ComplaintStatus;
+use App\Enums\TaskStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ComplaintDetailResource;
 use App\Http\Resources\TaskResource;
 use App\Models\Complaint;
+use App\Models\ComplaintLog;
 use App\Models\Task;
 use App\Services\WorkOrderService;
 use Illuminate\Http\JsonResponse;
@@ -73,6 +76,79 @@ class WorkOrderController extends Controller
                 'success' => true,
                 'type' => 'psb',
                 'data' => new TaskResource($task),
+            ]);
+        }
+
+        return response()->json(['message' => 'Format ID Work Order tidak valid.'], 400);
+    }
+
+    /**
+     * POST /api/work-orders/{id}/accept
+     * Alur Terima Tiket oleh Teknisi untuk seluruh jenis Work Order (PSB + Pengaduan)
+     */
+    public function accept(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+
+        if (str_starts_with($id, 'WO-CMP-') || is_numeric($id)) {
+            $complaintId = is_numeric($id) ? (int) $id : (int) str_replace('WO-CMP-', '', $id);
+            $complaint = Complaint::findOrFail($complaintId);
+
+            if ($complaint->status === ComplaintStatus::ASSIGNED || $complaint->status === ComplaintStatus::OPEN) {
+                $complaint->update(['status' => ComplaintStatus::IN_PROGRESS]);
+
+                if ($complaint->currentAssignment) {
+                    $complaint->currentAssignment->update([
+                        'status' => 'in_progress',
+                        'started_at' => now(),
+                    ]);
+                }
+
+                ComplaintLog::create([
+                    'complaint_id' => $complaint->id,
+                    'from_status' => ComplaintStatus::ASSIGNED->value,
+                    'to_status' => ComplaintStatus::IN_PROGRESS->value,
+                    'action' => 'accepted',
+                    'notes' => 'Tiket pengaduan diterima oleh teknisi di PWA.',
+                    'actor_id' => $user?->id,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tiket pengaduan berhasil diterima.',
+                    'data' => [
+                        'id' => $complaint->id,
+                        'status' => ComplaintStatus::IN_PROGRESS->value,
+                    ],
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Tiket sudah berstatus {$complaint->status->value}.",
+                'data' => [
+                    'id' => $complaint->id,
+                    'status' => $complaint->status->value,
+                ],
+            ]);
+        }
+
+        if (str_starts_with($id, 'WO-TSK-')) {
+            $taskId = (int) str_replace('WO-TSK-', '', $id);
+            $task = Task::findOrFail($taskId);
+
+            $task->update([
+                'status' => TaskStatus::IN_PROGRESS,
+                'started_at' => $task->started_at ?? now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tugas PSB berhasil diterima.',
+                'data' => [
+                    'id' => $task->id,
+                    'status' => TaskStatus::IN_PROGRESS->value,
+                ],
             ]);
         }
 

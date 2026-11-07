@@ -68,6 +68,9 @@ class AttendanceController extends Controller
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'accuracy' => 'nullable|numeric|min:0',
+            'selfie' => 'nullable|file|image|max:1024',
+            'selfie_base64' => 'nullable|string',
+            'device_uuid' => 'nullable|string|max:100',
         ]);
 
         $result = $this->attendanceService->processCheckOut($request->user(), $request);
@@ -83,7 +86,7 @@ class AttendanceController extends Controller
         $user = $request->user();
         $today = Carbon::today()->toDateString();
 
-        $attendance = DailyAttendance::with(['checkInMedia', 'office'])
+        $attendance = DailyAttendance::with(['checkInMedia', 'checkOutMedia', 'office'])
             ->where('user_id', $user->id)
             ->whereDate('work_date', $today)
             ->first();
@@ -91,7 +94,7 @@ class AttendanceController extends Controller
         $offices = OfficeLocation::where('is_active', true)->get();
 
         // Team info
-        $team = $user->teams()->wherePivot('is_active', true)->first();
+        $team = $user->teams()->first();
         $isTeamReady = false;
         if ($team) {
             $isTeamReady = $this->teamReadinessService->isTeamReady($team, $today);
@@ -115,11 +118,15 @@ class AttendanceController extends Controller
                     'id' => $attendance->id,
                     'work_date' => $attendance->work_date->toDateString(),
                     'status' => $attendance->status,
-                    'check_in_at' => $attendance->check_in_at ? $attendance->check_in_at->format('H:i') : null,
-                    'check_out_at' => $attendance->check_out_at ? $attendance->check_out_at->format('H:i') : null,
+                    'check_in_at' => $attendance->check_in_at ? $attendance->check_in_at->toIso8601String() : null,
+                    'check_out_at' => $attendance->check_out_at ? $attendance->check_out_at->toIso8601String() : null,
+                    'check_in_time' => $attendance->check_in_at ? $attendance->check_in_at->format('H:i') : null,
+                    'check_out_time' => $attendance->check_out_at ? $attendance->check_out_at->format('H:i') : null,
                     'office_distance_meters' => $attendance->office_distance_meters,
                     'late_minutes' => $attendance->late_minutes,
                     'photo_url' => $attendance->checkInMedia?->signed_url,
+                    'check_in_photo_url' => $attendance->checkInMedia?->signed_url,
+                    'check_out_photo_url' => $attendance->checkOutMedia?->signed_url,
                 ] : null,
                 'offices' => $offices->map(fn ($o) => [
                     'id' => $o->id,
@@ -144,9 +151,22 @@ class AttendanceController extends Controller
         $today = Carbon::today()->toDateString();
 
         // 1. Ambil absensi hari ini beserta relasinya
-        $attendances = DailyAttendance::with(['user.teams', 'office', 'checkInMedia', 'setBy'])
-            ->whereDate('work_date', $today)
-            ->get()
+        $query = DailyAttendance::with(['user.teams', 'office', 'checkInMedia', 'checkOutMedia', 'setBy', 'reviewedBy'])
+            ->whereDate('work_date', $today);
+
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('track') && $request->input('track') !== 'all') {
+            $query->where('track', $request->input('track'));
+        }
+
+        if ($request->filled('review_status') && $request->input('review_status') !== 'all') {
+            $query->where('review_status', $request->input('review_status'));
+        }
+
+        $attendances = $query->get()
             ->map(function ($att) {
                 $allowedRadius = $att->office ? max(50, $att->office->radius_meters ?: 50) : 50;
                 $isOutsideRadius = $att->office_distance_meters !== null && $att->office_distance_meters > $allowedRadius;
@@ -157,19 +177,32 @@ class AttendanceController extends Controller
                     'user_name' => $att->user?->name,
                     'user_email' => $att->user?->email,
                     'team_name' => $att->user?->teams->first()?->name ?? 'Tanpa Tim',
+                    'track' => $att->track ?? 'office',
                     'status' => $att->status,
+                    'review_status' => $att->review_status,
+                    'is_suspicious' => (bool) $att->is_suspicious,
+                    'suspicious_reason' => $att->suspicious_reason,
+                    'client_ip' => $att->client_ip,
                     'check_in_at' => $att->check_in_at?->format('H:i:s'),
                     'check_out_at' => $att->check_out_at?->format('H:i:s'),
                     'latitude' => $att->check_in_lat ? (float) $att->check_in_lat : null,
                     'longitude' => $att->check_in_lng ? (float) $att->check_in_lng : null,
                     'accuracy' => $att->check_in_accuracy ? (float) $att->check_in_accuracy : null,
+                    'check_out_latitude' => $att->check_out_lat ? (float) $att->check_out_lat : null,
+                    'check_out_longitude' => $att->check_out_lng ? (float) $att->check_out_lng : null,
+                    'check_out_accuracy' => $att->check_out_accuracy ? (float) $att->check_out_accuracy : null,
                     'office_name' => $att->office?->name,
                     'office_distance_meters' => $att->office_distance_meters,
                     'is_outside_radius' => $isOutsideRadius,
                     'is_manual' => (bool) $att->is_manual,
                     'note' => $att->note,
                     'set_by' => $att->setBy?->name,
+                    'reviewed_by' => $att->reviewedBy?->name,
+                    'reviewed_at' => $att->reviewed_at?->format('Y-m-d H:i:s'),
+                    'review_notes' => $att->review_notes,
                     'selfie_url' => $att->checkInMedia?->signed_url,
+                    'check_in_selfie_url' => $att->checkInMedia?->signed_url,
+                    'check_out_selfie_url' => $att->checkOutMedia?->signed_url,
                 ];
             });
 
@@ -181,23 +214,35 @@ class AttendanceController extends Controller
 
         foreach ($allTeams as $team) {
             $presentMembers = $this->teamReadinessService->getPresentMembersToday($team, $today);
+            $attendedMembers = $this->teamReadinessService->getAttendedMembersToday($team, $today);
             $presentCount = $presentMembers->count();
+            $attendedCount = $attendedMembers->count();
             $isReady = $presentCount >= $minMembers;
 
             if ($isReady) {
                 $readyTeamMap[$team->id] = $team;
             }
 
+            $checkedOutMembers = $attendedMembers->filter(function ($u) use ($presentMembers) {
+                return ! $presentMembers->contains('id', $u->id);
+            });
+
             $teamsReadyList[] = [
                 'id' => $team->id,
                 'name' => $team->name,
                 'is_ready' => $isReady,
                 'present_count' => $presentCount,
+                'attended_count' => $attendedCount,
+                'checked_out_count' => $checkedOutMembers->count(),
                 'min_required' => $minMembers,
                 'present_members' => $presentMembers->map(fn ($u) => [
                     'id' => $u->id,
                     'name' => $u->name,
-                ]),
+                ])->values(),
+                'checked_out_members' => $checkedOutMembers->map(fn ($u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                ])->values(),
             ];
         }
 
@@ -330,6 +375,99 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Halaman Admin: Daftar Absensi (Index).
+     * Jika work_date tidak diisi, gunakan hari ini (alias/konsisten dengan adminToday).
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        return $this->adminToday($request);
+    }
+
+    /**
+     * Admin: Penyesuaian/Update absensi untuk pengguna dan tanggal tertentu.
+     */
+    public function adminAdjust(Request $request, string $userId, string $date): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:hadir,izin,sakit,alpa',
+            'reason' => 'nullable|string|max:500',
+            'late_minutes' => 'nullable|integer|min:0',
+        ]);
+
+        $targetUser = User::findOrFail($userId);
+        $workDate = Carbon::parse($date)->toDateString();
+
+        $checkInAt = null;
+        if ($validated['status'] === 'hadir') {
+            $checkInAt = Carbon::parse($workDate)->setTime(8, 0, 0);
+        }
+
+        $attendance = DailyAttendance::updateOrCreate([
+            'user_id' => $targetUser->id,
+            'work_date' => $workDate,
+        ], [
+            'status' => $validated['status'],
+            'check_in_at' => $checkInAt,
+            'late_minutes' => $validated['late_minutes'] ?? 0,
+            'note' => $validated['reason'] ?? 'Penyesuaian oleh Admin/Superadmin',
+            'is_manual' => true,
+            'set_by_id' => $request->user()->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status absensi berhasil disesuaikan.',
+            'data' => $attendance,
+        ]);
+    }
+
+    /**
+     * Tinjau Absensi Lapangan (Approve / Reject) oleh Admin/CS atau Superadmin sesuai PRD Bagian 6.
+     */
+    public function reviewAttendance(Request $request, DailyAttendance $attendance): JsonResponse
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:approve,reject',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        if ($validated['action'] === 'reject' && empty(trim($validated['notes'] ?? ''))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Catatan alasan penolakan absensi wajib diisi.',
+            ], 422);
+        }
+
+        $reviewer = $request->user();
+        $isApproved = $validated['action'] === 'approve';
+
+        $attendance->update([
+            'status' => $isApproved ? 'hadir' : 'alpa',
+            'review_status' => $isApproved ? 'approved' : 'rejected',
+            'reviewed_by_id' => $reviewer->id,
+            'reviewed_at' => now(),
+            'review_notes' => $validated['notes'] ?? null,
+        ]);
+
+        activity('attendance')
+            ->performedOn($attendance)
+            ->causedBy($reviewer)
+            ->withProperties([
+                'attendance_id' => $attendance->id,
+                'target_user_id' => $attendance->user_id,
+                'action' => $validated['action'],
+                'notes' => $validated['notes'] ?? null,
+            ])
+            ->log("Absensi lapangan staf {$attendance->user?->name} ".($isApproved ? 'disetujui' : 'ditolak')." oleh {$reviewer->name}.");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Absensi lapangan berhasil '.($isApproved ? 'disetujui (status: hadir)' : 'ditolak (status: alpa)').'.',
+            'data' => new \App\Http\Resources\DailyAttendanceResource($attendance->load(['user', 'reviewedBy', 'office'])),
+        ]);
+    }
+
+    /**
      * Kartu Pintasan Dashboard Admin:
      * - pengaduan baru dan belum ditugaskan
      * - pelanggan jatuh tempo / terisolir
@@ -365,19 +503,19 @@ class AttendanceController extends Controller
                 'unassigned_complaints' => [
                     'title' => 'Pengaduan Baru & Belum Ditugaskan',
                     'count' => $unassignedComplaintsCount,
-                    'route' => '/admin/complaints?filter=unassigned',
+                    'route' => '/complaints?filter=unassigned',
                     'available' => true,
                 ],
                 'isolated_customers' => [
                     'title' => 'Pelanggan Jatuh Tempo / Terisolir',
                     'count' => $isolatedCustomersCount,
-                    'route' => '/admin/customers?filter=isolated',
+                    'route' => '/customers?filter=isolated',
                     'available' => true,
                 ],
                 'ready_teams' => [
                     'title' => 'Tim Siap Hari Ini',
                     'count' => $readyTeamsCount,
-                    'route' => '/admin/attendances/daily',
+                    'route' => '/attendance/today',
                     'available' => true,
                 ],
             ],

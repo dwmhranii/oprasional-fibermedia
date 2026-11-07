@@ -45,7 +45,7 @@ export const AuditLogs: React.FC = () => {
   const { data: usersData } = useQuery({
     queryKey: ['users', 'list', { limit: 100 }],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/superadmin/users?per_page=100');
+      const response = await apiClient.get<any>('/users?per_page=100');
       return (response.data || []).map(userToFrontend);
     },
   });
@@ -56,7 +56,7 @@ export const AuditLogs: React.FC = () => {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['adminAuditLogs', 'list', { page, causer: userFilter, event: eventFilter, model: modelFilter, search: debouncedSearch, dateFrom, dateTo, sortBy, sortOrder }],
     queryFn: async () => {
-      let url = `/admin/audit-logs?page=${page}&per_page=15`;
+      let url = `/audit-logs?page=${page}&per_page=15`;
       
       if (userFilter && userFilter !== 'all') url += `&causer_id=${userFilter}`;
       if (eventFilter && eventFilter !== 'all') url += `&event=${eventFilter}`;

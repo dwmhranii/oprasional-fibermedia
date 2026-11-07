@@ -12,9 +12,10 @@ class SubmissionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Superadmin', 'Sales', 'Teknisi', 'admin', 'superadmin', 'sales', 'teknisi'])
-            || $user->hasPermissionTo('view_any_submissions')
-            || $user->hasPermissionTo('view_own_submissions');
+        return $user->can('submissions.view')
+            || $user->can('submissions.view_own')
+            || $user->can('view_any_submissions')
+            || $user->can('view_own_submissions');
     }
 
     /**
@@ -22,11 +23,15 @@ class SubmissionPolicy
      */
     public function view(User $user, Submission $submission): bool
     {
-        if ($user->hasRole(['Admin', 'Superadmin', 'admin', 'superadmin', 'Teknisi', 'teknisi']) || $user->hasPermissionTo('view_any_submissions')) {
+        if ($user->can('submissions.view') || $user->can('view_any_submissions')) {
             return true;
         }
 
-        return ((int) $submission->user_id === (int) $user->id) || ((int) $submission->sales_id === (int) $user->id);
+        if ($user->can('submissions.view_own') || $user->can('view_own_submissions')) {
+            return ((int) $submission->user_id === (int) $user->id) || ((int) $submission->sales_id === (int) $user->id);
+        }
+
+        return false;
     }
 
     /**
@@ -34,7 +39,7 @@ class SubmissionPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->can('submissions.create') || $user->can('create_submissions');
     }
 
     /**
@@ -46,11 +51,15 @@ class SubmissionPolicy
             return false;
         }
 
-        if ($user->hasRole(['Admin', 'Superadmin', 'admin', 'superadmin', 'Teknisi', 'teknisi']) || $user->hasPermissionTo('view_any_submissions')) {
+        if ($user->can('submissions.approve')) {
             return true;
         }
 
-        return ((int) $submission->user_id === (int) $user->id) || ((int) $submission->sales_id === (int) $user->id);
+        if ($user->can('submissions.update_own') || $user->can('edit_submissions')) {
+            return ((int) $submission->user_id === (int) $user->id) || ((int) $submission->sales_id === (int) $user->id);
+        }
+
+        return false;
     }
 
     /**
@@ -58,11 +67,15 @@ class SubmissionPolicy
      */
     public function uploadDocument(User $user, Submission $submission): bool
     {
-        if ($user->hasRole(['Admin', 'Superadmin', 'admin', 'superadmin', 'Teknisi', 'teknisi']) || $user->hasPermissionTo('view_any_submissions')) {
+        if ($user->can('submissions.approve')) {
             return true;
         }
 
-        return ((int) $submission->user_id === (int) $user->id) || ((int) $submission->sales_id === (int) $user->id);
+        if ($user->can('submissions.create') || $user->can('submissions.update_own') || $user->can('create_submissions')) {
+            return ((int) $submission->user_id === (int) $user->id) || ((int) $submission->sales_id === (int) $user->id);
+        }
+
+        return false;
     }
 
     /**
@@ -70,7 +83,7 @@ class SubmissionPolicy
      */
     public function validate(User $user, Submission $submission): bool
     {
-        return $user->hasRole(['Admin', 'Superadmin', 'admin', 'superadmin']) || $user->hasPermissionTo('validate_submissions');
+        return $user->can('submissions.approve') || $user->can('validate_submissions');
     }
 
     /**
@@ -78,6 +91,6 @@ class SubmissionPolicy
      */
     public function delete(User $user, Submission $submission): bool
     {
-        return $user->hasRole(['Superadmin', 'superadmin']);
+        return $user->can('submissions.delete');
     }
 }

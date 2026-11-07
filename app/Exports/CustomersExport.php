@@ -31,7 +31,7 @@ class CustomersExport implements FromCollection, ShouldAutoSize, WithHeadings, W
             $this->canViewSecrets = $canViewSecrets;
         } else {
             $user = Auth::user();
-            $this->canViewSecrets = $user && ($user->can('customers.view_secret') || $user->hasRole(['Superadmin', 'superadmin']));
+            $this->canViewSecrets = $user && $user->can('customers.view_secret');
         }
     }
 

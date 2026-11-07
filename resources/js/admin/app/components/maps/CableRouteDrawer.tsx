@@ -57,7 +57,7 @@ export const CableRouteDrawer: React.FC<CableRouteDrawerProps> = ({
   const [activeLayer, setActiveLayer] = useState<'street' | 'satellite'>('street');
   const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [licenseAgreed, setLicenseAgreed] = useState<boolean>(() => {
-    return localStorage.getItem('fmp_satellite_license_agreed') === 'true';
+    return localStorage.getItem('fm-admin:satellite_license_agreed') === 'true';
   });
   const [licenseAcceptedCheckbox, setLicenseAcceptedCheckbox] = useState(false);
 
@@ -77,7 +77,7 @@ export const CableRouteDrawer: React.FC<CableRouteDrawerProps> = ({
   // Konfirmasi persetujuan ketentuan lisensi penyedia satelit
   const handleConfirmLicense = () => {
     if (!licenseAcceptedCheckbox) return;
-    localStorage.setItem('fmp_satellite_license_agreed', 'true');
+    localStorage.setItem('fm-admin:satellite_license_agreed', 'true');
     setLicenseAgreed(true);
     setShowLicenseModal(false);
     setActiveLayer('satellite');
@@ -348,8 +348,8 @@ export const CableRouteDrawer: React.FC<CableRouteDrawerProps> = ({
         >
           {activeLayer === 'street' ? (
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, USGS, Fibermedia Ops'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           ) : (

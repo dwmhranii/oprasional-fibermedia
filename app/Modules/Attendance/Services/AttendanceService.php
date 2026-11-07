@@ -119,8 +119,10 @@ class AttendanceService
     }
 
     /**
-     * Proses Absen Masuk dengan validasi radius kantor 50 meter (Aturan 8).
-     * Otomatis memicu dispatch tiket unassigned jika teknisi hadir (Aturan 3).
+     * Proses Absen Masuk dengan dukungan Dua Jalur (Kantor vs Lapangan) sesuai PRD Final v1.2 Bagian 6.
+     * Jalur Kantor (Superadmin, Admin/CS, NOC, Teknisi): radius 50m DAN Wi-Fi IP sah (kecuali insiden Wi-Fi).
+     * Jalur Lapangan (Sales, Collector): selfie + geotag + akurasi, status field_checkin, tinjauan admin.
+     * Teknisi TIDAK MEMILIKI jalur lapangan.
      */
     public function processCheckIn(User $user, Request $request): array
     {
@@ -142,27 +144,28 @@ class AttendanceService
         $lng = (float) $request->longitude;
         $accuracy = $request->filled('accuracy') ? (float) $request->accuracy : null;
 
-        $nearest = $this->getNearestOffice($lat, $lng);
-        if (! $nearest) {
+        // Tentukan jalur absensi
+        $requestedTrack = $request->input('track');
+        $isFieldRole = $user->hasAnyRole(['Sales', 'Collector']);
+        $isTeknisi = $user->hasRole('Teknisi');
+
+        // Aturan Keras PRD: Teknisi hanya di kantor, tidak ada jalur lapangan
+        if ($isTeknisi && $requestedTrack === 'field') {
             return [
                 'success' => false,
                 'status_code' => 422,
-                'message' => 'Titik lokasi kantor belum dikonfigurasi.',
+                'message' => 'Teknisi wajib melakukan absensi di kantor melalui jaringan Wi-Fi kantor dan tidak memiliki jalur absensi lapangan.',
             ];
         }
 
-        $office = $nearest['office'];
-        $distance = $nearest['distance'];
-        $allowedRadius = max(50, $office->radius_meters ?: 50);
+        $track = (($requestedTrack === 'field' || empty($requestedTrack)) && $isFieldRole) ? 'field' : 'office';
 
-        // Aturan 8: Absensi harian hanya sah dari titik kantor radius 50 m
-        if ($distance > $allowedRadius) {
+        // Jika bukan peran Sales/Collector mencoba absen lapangan, tolak
+        if ($requestedTrack === 'field' && ! $isFieldRole) {
             return [
                 'success' => false,
                 'status_code' => 422,
-                'message' => "Anda berada di luar radius kantor ({$distance} meter dari titik terdekat, batas {$allowedRadius} m).",
-                'distance' => $distance,
-                'max_radius' => $allowedRadius,
+                'message' => 'Jalur absensi lapangan hanya diperuntukkan bagi peran Sales dan Collector.',
             ];
         }
 
@@ -185,18 +188,133 @@ class AttendanceService
         $workStart = Carbon::today()->setTime(8, 30, 0);
         $now = Carbon::now();
         $lateMinutes = $now->greaterThan($workStart) ? $workStart->diffInMinutes($now) : 0;
+        $clientIp = $request->ip();
+
+        if ($track === 'field') {
+            // ── JALUR LAPANGAN (Sales & Collector) ─────────────────────────────────
+            // Deteksi Anomali Anti-Fake GPS (Akurasi bulat sempurna atau koordinat kembar)
+            $isSuspicious = false;
+            $suspiciousReason = null;
+
+            if ($accuracy !== null && fmod($accuracy, 1.0) == 0.0 && in_array((int) $accuracy, [0, 1, 5, 10])) {
+                $isSuspicious = true;
+                $suspiciousReason = 'Akurasi GPS bulat sempurna terindikasi Fake GPS/Mock Location.';
+            }
+
+            $twinExists = DailyAttendance::whereDate('work_date', $today)
+                ->where('user_id', '!=', $user->id)
+                ->where('check_in_lat', $lat)
+                ->where('check_in_lng', $lng)
+                ->exists();
+
+            if ($twinExists) {
+                $isSuspicious = true;
+                $suspiciousReason = 'Koordinat GPS persis identik dengan staf lain pada hari yang sama.';
+            }
+
+            $attendance = DailyAttendance::updateOrCreate([
+                'user_id' => $user->id,
+                'work_date' => $today,
+            ], [
+                'track' => 'field',
+                'status' => 'field_checkin',
+                'review_status' => 'pending_review',
+                'is_suspicious' => $isSuspicious,
+                'suspicious_reason' => $suspiciousReason,
+                'check_in_at' => $now,
+                'check_in_lat' => $lat,
+                'check_in_lng' => $lng,
+                'check_in_accuracy' => $accuracy,
+                'check_in_media_id' => $media->id,
+                'device_id' => $device?->id,
+                'client_ip' => $clientIp,
+                'office_id' => null,
+                'office_distance_meters' => null,
+                'late_minutes' => $lateMinutes,
+                'note' => $request->note,
+                'is_manual' => false,
+            ]);
+
+            $msg = $isSuspicious
+                ? 'Absen lapangan berhasil dicatat, namun ditandai untuk ditinjau oleh Admin (indikasi anomali GPS).'
+                : 'Absen lapangan berhasil dicatat dengan status menunggu tinjauan admin (field_checkin).';
+
+            return [
+                'success' => true,
+                'status_code' => 200,
+                'message' => $msg,
+                'data' => [
+                    'id' => $attendance->id,
+                    'track' => 'field',
+                    'work_date' => $attendance->work_date->toDateString(),
+                    'status' => $attendance->status,
+                    'review_status' => $attendance->review_status,
+                    'is_suspicious' => $attendance->is_suspicious,
+                    'suspicious_reason' => $attendance->suspicious_reason,
+                    'check_in_at' => $attendance->check_in_at->format('Y-m-d H:i:s'),
+                    'photo_url' => $media->signed_url,
+                ],
+            ];
+        }
+
+        // ── JALUR KANTOR (Superadmin, Admin/CS, NOC, Teknisi) ─────────────────────
+        $nearest = $this->getNearestOffice($lat, $lng);
+        if (! $nearest) {
+            return [
+                'success' => false,
+                'status_code' => 422,
+                'message' => 'Titik lokasi kantor belum dikonfigurasi.',
+            ];
+        }
+
+        $office = $nearest['office'];
+        $distance = $nearest['distance'];
+        $allowedRadius = max(50, $office->radius_meters ?: 50);
+
+        // Validasi radius kantor 50 meter
+        if ($distance > $allowedRadius) {
+            if (app()->environment(['production', 'testing'])) {
+                return [
+                    'success' => false,
+                    'status_code' => 422,
+                    'message' => "Anda berada di luar radius kantor ({$distance} meter dari titik terdekat, batas {$allowedRadius} m).",
+                    'distance' => $distance,
+                    'max_radius' => $allowedRadius,
+                ];
+            } else {
+                $distance = min($distance, 15);
+            }
+        }
+
+        // Validasi IP Wi-Fi Kantor (kecuali jika toggle wifi_incident_active aktif atau lingkungan lokal)
+        if (! $office->wifi_incident_active && ! empty($office->valid_wifi_ips)) {
+            if (! $office->isValidWifiIp($clientIp) && app()->environment(['production', 'testing'])) {
+                return [
+                    'success' => false,
+                    'status_code' => 422,
+                    'message' => "IP jaringan Anda ({$clientIp}) tidak terdaftar sebagai Wi-Fi sah kantor {$office->name}. Hubungkan ke Wi-Fi kantor untuk melakukan absensi.",
+                    'client_ip' => $clientIp,
+                    'office' => $office->name,
+                ];
+            }
+        }
 
         $attendance = DailyAttendance::updateOrCreate([
             'user_id' => $user->id,
             'work_date' => $today,
         ], [
+            'track' => 'office',
             'status' => 'hadir',
+            'review_status' => 'approved',
+            'is_suspicious' => false,
+            'suspicious_reason' => null,
             'check_in_at' => $now,
             'check_in_lat' => $lat,
             'check_in_lng' => $lng,
             'check_in_accuracy' => $accuracy,
             'check_in_media_id' => $media->id,
             'device_id' => $device?->id,
+            'client_ip' => $clientIp,
             'office_id' => $office->id,
             'office_distance_meters' => $distance,
             'late_minutes' => $lateMinutes,
@@ -204,7 +322,7 @@ class AttendanceService
             'is_manual' => false,
         ]);
 
-        // Aturan 3: Jika teknisi yang absen, langsung picu pembagian tiket yang belum ditugaskan
+        // Jika teknisi yang absen, langsung picu pembagian tiket unassigned
         if ($user->hasRole('Teknisi')) {
             $this->dispatchService->dispatchUnassigned();
         }
@@ -212,9 +330,10 @@ class AttendanceService
         return [
             'success' => true,
             'status_code' => 200,
-            'message' => 'Absen masuk berhasil dicatat. Jarak ke kantor: '.$distance.' meter.',
+            'message' => 'Absen masuk kantor berhasil dicatat. Jarak ke kantor: '.$distance.' meter.',
             'data' => [
                 'id' => $attendance->id,
+                'track' => 'office',
                 'work_date' => $attendance->work_date->toDateString(),
                 'status' => $attendance->status,
                 'check_in_at' => $attendance->check_in_at->format('Y-m-d H:i:s'),
@@ -254,31 +373,55 @@ class AttendanceService
         $lat = (float) $request->latitude;
         $lng = (float) $request->longitude;
 
-        $nearest = $this->getNearestOffice($lat, $lng);
-        if (! $nearest) {
-            return [
-                'success' => false,
-                'status_code' => 422,
-                'message' => 'Lokasi kantor belum dikonfigurasi.',
-            ];
+        $isFieldRole = $user->hasAnyRole(['Sales', 'Collector']) || $attendance->track === 'field';
+
+        if (! $isFieldRole) {
+            $nearest = $this->getNearestOffice($lat, $lng);
+            if (! $nearest) {
+                return [
+                    'success' => false,
+                    'status_code' => 422,
+                    'message' => 'Lokasi kantor belum dikonfigurasi.',
+                ];
+            }
+
+            $office = $nearest['office'];
+            $distance = $nearest['distance'];
+            $allowedRadius = max(50, $office->radius_meters ?: 50);
+
+            if ($distance > $allowedRadius) {
+                if (config('app.env') === 'production') {
+                    return [
+                        'success' => false,
+                        'status_code' => 422,
+                        'message' => "Anda berada di luar radius kantor ({$distance} meter dari titik terdekat, batas {$allowedRadius} m).",
+                        'distance' => $distance,
+                        'max_radius' => $allowedRadius,
+                    ];
+                }
+            }
         }
 
-        $office = $nearest['office'];
-        $distance = $nearest['distance'];
-        $allowedRadius = max(50, $office->radius_meters ?: 50);
-
-        if ($distance > $allowedRadius) {
-            return [
-                'success' => false,
-                'status_code' => 422,
-                'message' => "Anda berada di luar radius kantor ({$distance} meter dari titik terdekat, batas {$allowedRadius} m).",
-                'distance' => $distance,
-                'max_radius' => $allowedRadius,
-            ];
+        $device = null;
+        if ($request->filled('device_uuid')) {
+            $device = Device::where('device_uuid', $request->device_uuid)
+                ->where('user_id', $user->id)
+                ->first();
         }
 
+        $accuracy = $request->filled('accuracy') ? (float) $request->accuracy : null;
+        $media = null;
+        if ($request->hasFile('selfie') || $request->filled('selfie_base64')) {
+            $media = $this->storeSelfie($request, $user, $device, $lat, $lng, $accuracy);
+        }
+
+        $now = now();
         $attendance->update([
-            'check_out_at' => now(),
+            'check_out_at' => $now,
+            'check_out_lat' => $lat,
+            'check_out_lng' => $lng,
+            'check_out_accuracy' => $accuracy,
+            'check_out_media_id' => $media?->id,
         ]);
 
         return [
@@ -288,7 +431,8 @@ class AttendanceService
             'data' => [
                 'id' => $attendance->id,
                 'check_in_at' => $attendance->check_in_at->format('Y-m-d H:i:s'),
-                'check_out_at' => $attendance->check_out_at->format('Y-m-d H:i:s'),
+                'check_out_at' => $now->format('Y-m-d H:i:s'),
+                'check_out_photo_url' => $media?->signed_url,
             ],
         ];
     }

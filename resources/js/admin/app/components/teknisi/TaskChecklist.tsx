@@ -54,7 +54,7 @@ export const TaskChecklist: React.FC<TaskChecklistProps> = ({ taskId, task, disa
       const payload = {
         items: updatedItems.map(i => ({ item_name: i.item_name, is_completed: !!i.is_completed }))
       };
-      const response = await apiClient.put<any>(`/teknisi/tasks/${taskId}/checklist`, payload);
+      const response = await apiClient.put<any>(`/tasks/${taskId}/checklist`, payload);
       return response?.data ?? response;
     },
     onSuccess: (responseData) => {

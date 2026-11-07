@@ -13,11 +13,18 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Tests\TestCase;
 
 class TeamAttendanceReadinessTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RolesAndPermissionsSeeder::class);
+    }
 
     public function test_team_readiness_is_calculated_from_member_attendance(): void
     {
@@ -127,6 +134,7 @@ class TeamAttendanceReadinessTest extends TestCase
         );
 
         $user = User::factory()->create(['status' => 'active']);
+        $user->givePermissionTo(['attendance.self', 'pwa.access']);
         $this->actingAs($user);
 
         // 1. Absen masuk pertama di lokasi kantor -> Sukses (200)
@@ -163,6 +171,7 @@ class TeamAttendanceReadinessTest extends TestCase
         );
 
         $user = User::factory()->create(['status' => 'active']);
+        $user->givePermissionTo(['attendance.self', 'pwa.access']);
         $this->actingAs($user);
 
         // Coordinates ~2 km away from office
@@ -189,6 +198,7 @@ class TeamAttendanceReadinessTest extends TestCase
         );
 
         $user = User::factory()->create(['status' => 'active']);
+        $user->givePermissionTo(['attendance.self', 'pwa.access']);
         $this->actingAs($user);
 
         // Coordinates ~10 meters from office

@@ -110,9 +110,9 @@ class ProvisioningController extends Controller
 
         $user = $request->user();
 
-        // RBAC Enforcement: Role Admin dilarang memilih manual, wajib Round Robin
-        if ($user && ! $user->hasRole('Superadmin') && ($request->filled('team') || $request->filled('technician_id') || $request->input('assignment_mode') === 'manual')) {
-            return $this->errorResponse('Hak akses ditolak: Role Admin wajib menggunakan penugasan otomatis Round Robin Antar Tim. Pemilihan manual teknisi hanya dapat dilakukan oleh Superadmin.', 403);
+        // RBAC Enforcement: Wajib memiliki izin psb.manage untuk pemilihan manual teknisi
+        if ($user && ! $user->can('psb.manage') && ($request->filled('team') || $request->filled('technician_id') || $request->input('assignment_mode') === 'manual')) {
+            return $this->errorResponse('Hak akses ditolak: Pemilihan manual teknisi memerlukan izin psb.manage.', 403);
         }
 
         $validated = $request->validate([
@@ -162,8 +162,8 @@ class ProvisioningController extends Controller
     {
         $user = $request->user();
 
-        if ($user && ! $user->hasRole('Superadmin')) {
-            return $this->errorResponse('Hak akses ditolak: Hanya Superadmin yang berhak melakukan penugasan ulang (reassign) tugas teknisi.', 403);
+        if ($user && ! $user->can('tasks.reassign') && ! $user->can('psb.manage')) {
+            return $this->errorResponse('Hak akses ditolak: Hanya pengguna dengan izin psb.manage yang berhak melakukan penugasan ulang (reassign) tugas teknisi.', 403);
         }
 
         $validated = $request->validate([

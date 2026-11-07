@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../lib/authService';
-import { API_BASE_URL } from '../../lib/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -63,7 +62,7 @@ export const LoginPage = () => {
       // Determine contextual failure cause for intuitive guidance
       if (rawError.includes('Sesi') || rawError.includes('koneksi') || rawError.includes('Failed to fetch')) {
         setErrorType('network');
-        setErrorMsg('Gagal menyambung ke server API. Pastikan koneksi internet atau server backend aktif.');
+        setErrorMsg('Gagal menyambung ke peladen. Periksa koneksi jaringan Anda.');
       } else if (rawError.includes('nonaktif') || rawError.includes('suspended')) {
         setErrorType('inactive');
         setErrorMsg('Akun Anda saat ini tidak aktif atau dinonaktifkan. Silakan hubungi Administrator.');
@@ -173,7 +172,7 @@ export const LoginPage = () => {
 
                   {errorType === 'network' && (
                     <p className="text-[11px] text-amber-800 dark:text-amber-200 bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-amber-100 dark:border-amber-900/40">
-                      Pastikan API Server backend Laravel di <code className="font-mono bg-amber-100 dark:bg-amber-950 px-1 rounded text-amber-900 dark:text-amber-300">{API_BASE_URL}</code> sedang berjalan.
+                      Gagal menghubungi peladen lokal. Pastikan koneksi jaringan stabil dan silakan coba lagi.
                     </p>
                   )}
                 </div>
@@ -301,7 +300,7 @@ export const LoginPage = () => {
       >
         <div className="max-w-lg text-white space-y-6 relative z-10">
           <div className="inline-block bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide text-blue-100 border border-white/20">
-            ⚡ Fibermedia Provisioning System API
+            ⚡ Fibermedia Operasional FTTH
           </div>
           <h2 className="text-4xl font-black leading-tight">
             Sistem Terintegrasi Layanan Internet High-Speed

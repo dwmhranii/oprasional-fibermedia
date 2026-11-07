@@ -74,8 +74,8 @@ class CustomerSync35Test extends TestCase
 
         Sanctum::actingAs($this->admin);
 
-        // 1. Detail endpoint: GET /api/admin/customers/{id}
-        $response = $this->getJson("/api/admin/customers/{$customer->id}");
+        // 1. Detail endpoint: GET /api/customers/{id}
+        $response = $this->getJson("/api/customers/{$customer->id}");
         $response->assertStatus(200);
 
         $data = $response->json('data');
@@ -89,8 +89,8 @@ class CustomerSync35Test extends TestCase
         $this->assertArrayNotHasKey('password', $data);
         $this->assertEquals('••••••••', $data['password_masked']);
 
-        // 2. Listing endpoint: GET /api/admin/customers
-        $listResponse = $this->getJson('/api/admin/customers');
+        // 2. Listing endpoint: GET /api/customers
+        $listResponse = $this->getJson('/api/customers');
         $listResponse->assertStatus(200);
         $listResponse->assertJsonMissing(['password' => 'MySecretPassword123!']);
         $listRow = $listResponse->json('data.0');
@@ -131,10 +131,10 @@ class CustomerSync35Test extends TestCase
         $this->assertEquals('SuperSecretPass#99', $secretData['password']);
         $this->assertEquals('bambang@fibermedia', $secretData['username']);
 
-        // Juga dapat diakses lewat /api/admin/customers/{id}/secrets oleh Admin
+        // Juga dapat diakses lewat /api/customers/{id}/secrets oleh Admin
         $this->admin->givePermissionTo('customers.view_secret');
         Sanctum::actingAs($this->admin);
-        $adminSecretRes = $this->getJson("/api/admin/customers/{$customer->id}/secrets");
+        $adminSecretRes = $this->getJson("/api/customers/{$customer->id}/secrets");
         $adminSecretRes->assertStatus(200);
 
         // Pastikan terekam di ActivityLog
@@ -198,27 +198,27 @@ class CustomerSync35Test extends TestCase
         Sanctum::actingAs($this->admin);
 
         // 1. Search by name
-        $res = $this->getJson('/api/admin/customers?search=Chandra');
+        $res = $this->getJson('/api/customers?search=Chandra');
         $res->assertStatus(200)->assertJsonCount(1, 'data');
         $this->assertEquals('FM-20261024-C001', $res->json('data.0.customer_code'));
 
         // 2. Search by ODP code
-        $resOdp = $this->getJson('/api/admin/customers?search=ODP-KPN');
+        $resOdp = $this->getJson('/api/customers?search=ODP-KPN');
         $resOdp->assertStatus(200)->assertJsonCount(1, 'data');
         $this->assertEquals('FM-20261024-C002', $resOdp->json('data.0.customer_code'));
 
         // 3. Filter status
-        $resStatus = $this->getJson('/api/admin/customers?status=suspended');
+        $resStatus = $this->getJson('/api/customers?status=suspended');
         $resStatus->assertStatus(200)->assertJsonCount(1, 'data');
         $this->assertEquals('Dewi Lestari', $resStatus->json('data.0.name'));
 
         // 4. Filter hutang > 0
-        $resDebt = $this->getJson('/api/admin/customers?has_debt=true');
+        $resDebt = $this->getJson('/api/customers?has_debt=true');
         $resDebt->assertStatus(200)->assertJsonCount(1, 'data');
         $this->assertEquals('Chandra Wijaya', $resDebt->json('data.0.name'));
 
         // 5. Filter wilayah
-        $resWilayah = $this->getJson('/api/admin/customers?wilayah=Kepanjen');
+        $resWilayah = $this->getJson('/api/customers?wilayah=Kepanjen');
         $resWilayah->assertStatus(200)->assertJsonCount(1, 'data');
         $this->assertEquals('FM-20261024-C002', $resWilayah->json('data.0.customer_code'));
     }
@@ -248,7 +248,7 @@ class CustomerSync35Test extends TestCase
         Sanctum::actingAs($this->admin);
 
         // 1. Invalid NIK (15 digit) -> harus gagal
-        $invalidNikRes = $this->postJson('/api/admin/customers', [
+        $invalidNikRes = $this->postJson('/api/customers', [
             'name' => 'Testing User',
             'nik' => '123456789012345', // 15 digit
             'phone' => '081234567890',
@@ -259,7 +259,7 @@ class CustomerSync35Test extends TestCase
         $invalidNikRes->assertStatus(422)->assertJsonValidationErrors(['nik']);
 
         // 2. Duplicate ODP port pada ODP yang sama -> harus gagal
-        $duplicatePortRes = $this->postJson('/api/admin/customers', [
+        $duplicatePortRes = $this->postJson('/api/customers', [
             'name' => 'Testing Port Conflict',
             'phone' => '081234567892',
             'address' => 'Jl. Contoh 2',
@@ -271,7 +271,7 @@ class CustomerSync35Test extends TestCase
         $duplicatePortRes->assertStatus(422)->assertJsonValidationErrors(['odp_port']);
 
         // 3. Valid creation -> harus berhasil dan customer_code dibuat otomatis
-        $validRes = $this->postJson('/api/admin/customers', [
+        $validRes = $this->postJson('/api/customers', [
             'name' => 'Budi Baru',
             'nik' => '3507112233445566',
             'phone' => '081234567893',

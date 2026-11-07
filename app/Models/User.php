@@ -38,6 +38,15 @@ class User extends Authenticatable
                 );
             }
         });
+
+        static::updated(function (User $user) {
+            if ($user->wasChanged('status') && $user->status !== 'active') {
+                $user->tokens()->delete();
+                $user->devices()->update([
+                    'revoked_at' => now(),
+                ]);
+            }
+        });
     }
 
     /**
@@ -57,7 +66,19 @@ class User extends Authenticatable
         'max_active_complaints',
         'availability',
         'last_complaint_assigned_at',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'two_factor_confirmed_at',
     ];
+
+    protected $appends = [
+        'role',
+    ];
+
+    public function getRoleAttribute(): ?string
+    {
+        return $this->getRoleNames()->first() ?? null;
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -74,6 +95,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -90,6 +113,7 @@ class User extends Authenticatable
             'coverage_areas' => 'array',
             'last_complaint_assigned_at' => 'datetime',
             'max_active_complaints' => 'integer',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 

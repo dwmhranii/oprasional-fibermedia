@@ -47,4 +47,28 @@ class IdentifierGenerator
 
         return $code;
     }
+
+    /**
+     * Generate a standardized Fibermedia Incident Code format: INC-YYYYMM-XXXX
+     * E.g. INC-202610-0001
+     */
+    public static function generateIncidentCode(?int $sequenceNumber = null, ?\DateTimeInterface $date = null): string
+    {
+        $d = $date ? Carbon::parse($date) : now();
+        $yearMonth = $d->format('Ym');
+
+        if ($sequenceNumber !== null) {
+            return sprintf('INC-%s-%04d', $yearMonth, $sequenceNumber);
+        }
+
+        $count = \App\Models\Incident::where('code', 'like', "INC-{$yearMonth}-%")->count() + 1;
+        $code = sprintf('INC-%s-%04d', $yearMonth, $count);
+
+        while (\App\Models\Incident::where('code', $code)->exists()) {
+            $count++;
+            $code = sprintf('INC-%s-%04d', $yearMonth, $count);
+        }
+
+        return $code;
+    }
 }

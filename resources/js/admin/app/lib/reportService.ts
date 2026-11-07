@@ -8,13 +8,13 @@ import { API_BASE_URL, getAuthHeader, ApiError } from './api';
 export const reportService = {
   /**
    * Export Submissions Report to Excel (.xlsx)
-   * GET /api/admin/reports/submissions/excel?status=...
-   * Restricted to Admin & Superadmin
+   * GET /api/reports/submissions/excel?status=...
+   * Restricted to reports.view permission
    */
   exportSubmissionsExcel: async (status?: string): Promise<void> => {
     try {
       const query = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
-      const url = `${API_BASE_URL}/admin/reports/submissions/excel${query}`;
+      const url = `${API_BASE_URL}/reports/submissions/excel${query}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -56,12 +56,11 @@ export const reportService = {
 
   /**
    * Export Single Submission Detail to PDF (.pdf)
-   * GET /api/admin/reports/submissions/{submissionId}/pdf
-   * Restricted to Admin & Superadmin
+   * GET /reports/submissions/{submissionId}/pdf
    */
   exportSubmissionPdf: async (submissionId: string | number): Promise<void> => {
     try {
-      const url = `${API_BASE_URL}/admin/reports/submissions/${submissionId}/pdf`;
+      const url = `${API_BASE_URL}/reports/submissions/${submissionId}/pdf`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -86,7 +85,8 @@ export const reportService = {
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = `SPK_Detail_Pengajuan_${submissionId}.pdf`;
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.download = `Dokumen_Detail_Pengajuan_${submissionId}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -102,12 +102,11 @@ export const reportService = {
 
   /**
    * Export BAST (Berita Acara Serah Terima) PDF
-   * GET /api/admin/reports/submissions/{submissionId}/bast
-   * Restricted to Admin & Superadmin
+   * GET /reports/submissions/{submissionId}/bast
    */
   exportBastPdf: async (submissionId: string | number): Promise<void> => {
     try {
-      const url = `${API_BASE_URL}/admin/reports/submissions/${submissionId}/bast`;
+      const url = `${API_BASE_URL}/reports/submissions/${submissionId}/bast`;
 
       const response = await fetch(url, {
         method: 'GET',

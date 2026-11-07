@@ -3,22 +3,24 @@
  * Base HTTP client with JWT token management
  */
 
-// API Base URL - loaded from Vite environment variable (.env) with production fallback
+// API Base URL - In a Laravel monolith MVC, relative '/api' is used by default so it always matches same-origin (localhost, IP, or domain) without CORS issues
 const getApiBaseUrl = (): string => {
-    // const rawUrl = (import.meta as any).env?.VITE_API_URL || 'https://api.fibermediaplay.net';
-    const rawUrl = (import.meta as any).env?.VITE_API_URL || 'http://127.0.0.1:8000';
-    const cleanUrl = String(rawUrl).trim().replace(/\/+$/, '');
-    return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+    const rawUrl = (import.meta as any).env?.VITE_API_URL;
+    if (rawUrl) {
+        const cleanUrl = String(rawUrl).trim().replace(/\/+$/, '');
+        return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+    }
+    return '/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Token storage keys
-const TOKEN_KEY = 'auth_token';
-const TOKEN_TYPE_KEY = 'auth_token_type';
+// Token storage keys (fm-admin: prefix untuk isolasi origin)
+const TOKEN_KEY = 'fm-admin:auth_token';
+const TOKEN_TYPE_KEY = 'fm-admin:auth_token_type';
 
 // Login timestamp key (used for 4-hour session expiry)
-const LOGIN_AT_KEY = 'auth_login_at';
+const LOGIN_AT_KEY = 'fm-admin:auth_login_at';
 
 /**
  * Get stored JWT token
@@ -158,8 +160,10 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
     if (!response.ok) {
         if (response.status === 401) {
             removeToken();
-            localStorage.removeItem('auth_user');
+            localStorage.removeItem('fm-admin:auth_user');
             window.dispatchEvent(new CustomEvent('unauthorized'));
+        } else if (response.status === 403) {
+            window.dispatchEvent(new CustomEvent('unauthorized-403'));
         }
         throw new ApiError(
             data?.message || 'An error occurred',

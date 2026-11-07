@@ -4,11 +4,15 @@ namespace Database\Seeders;
 
 use App\Models\BrasDevice;
 use App\Models\CableTrack;
+use App\Models\ComplaintType;
 use App\Models\Customer;
+use App\Models\Holiday;
 use App\Models\Odc;
 use App\Models\Odp;
 use App\Models\OfficeLocation;
 use App\Models\Package;
+use App\Models\PauseReason;
+use App\Models\SlaSetting;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
@@ -19,6 +23,82 @@ class OperationSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0a. SLA Settings (PRD Final v1.2: Kritis 3 jam, Tinggi 6 jam, Sedang 24 jam)
+        $slaSettings = [
+            ['priority' => 'critical', 'resolution_hours' => 3, 'resolution_minutes' => 180],
+            ['priority' => 'high', 'resolution_hours' => 6, 'resolution_minutes' => 360],
+            ['priority' => 'medium', 'resolution_hours' => 24, 'resolution_minutes' => 1440],
+        ];
+        foreach ($slaSettings as $sla) {
+            SlaSetting::updateOrCreate(
+                ['priority' => $sla['priority']],
+                [
+                    'resolution_hours' => $sla['resolution_hours'],
+                    'resolution_minutes' => $sla['resolution_minutes'],
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        // 0b. 5 Alasan Baku Pause SLA (PRD Final v1.2)
+        $pauseReasons = [
+            ['code' => 'hujan_lebat', 'reason' => 'Hujan Lebat / Cuaca Ekstrem', 'requires_photo' => true, 'order_index' => 1],
+            ['code' => 'akses_ditolak', 'reason' => 'Akses Lokasi Ditolak / Rumah Kosong', 'requires_photo' => true, 'order_index' => 2],
+            ['code' => 'material_habis', 'reason' => 'Menunggu Pasokan Material / Drop Core', 'requires_photo' => false, 'order_index' => 3],
+            ['code' => 'izin_lingkungan', 'reason' => 'Menunggu Koordinasi / Izin Lingkungan', 'requires_photo' => false, 'order_index' => 4],
+            ['code' => 'kabel_pihak_ketiga', 'reason' => 'Kabel Putus Akibat Pihak Ketiga (PLN/Proyek Jalan)', 'requires_photo' => true, 'order_index' => 5],
+        ];
+        foreach ($pauseReasons as $reason) {
+            PauseReason::updateOrCreate(
+                ['code' => $reason['code']],
+                [
+                    'reason' => $reason['reason'],
+                    'requires_photo' => $reason['requires_photo'],
+                    'is_active' => true,
+                    'order_index' => $reason['order_index'],
+                ]
+            );
+        }
+
+        // 0c. Jenis Gangguan (PRD Final v1.2)
+        $complaintTypes = [
+            ['name' => 'LOS Merah / Kabel Fiber Putus', 'description' => 'Redaman putus total atau kabel drop core terputus', 'default_priority' => 'critical'],
+            ['name' => 'Modem / ONT Rusak atau Mati Total', 'description' => 'Perangkat ONU tidak hidup atau indikator power mati', 'default_priority' => 'high'],
+            ['name' => 'Koneksi Lambat / Redaman Tinggi', 'description' => 'Kecepatan tidak sesuai paket atau sinyal optik di luar standar', 'default_priority' => 'medium'],
+            ['name' => 'Wi-Fi Tidak Terdeteksi / Error Konfigurasi', 'description' => 'SSID hilang atau salah pengaturan sandi', 'default_priority' => 'medium'],
+            ['name' => 'Gangguan Administrasi / Penyesuaian Port', 'description' => 'Masalah autentikasi PPPoE atau migrasi port ODP', 'default_priority' => 'medium'],
+        ];
+        foreach ($complaintTypes as $ct) {
+            ComplaintType::updateOrCreate(
+                ['name' => $ct['name']],
+                [
+                    'description' => $ct['description'],
+                    'default_priority' => $ct['default_priority'],
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        // 0d. Hari Libur Nasional 2026 (PRD Final v1.2)
+        $holidays = [
+            ['name' => 'Tahun Baru 2026 Masehi', 'holiday_date' => '2026-01-01', 'description' => 'Hari Libur Nasional'],
+            ['name' => 'Isra Mikraj Nabi Muhammad SAW', 'holiday_date' => '2026-01-16', 'description' => 'Hari Libur Nasional'],
+            ['name' => 'Tahun Baru Imlek 2577 Kongzili', 'holiday_date' => '2026-02-17', 'description' => 'Hari Libur Nasional'],
+            ['name' => 'Hari Suci Nyepi Tahun Baru Saka 1948', 'holiday_date' => '2026-03-19', 'description' => 'Hari Libur Nasional'],
+            ['name' => 'Hari Raya Idul Fitri 1447 Hijriah', 'holiday_date' => '2026-03-20', 'description' => 'Hari Libur Nasional'],
+            ['name' => 'Hari Kemerdekaan Republik Indonesia', 'holiday_date' => '2026-08-17', 'description' => 'HUT RI ke-81'],
+            ['name' => 'Hari Raya Natal', 'holiday_date' => '2026-12-25', 'description' => 'Hari Libur Nasional'],
+        ];
+        foreach ($holidays as $h) {
+            Holiday::updateOrCreate(
+                ['holiday_date' => $h['holiday_date']],
+                [
+                    'name' => $h['name'],
+                    'description' => $h['description'],
+                ]
+            );
+        }
+
         // 1. Kantor Pusat / Titik Absensi Harian (minimal 50m)
         $office = OfficeLocation::firstOrCreate([
             'name' => 'Kantor Pusat Fibermedia Bululawang',
@@ -26,6 +106,19 @@ class OperationSeeder extends Seeder
             'latitude' => -8.1132000,
             'longitude' => 112.6415000,
             'radius_meters' => 50,
+            'valid_wifi_ips' => ['192.168.1.1', '127.0.0.1', '10.10.0.1', '::1', '103.144.82.10'],
+            'wifi_incident_active' => false,
+            'is_active' => true,
+        ]);
+
+        OfficeLocation::firstOrCreate([
+            'name' => 'Kantor Operasional Fibermedia',
+        ], [
+            'latitude' => -6.2087634,
+            'longitude' => 106.8455990,
+            'radius_meters' => 50,
+            'valid_wifi_ips' => ['127.0.0.1', '::1', '103.144.82.10', '192.168.1.1'],
+            'wifi_incident_active' => false,
             'is_active' => true,
         ]);
 

@@ -33,6 +33,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'idempotent' => EnsureIdempotency::class,
         ]);
+        $middleware->priority([
+            \Illuminate\Auth\Middleware\Authenticate::class,
+            \Illuminate\Auth\Middleware\Authorize::class,
+            \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            \Spatie\Permission\Middleware\RoleMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (ValidationException $e, Request $request) {
@@ -41,6 +47,15 @@ return Application::configure(basePath: dirname(__DIR__))
                     'success' => false,
                     'message' => 'Validation failed',
                     'errors' => $e->errors(),
+                ], 422);
+            }
+        });
+
+        $exceptions->render(function (\DomainException $e, Request $request) {
+            if ($request->is('api/*') || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
                 ], 422);
             }
         });
@@ -67,16 +82,21 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*') || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Resource not found',
+                    'message' => 'Data tidak ditemukan di sistem.',
                 ], 404);
             }
         });
 
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*') || $request->wantsJson()) {
+                $prev = $e->getPrevious();
+                $msg = ($prev instanceof ModelNotFoundException)
+                    ? 'Data tidak ditemukan di sistem.'
+                    : 'Endpoint not found';
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Endpoint not found',
+                    'message' => $msg,
                 ], 404);
             }
         });

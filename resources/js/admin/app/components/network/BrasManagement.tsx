@@ -45,7 +45,7 @@ export const BrasManagement: React.FC = () => {
   const { data: devicesResponse, isLoading, refetch } = useQuery({
     queryKey: ['bras-devices'],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/network/bras-devices');
+      const res = await apiClient.get<any>('/network/bras-devices');
       return res?.data || (Array.isArray(res) ? res : []);
     },
   });
@@ -101,9 +101,9 @@ export const BrasManagement: React.FC = () => {
       }
 
       if (editingDevice) {
-        return await apiClient.put(`/admin/network/bras-devices/${editingDevice.id}`, payload);
+        return await apiClient.put(`/network/bras-devices/${editingDevice.id}`, payload);
       } else {
-        return await apiClient.post('/admin/network/bras-devices', payload);
+        return await apiClient.post('/network/bras-devices', payload);
       }
     },
     onSuccess: () => {
@@ -118,7 +118,7 @@ export const BrasManagement: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.delete(`/admin/network/bras-devices/${id}`);
+      return await apiClient.delete(`/network/bras-devices/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bras-devices'] });
@@ -129,7 +129,7 @@ export const BrasManagement: React.FC = () => {
     setSyncingId(device.id);
     setSyncFeedback(null);
     try {
-      const res = await apiClient.post<any>(`/admin/network/bras-devices/${device.id}/sync`);
+      const res = await apiClient.post<any>(`/network/bras-devices/${device.id}/sync`);
       setSyncFeedback({
         id: device.id,
         message: res?.message || 'Sinkronisasi berhasil.',

@@ -19,6 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import type { Odc, OperationalStatus } from '../../../shared/types/api.generated';
+import { NodeStatusChangeModal } from './NodeStatusChangeModal';
 
 export const OdcManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -27,6 +28,9 @@ export const OdcManagement: React.FC = () => {
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOdc, setEditingOdc] = useState<Odc | null>(null);
+
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusModalNode, setStatusModalNode] = useState<any | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -45,7 +49,7 @@ export const OdcManagement: React.FC = () => {
   const { data: odcResponse, isLoading, refetch } = useQuery({
     queryKey: ['odcs', page, search, statusFilter],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/odcs', {
+      const res = await apiClient.get<any>('/odcs', {
         params: {
           page,
           search: search || undefined,
@@ -109,9 +113,9 @@ export const OdcManagement: React.FC = () => {
       };
 
       if (editingOdc) {
-        return await apiClient.put(`/admin/odcs/${editingOdc.id}`, payload);
+        return await apiClient.put(`/odcs/${editingOdc.id}`, payload);
       } else {
-        return await apiClient.post('/admin/odcs', payload);
+        return await apiClient.post('/odcs', payload);
       }
     },
     onSuccess: () => {
@@ -126,7 +130,7 @@ export const OdcManagement: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.delete(`/admin/odcs/${id}`);
+      return await apiClient.delete(`/odcs/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['odcs'] });
@@ -135,7 +139,7 @@ export const OdcManagement: React.FC = () => {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: OperationalStatus }) => {
-      return await apiClient.put(`/admin/odcs/${id}`, { operational_status: status });
+      return await apiClient.put(`/odcs/${id}`, { operational_status: status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['odcs'] });
@@ -287,45 +291,24 @@ export const OdcManagement: React.FC = () => {
 
                 {/* Status Toggle & Actions */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 text-[11px] mr-1">Status:</span>
-                    <button
-                      type="button"
-                      title="Set Normal"
-                      onClick={() => updateStatusMutation.mutate({ id: odc.id, status: 'normal' })}
-                      className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
-                        status === 'normal'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800'
-                      }`}
-                    >
-                      Normal
-                    </button>
-                    <button
-                      type="button"
-                      title="Set Terganggu"
-                      onClick={() => updateStatusMutation.mutate({ id: odc.id, status: 'disrupted' })}
-                      className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
-                        status === 'disrupted'
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800'
-                      }`}
-                    >
-                      Gangguan
-                    </button>
-                    <button
-                      type="button"
-                      title="Set Putus"
-                      onClick={() => updateStatusMutation.mutate({ id: odc.id, status: 'cut' })}
-                      className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
-                        status === 'cut'
-                          ? 'bg-rose-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800'
-                      }`}
-                    >
-                      Cut
-                    </button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant={isCut || status === 'disrupted' ? 'destructive' : 'outline'}
+                    onClick={() => {
+                      setStatusModalNode({
+                        id: odc.id,
+                        type: 'odc',
+                        name: odc.name,
+                        code: odc.code,
+                        status: odc.operational_status || 'normal',
+                      });
+                      setStatusModalOpen(true);
+                    }}
+                    className="h-7 text-xs"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                    Ubah Status
+                  </Button>
 
                   <div className="flex items-center gap-1">
                     <Button
@@ -571,6 +554,14 @@ export const OdcManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Ubah Status & Pratinjau Dampak */}
+      <NodeStatusChangeModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        node={statusModalNode}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };

@@ -12,29 +12,34 @@ Route::get('/docs', [ApiDocsController::class, 'index']);
 Route::get('/docs/freeze', [ApiDocsController::class, 'freeze']);
 Route::get('/api/docs/raw', [ApiDocsController::class, 'rawJson']);
 
-// PWA Lapangan via Subdomain (misal field.fibermedia.id atau field.localhost)
-if (isset($_SERVER['HTTP_HOST']) && (str_starts_with($_SERVER['HTTP_HOST'], 'field.') || str_starts_with($_SERVER['HTTP_HOST'], 'pwa.'))) {
-    Route::get('/{any?}', function () {
-        $fieldFile = base_path('dist/field.html');
-        if (! file_exists($fieldFile)) {
-            $fieldFile = public_path('field.html');
-        }
-        if (file_exists($fieldFile)) {
-            return response(file_get_contents($fieldFile), 200, ['Content-Type' => 'text/html; charset=UTF-8']);
-        }
+// CSP Header Helper (mendukung MapLibre, Leaflet, Google Maps API, koneksi API & tile server https:)
+$cspHeader = "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https: data: blob: https://maps.googleapis.com https://*.googleapis.com; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';";
 
-        return response('Field PWA belum dibuild. Silakan jalankan npm run build.', 404);
-    })->where('any', '.*');
-}
+// Sajikan manifest webmanifest jika diminta dengan path /pwa/manifest.webmanifest
+Route::get('/pwa/manifest.webmanifest', function () {
+    $manifest = public_path('manifest.webmanifest');
+    if (file_exists($manifest)) {
+        return response()->file($manifest, [
+            'Content-Type' => 'application/manifest+json',
+        ]);
+    }
+    return response()->json([], 404);
+});
 
-// PWA Lapangan via Path /field (Teknisi & Sales)
-Route::get('/field{any?}', function () {
+// PWA Shell: Menyajikan Field PWA secara eksklusif untuk jalur /pwa dan /pwa/*
+Route::get('/pwa{any?}', function () use ($cspHeader) {
     $fieldFile = base_path('dist/field.html');
     if (! file_exists($fieldFile)) {
         $fieldFile = public_path('field.html');
     }
     if (file_exists($fieldFile)) {
-        return response(file_get_contents($fieldFile), 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        return response(file_get_contents($fieldFile), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Security-Policy' => $cspHeader,
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     return response('Field PWA belum dibuild. Silakan jalankan npm run build.', 404);
@@ -72,15 +77,21 @@ Route::get('/run-artisan-migrate', function (Request $request) {
 Route::get('/tiles/manifest', [NetworkSyncController::class, 'tilesManifest']);
 Route::get('/tiles/area.pmtiles', [NetworkSyncController::class, 'servePmtiles']);
 
-// Frontend Web Application (Admin & Manajemen langsung tampil di /)
-Route::get('/{any?}', function () {
+// Frontend Web Application (Admin SPA di akar domain /)
+Route::get('/{any?}', function () use ($cspHeader) {
     $indexFile = base_path('dist/index.html');
     if (! file_exists($indexFile)) {
         $indexFile = public_path('index.html');
     }
     if (file_exists($indexFile)) {
-        return response(file_get_contents($indexFile), 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        return response(file_get_contents($indexFile), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Security-Policy' => $cspHeader,
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     return response('Frontend aplikasi belum dibuild. Silakan jalankan npm run build.', 404);
-})->where('any', '^(?!api|docs|field|tiles|sanctum|run-artisan-migrate).*');
+})->where('any', '^(?!api|docs|pwa|tiles|sanctum|storage|build|up|sw|manifest|favicon|logo|run-artisan-migrate).*');

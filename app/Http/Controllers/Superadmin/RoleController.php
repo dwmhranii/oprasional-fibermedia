@@ -2,68 +2,105 @@
 
 namespace App\Http\Controllers\Superadmin;
 
+use App\Events\PermissionsChanged;
 use App\Http\Controllers\Controller;
+use App\Services\MenuService;
+use App\Services\PermissionRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
+    protected PermissionRegistry $registry;
+
+    protected MenuService $menuService;
+
+    protected array $coreRoles = [
+        'Superadmin',
+        'superadmin',
+        'Admin/CS',
+        'Admin',
+        'NOC/Dispatcher',
+        'NOC',
+        'Teknisi',
+        'Sales',
+        'Collector',
+    ];
+
+    public function __construct(PermissionRegistry $registry, MenuService $menuService)
+    {
+        $this->registry = $registry;
+        $this->menuService = $menuService;
+    }
+
     /**
-     * GET /api/superadmin/roles
-     * Daftar semua role beserta permissions yang aktif dan jumlah usernya.
+     * GET /api/roles
+     * Daftar semua role beserta deskripsi, status sistem/kustom, dan jumlah pengguna.
      */
     public function index(): JsonResponse
     {
-        $roles = Role::with('permissions')->get()->map(function ($role) {
-            $permNames = $role->permissions->pluck('name');
-            $menuPerms = $permNames->filter(fn ($p) => str_starts_with($p, 'menu.'))->values();
+        $userCounts = DB::table('model_has_roles')
+            ->select('role_id', DB::raw('count(*) as count'))
+            ->groupBy('role_id')
+            ->pluck('count', 'role_id');
+
+        $roles = Role::with('permissions')->get()->map(function ($role) use ($userCounts) {
+            $isCore = in_array($role->name, $this->coreRoles, true);
 
             return [
                 'id' => $role->id,
                 'name' => $role->name,
-                'user_count' => $role->users()->count(),
-                'permissions' => $permNames,
-                'menu_permissions' => $menuPerms,
-                'is_core_role' => in_array($role->name, ['Superadmin', 'Admin', 'Teknisi', 'Sales']),
+                'description' => $role->description ?? ($isCore ? $this->getCoreRoleDescription($role->name) : 'Peran kustom operasional'),
+                'user_count' => (int) ($userCounts[$role->id] ?? 0),
+                'permissions' => $role->permissions->pluck('name'),
+                'is_system' => $isCore,
+                'is_core_role' => $isCore,
             ];
         });
 
         return response()->json([
+            'success' => true,
             'data' => $roles,
         ]);
     }
 
     /**
-     * GET /api/superadmin/roles/{role}
+     * GET /api/roles/{role}
      */
     public function show(Role $role): JsonResponse
     {
-        $permNames = $role->permissions()->pluck('name');
-        $menuPerms = $permNames->filter(fn ($p) => str_starts_with($p, 'menu.'))->values();
+        $isCore = in_array($role->name, $this->coreRoles, true);
+        $userCount = DB::table('model_has_roles')->where('role_id', $role->id)->count();
 
         return response()->json([
+            'success' => true,
             'data' => [
                 'id' => $role->id,
                 'name' => $role->name,
-                'user_count' => $role->users()->count(),
-                'permissions' => $permNames,
-                'menu_permissions' => $menuPerms,
-                'is_core_role' => in_array($role->name, ['Superadmin', 'Admin', 'Teknisi', 'Sales']),
+                'description' => $role->description ?? ($isCore ? $this->getCoreRoleDescription($role->name) : null),
+                'user_count' => (int) $userCount,
+                'permissions' => $role->permissions()->pluck('name'),
+                'is_system' => $isCore,
+                'is_core_role' => $isCore,
             ],
         ]);
     }
 
     /**
-     * POST /api/superadmin/roles
-     * Tambah custom role baru.
+     * POST /api/roles
+     * Tambah custom role baru (dengan opsi salin dari role lain).
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:50|unique:roles,name',
+            'description' => 'nullable|string|max:255',
+            'copy_from_id' => 'nullable|exists:roles,id',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
@@ -73,70 +110,117 @@ class RoleController extends Controller
             'guard_name' => 'web',
         ]);
 
-        if (! empty($validated['permissions'])) {
-            $role->syncPermissions($validated['permissions']);
+        if (array_key_exists('description', $validated)) {
+            $role->description = $validated['description'];
+            $role->save();
+        }
+
+        $permissionsToAssign = $validated['permissions'] ?? [];
+
+        // Bila ada permintaan salin izin dari role lain
+        if (! empty($validated['copy_from_id'])) {
+            $sourceRole = Role::find($validated['copy_from_id']);
+            if ($sourceRole) {
+                $sourcePerms = $sourceRole->permissions->pluck('name')->toArray();
+                // Filter: role kustom tidak boleh menerima izin terkunci
+                $filteredPerms = array_filter($sourcePerms, fn ($p) => ! $this->registry->isLocked($p));
+                $permissionsToAssign = array_unique(array_merge($permissionsToAssign, $filteredPerms));
+            }
+        }
+
+        if (! empty($permissionsToAssign)) {
+            $role->syncPermissions($permissionsToAssign);
         }
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        activity()->causedBy($request->user())->log("Role {$role->name} created by {$request->user()->name}");
+        activity('access_control')
+            ->causedBy($request->user())
+            ->performedOn($role)
+            ->withProperties([
+                'name' => $role->name,
+                'description' => $role->description,
+                'copied_from' => $validated['copy_from_id'] ?? null,
+            ])
+            ->log("Role kustom '{$role->name}' berhasil dibuat oleh {$request->user()->name}");
 
         return response()->json([
+            'success' => true,
             'message' => "Role '{$role->name}' berhasil dibuat.",
             'data' => [
                 'id' => $role->id,
                 'name' => $role->name,
+                'description' => $role->description,
+                'user_count' => 0,
+                'is_system' => false,
                 'permissions' => $role->permissions->pluck('name'),
             ],
         ], 201);
     }
 
     /**
-     * PUT /api/superadmin/roles/{role}/permissions
-     * Simpan hasil centang menu & hak akses dari UI React Matrix.
+     * PATCH /api/roles/{role} atau PUT /api/roles/{role}
+     * Ubah nama dan deskripsi role.
      */
-    public function updatePermissions(Request $request, Role $role): JsonResponse
+    public function update(Request $request, Role $role): JsonResponse
     {
+        $isCore = in_array($role->name, $this->coreRoles, true);
+
         $validated = $request->validate([
-            'permissions' => 'required|array',
-            'permissions.*' => 'string|exists:permissions,name',
+            'name' => 'sometimes|string|max:50|unique:roles,name,'.$role->id,
+            'description' => 'nullable|string|max:255',
         ]);
 
-        // Proteksi: Role Superadmin harus selalu memiliki semua permission
-        if ($role->name === 'Superadmin') {
-            $allPerms = Permission::pluck('name')->toArray();
-            $role->syncPermissions($allPerms);
-        } else {
-            $role->syncPermissions($validated['permissions']);
+        // Role sistem tidak dapat diganti namanya
+        if ($isCore && isset($validated['name']) && $validated['name'] !== $role->name) {
+            return response()->json([
+                'message' => "Nama role sistem '{$role->name}' tidak dapat diubah.",
+            ], 422);
         }
 
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+        if (isset($validated['name']) && ! $isCore) {
+            $role->name = $validated['name'];
+        }
 
-        activity()->causedBy($request->user())->log("Permissions for Role {$role->name} updated by {$request->user()->name}");
+        if (array_key_exists('description', $validated)) {
+            $role->description = $validated['description'];
+        }
+
+        $role->save();
+
+        activity('access_control')
+            ->causedBy($request->user())
+            ->performedOn($role)
+            ->log("Role '{$role->name}' diperbarui oleh {$request->user()->name}");
 
         return response()->json([
-            'message' => "Hak akses untuk Role '{$role->name}' berhasil diperbarui.",
-            'role' => $role->name,
-            'permissions' => $role->fresh()->permissions->pluck('name'),
+            'success' => true,
+            'message' => "Role '{$role->name}' berhasil diperbarui.",
+            'data' => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'description' => $role->description,
+                'is_system' => $isCore,
+            ],
         ]);
     }
 
     /**
-     * DELETE /api/superadmin/roles/{role}
-     * Hapus custom role.
+     * DELETE /api/roles/{role}
+     * Hapus custom role yang tidak memiliki pengguna.
      */
     public function destroy(Request $request, Role $role): JsonResponse
     {
-        $coreRoles = ['Superadmin', 'Admin', 'Teknisi', 'Sales'];
-        if (in_array($role->name, $coreRoles)) {
+        if (in_array($role->name, $this->coreRoles, true)) {
             return response()->json([
                 'message' => "Role sistem '{$role->name}' tidak boleh dihapus.",
             ], 403);
         }
 
-        if ($role->users()->count() > 0) {
+        $userCount = DB::table('model_has_roles')->where('role_id', $role->id)->count();
+        if ($userCount > 0) {
             return response()->json([
-                'message' => "Tidak dapat menghapus role '{$role->name}' karena masih memiliki {$role->users()->count()} pengguna aktif.",
+                'message' => "Tidak dapat menghapus role '{$role->name}' karena masih memiliki {$userCount} pengguna aktif.",
             ], 422);
         }
 
@@ -145,142 +229,208 @@ class RoleController extends Controller
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        activity()->causedBy($request->user())->log("Role {$roleName} deleted by {$request->user()->name}");
+        activity('access_control')
+            ->causedBy($request->user())
+            ->log("Role kustom '{$roleName}' dihapus oleh {$request->user()->name}");
 
         return response()->json([
+            'success' => true,
             'message' => "Role '{$roleName}' berhasil dihapus.",
         ]);
     }
 
     /**
-     * GET /api/superadmin/permissions
-     * Katalog Master Permissions dikelompokkan per modul/menu (untuk render Matrix Checkbox di UI React).
+     * GET /api/permissions
+     * Registri izin dikelompokkan per modul dengan metadata lengkap.
      */
     public function catalog(): JsonResponse
     {
-        $catalog = [
-            [
-                'module_key' => 'dashboard',
-                'module_name' => 'Dashboard & Analitik',
-                'description' => 'Halaman ringkasan statistik dan analitik sistem',
-                'menu_permission' => 'menu.dashboard',
-                'actions' => [
-                    ['name' => 'view_analytics', 'label' => 'Melihat Analisis & KPI'],
-                ],
-            ],
-            [
-                'module_key' => 'sales_submissions',
-                'module_name' => 'Pengajuan Registrasi Sales',
-                'description' => 'Pendaftaran calon pelanggan oleh tim Sales',
-                'menu_permission' => 'menu.sales_submissions',
-                'actions' => [
-                    ['name' => 'create_submissions', 'label' => 'Input Pendaftaran Baru'],
-                    ['name' => 'edit_submissions', 'label' => 'Edit Draft Berkas'],
-                    ['name' => 'view_own_submissions', 'label' => 'Lihat Pengajuan Sendiri'],
-                    ['name' => 'view_any_submissions', 'label' => 'Lihat Semua Pengajuan Sales'],
-                ],
-            ],
-            [
-                'module_key' => 'submissions_validation',
-                'module_name' => 'Validasi Berkas Admin',
-                'description' => 'Pemeriksaan berkas dan approval registrasi',
-                'menu_permission' => 'menu.submissions_validation',
-                'actions' => [
-                    ['name' => 'validate_submissions', 'label' => 'Proses Validasi Berkas'],
-                    ['name' => 'approve_submissions', 'label' => 'Setujui (Approve) Berkas'],
-                    ['name' => 'reject_submissions', 'label' => 'Tolak / Return Berkas'],
-                ],
-            ],
-            [
-                'module_key' => 'provisionings',
-                'module_name' => 'Provisioning & OLT',
-                'description' => 'Konfigurasi ONT, VLAN, dan aktivasi jaringan',
-                'menu_permission' => 'menu.provisionings',
-                'actions' => [
-                    ['name' => 'manage_provisioning', 'label' => 'Proses Konfigurasi Provisioning'],
-                    ['name' => 'provisioning.retry', 'label' => 'Retry Gagal Provisioning'],
-                ],
-            ],
-            [
-                'module_key' => 'tasks',
-                'module_name' => 'Pemasangan / Tugas Teknisi',
-                'description' => 'Tugas lapangan instalasi ONT dan aktivasi pelanggan baru',
-                'menu_permission' => 'menu.tasks',
-                'actions' => [
-                    ['name' => 'assign_tasks', 'label' => 'Tugaskan Pemasangan ke Teknisi'],
-                    ['name' => 'update_task_status', 'label' => 'Update Status & Bukti Lapangan'],
-                    ['name' => 'view_assigned_tasks', 'label' => 'Lihat Daftar Tugas Milik Sendiri'],
-                ],
-            ],
-            [
-                'module_key' => 'complaints',
-                'module_name' => 'Pengaduan & Gangguan',
-                'description' => 'Penanganan laporan gangguan pelanggan dan perbaikan lapangan',
-                'menu_permission' => 'menu.complaints',
-                'actions' => [
-                    ['name' => 'complaints.view', 'label' => 'Melihat Daftar Tiket'],
-                    ['name' => 'complaints.create', 'label' => 'Buat Tiket Pengaduan Baru'],
-                    ['name' => 'complaints.assign', 'label' => 'Tugaskan Teknisi (Round Robin / Manual)'],
-                    ['name' => 'complaints.resolve_remote', 'label' => 'Selesai Remote Tanpa Teknisi'],
-                    ['name' => 'complaints.verify_close', 'label' => 'Verifikasi Bukti Fisik & Tutup Tiket'],
-                    ['name' => 'complaints.return', 'label' => 'Kembalikan Tiket ke Teknisi'],
-                    ['name' => 'complaints.cancel', 'label' => 'Batalkan Tiket Pengaduan'],
-                    ['name' => 'complaints.reopen', 'label' => 'Buka Kembali Tiket Ditutup'],
-                ],
-            ],
-            [
-                'module_key' => 'customers',
-                'module_name' => 'Data Pelanggan',
-                'description' => 'Kelola data pelanggan aktif dan status langganan',
-                'menu_permission' => 'menu.customers',
-                'actions' => [
-                    ['name' => 'customers.manage', 'label' => 'Kelola & Edit Pelanggan'],
-                ],
-            ],
-            [
-                'module_key' => 'packages',
-                'module_name' => 'Paket & Kode Promo',
-                'description' => 'Daftar paket internet dan promo diskon',
-                'menu_permission' => 'menu.packages',
-                'actions' => [
-                    ['name' => 'packages.manage', 'label' => 'Kelola Paket & Promo'],
-                ],
-            ],
-            [
-                'module_key' => 'reports',
-                'module_name' => 'Laporan & Audit Log',
-                'description' => 'Ekspor data transaksi dan riwayat aktivitas user',
-                'menu_permission' => 'menu.reports',
-                'actions' => [
-                    ['name' => 'view_audit_logs', 'label' => 'Melihat Riwayat Audit Log'],
-                    ['name' => 'reports.export', 'label' => 'Ekspor Dokumen Excel & PDF'],
-                ],
-            ],
-            [
-                'module_key' => 'sla',
-                'module_name' => 'SLA Breaches',
-                'description' => 'Monitoring keterlambatan respon dan resolusi SLA',
-                'menu_permission' => 'menu.sla',
-                'actions' => [],
-            ],
-            [
-                'module_key' => 'settings',
-                'module_name' => 'Panel Pengaturan Superadmin',
-                'description' => 'Konfigurasi akun user, role, team, dan sistem',
-                'menu_permission' => 'menu.settings',
-                'actions' => [
-                    ['name' => 'manage_users', 'label' => 'Kelola User & Akun'],
-                    ['name' => 'manage_roles', 'label' => 'Kelola Role & Hak Akses'],
-                    ['name' => 'manage_teams', 'label' => 'Kelola Struktur Team'],
-                ],
-            ],
-        ];
+        return response()->json([
+            'success' => true,
+            'catalog' => $this->registry->getGroupedCatalog(),
+        ]);
+    }
 
-        $permissions = Permission::select(['id', 'name'])->get();
+    /**
+     * GET /api/roles/{role}/permissions
+     */
+    public function permissions(Role $role): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'role_id' => $role->id,
+            'role_name' => $role->name,
+            'permissions' => $role->permissions->pluck('name'),
+        ]);
+    }
+
+    /**
+     * PUT /api/roles/{role}/permissions
+     * Simpan matriks permissions untuk sebuah role.
+     */
+    public function updatePermissions(Request $request, Role $role): JsonResponse
+    {
+        if (strtolower($role->name) === 'superadmin') {
+            return response()->json([
+                'message' => 'Izin role Superadmin tidak dapat diubah.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'permissions' => 'required|array',
+            'permissions.*' => 'string|exists:permissions,name',
+            'password' => 'nullable|string',
+        ]);
+
+        // Verifikasi konfirmasi sandi Superadmin (bawaan aktif)
+        $passwordRequired = true;
+        if ($passwordRequired) {
+            $password = $request->input('password');
+            if (empty($password) || ! Hash::check($password, $request->user()->password)) {
+                return response()->json([
+                    'message' => 'Konfirmasi kata sandi Superadmin salah atau belum diisi.',
+                ], 422);
+            }
+        }
+
+        $targetPermissions = $validated['permissions'];
+
+        // Tolak izin yang terkunci untuk Superadmin
+        foreach ($targetPermissions as $perm) {
+            if ($this->registry->isLocked($perm)) {
+                return response()->json([
+                    'message' => "Izin '{$perm}' terkunci dan hanya dapat dimiliki oleh Superadmin.",
+                ], 422);
+            }
+        }
+
+        // Validasi prasyarat izin
+        $prereqErrors = $this->registry->validatePrerequisites($targetPermissions);
+        if (! empty($prereqErrors)) {
+            return response()->json([
+                'message' => implode(' ', $prereqErrors),
+                'errors' => $prereqErrors,
+            ], 422);
+        }
+
+        $oldPermissions = $role->permissions->pluck('name')->toArray();
+        $added = array_values(array_diff($targetPermissions, $oldPermissions));
+        $revoked = array_values(array_diff($oldPermissions, $targetPermissions));
+
+        $role->syncPermissions($targetPermissions);
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        // Rekam diff ke activity_log
+        activity('access_control')
+            ->causedBy($request->user())
+            ->performedOn($role)
+            ->withProperties([
+                'role' => $role->name,
+                'added' => $added,
+                'revoked' => $revoked,
+            ])
+            ->log("Hak akses role '{$role->name}' diperbarui oleh {$request->user()->name}");
+
+        // Siarkan event Reverb untuk pengguna terdampak
+        $affectedUserIds = DB::table('model_has_roles')
+            ->where('role_id', $role->id)
+            ->pluck('model_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+        try {
+            broadcast(new PermissionsChanged($role->id, $affectedUserIds));
+        } catch (\Throwable) {
+            // Reverb opsional saat queue/driver belum running di dev
+        }
 
         return response()->json([
-            'data' => $permissions->isNotEmpty() ? $permissions : $catalog,
-            'catalog' => $catalog,
+            'success' => true,
+            'message' => "Hak akses untuk Role '{$role->name}' berhasil diperbarui.",
+            'role' => $role->name,
+            'added' => $added,
+            'revoked' => $revoked,
+            'permissions' => $role->fresh()->permissions->pluck('name'),
         ]);
+    }
+
+    /**
+     * GET /api/roles/{role}/menu-preview
+     * Pratinjau pohon menu dan tab sidebar yang akan terlihat oleh role ini.
+     */
+    public function menuPreview(Request $request, Role $role): JsonResponse
+    {
+        $permissions = $request->has('permissions')
+            ? (array) $request->input('permissions')
+            : $role->permissions->pluck('name')->toArray();
+
+        $previewTree = $this->menuService->getPreviewTree($permissions, strtolower($role->name) === 'superadmin');
+
+        return response()->json([
+            'success' => true,
+            'role_name' => $role->name,
+            'menu_tree' => $previewTree,
+        ]);
+    }
+
+    /**
+     * POST /api/roles/{role}/reset
+     * Kembalikan hak akses role ke nilai bawaan registri modul.
+     */
+    public function reset(Request $request, Role $role): JsonResponse
+    {
+        if (strtolower($role->name) === 'superadmin') {
+            return response()->json([
+                'message' => 'Izin role Superadmin tidak dapat direset.',
+            ], 422);
+        }
+
+        $registry = $this->registry->getAll();
+        $defaultPerms = [];
+
+        foreach ($registry as $key => $meta) {
+            if (in_array($role->name, $meta['default_roles'] ?? [], true)) {
+                $defaultPerms[] = $key;
+            }
+        }
+
+        $oldPermissions = $role->permissions->pluck('name')->toArray();
+        $added = array_values(array_diff($defaultPerms, $oldPermissions));
+        $revoked = array_values(array_diff($oldPermissions, $defaultPerms));
+
+        $role->syncPermissions($defaultPerms);
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        activity('access_control')
+            ->causedBy($request->user())
+            ->performedOn($role)
+            ->withProperties([
+                'role' => $role->name,
+                'reset_to_default' => true,
+                'added' => $added,
+                'revoked' => $revoked,
+            ])
+            ->log("Hak akses role '{$role->name}' dikembalikan ke bawaan registri oleh {$request->user()->name}");
+
+        return response()->json([
+            'success' => true,
+            'message' => "Hak akses role '{$role->name}' berhasil dikembalikan ke bawaan registri.",
+            'role' => $role->name,
+            'permissions' => $role->fresh()->permissions->pluck('name'),
+        ]);
+    }
+
+    protected function getCoreRoleDescription(string $roleName): string
+    {
+        return match (strtolower($roleName)) {
+            'superadmin' => 'Pemegang wewenang penuh tanpa batas ke seluruh modul, konfigurasi, hak akses, dan audit sistem.',
+            'admin/cs', 'admin' => 'Layanan pelanggan, penerimaan pengaduan, verifikasi pengajuan pasang baru, dan operasional kantor.',
+            'noc/dispatcher', 'noc' => 'Monitoring jaringan FTTH, OLT, BRAS, peta jalur kabel, pemeliharaan, dan eskalasi teknis.',
+            'teknisi' => 'Petugas instalasi dan perbaikan di lapangan melalui aplikasi PWA (tiket tim, bukti foto, usul ODP).',
+            'sales' => 'Pemasar lapangan melalui aplikasi PWA (registrasi calon pelanggan baru, monitoring pengajuan sendiri).',
+            'collector' => 'Petugas monitoring tagihan pelanggan dan koordinasi penagihan lapangan melalui aplikasi PWA.',
+            default => 'Peran sistem bawaan.',
+        };
     }
 }

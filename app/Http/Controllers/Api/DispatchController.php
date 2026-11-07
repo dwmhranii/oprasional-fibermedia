@@ -509,6 +509,13 @@ class DispatchController extends Controller
                     'reviewed_at' => $iso($ticket->reviewed_at),
                     'review_note' => $ticket->review_note,
                     'has_port_conflict' => (bool) ($ticket->has_port_conflict ?? false),
+                    'priority' => $ticket->priority instanceof \BackedEnum ? $ticket->priority->value : ($ticket->priority ?? 'medium'),
+                    'sla_target_minutes' => $isTask ? 1440 : (int) ($ticket->sla_target_minutes ?: \App\Models\SlaSetting::getMinutesForPriority($ticket->priority?->value ?? 'medium')),
+                    'sla_resolve_due_at' => $iso($ticket->sla_resolve_due_at),
+                    'sla_paused_at' => $iso($ticket->sla_paused_at),
+                    'sla_progress' => $isTask ? null : app(\App\Services\ComplaintSlaService::class)->getProgress($ticket),
+                    'can_reopen' => $isTask ? false : ($ticket instanceof Complaint ? $ticket->canBeReopened() : false),
+                    'pause_reason' => $ticket->pauseReason?->reason ?? null,
                 ],
                 'current_team' => $ticket->assignedTeam ? [
                     'id' => $ticket->assignedTeam->id,

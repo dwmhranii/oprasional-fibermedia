@@ -72,7 +72,7 @@ export const ProvisioningManagement: React.FC<ProvisioningManagementProps> = ({ 
       },
     ],
     queryFn: async () => {
-      let url = `/admin/provisionings?page=${page}&per_page=10`;
+      let url = `/provisionings?page=${page}&per_page=10`;
       if (statusFilter && statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
@@ -229,7 +229,7 @@ export const ProvisioningManagement: React.FC<ProvisioningManagementProps> = ({ 
 
           {/* Create New Action Button */}
           <Button
-            onClick={() => navigate('/admin/provisionings/create')}
+            onClick={() => navigate('/psb/create')}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-all shrink-0"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -252,7 +252,7 @@ export const ProvisioningManagement: React.FC<ProvisioningManagementProps> = ({ 
           </div>
 
           <Button
-            onClick={() => navigate('/admin/provisionings/create')}
+            onClick={() => navigate('/psb/create')}
             size="sm"
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9 px-4 rounded-lg shadow-sm shrink-0"
           >
@@ -533,7 +533,7 @@ export const ProvisioningManagement: React.FC<ProvisioningManagementProps> = ({ 
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => navigate(`/admin/provisionings/${prov.id}`)}
+                            onClick={() => navigate(`/psb/${prov.id}`)}
                             className="h-7 w-7 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-blue-700"
                             title="Detail Provisioning"
                           >

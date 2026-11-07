@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -104,6 +104,7 @@ const ALL_COLUMNS: ColumnDef[] = [
 
 export const CustomerManagement: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isSuperadmin =
@@ -111,20 +112,45 @@ export const CustomerManagement: React.FC = () => {
     user?.roles?.includes('Superadmin') ||
     user?.roles?.includes('superadmin');
 
+  const canCreate = isSuperadmin || user?.permissions?.includes('customers.create');
+  const canUpdate = isSuperadmin || user?.permissions?.includes('customers.update');
+  const canDelete = isSuperadmin || user?.permissions?.includes('customers.delete');
+  const canImport = isSuperadmin || user?.permissions?.includes('customers.import');
+  const canExport = isSuperadmin || user?.permissions?.includes('customers.export');
+
   // Search & Filters State
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [wilayahFilter, setWilayahFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get('status') || 'all');
+  const [wilayahFilter, setWilayahFilter] = useState<string>(() => searchParams.get('wilayah') || 'all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('all');
   const [packageFilter, setPackageFilter] = useState<string>('all');
   const [odpFilter, setOdpFilter] = useState<string>('all');
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [salesFilter, setSalesFilter] = useState<string>('all');
-  const [debtOnly, setDebtOnly] = useState<boolean>(false);
-  const [expiresFrom, setExpiresFrom] = useState<string>('');
-  const [expiresTo, setExpiresTo] = useState<string>('');
+  const [debtOnly, setDebtOnly] = useState<boolean>(() => searchParams.get('has_debt') === '1');
+  const [expiresFrom, setExpiresFrom] = useState<string>(() => searchParams.get('expires_from') || '');
+  const [expiresTo, setExpiresTo] = useState<string>(() => searchParams.get('expires_to') || '');
   const [sortBy, setSortBy] = useState<string>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  // Sync state if URL search params change
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s) setStatusFilter(s);
+
+    if (searchParams.has('has_debt')) {
+      setDebtOnly(searchParams.get('has_debt') === '1');
+    }
+
+    const expFrom = searchParams.get('expires_from');
+    if (expFrom !== null && expFrom !== undefined) setExpiresFrom(expFrom);
+
+    const expTo = searchParams.get('expires_to');
+    if (expTo !== null && expTo !== undefined) setExpiresTo(expTo);
+
+    const search = searchParams.get('search');
+    if (search !== null && search !== undefined) setSearchTerm(search);
+  }, [searchParams]);
 
   // Pagination & Display
   const [page, setPage] = useState(1);
@@ -149,6 +175,7 @@ export const CustomerManagement: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [isDryRunMode, setIsDryRunMode] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<any | null>(null);
 
@@ -193,7 +220,7 @@ export const CustomerManagement: React.FC = () => {
         search: searchTerm.trim() || undefined,
       };
       const filename = `data-pelanggan-fibermedia-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      await downloadBlob('/admin/customers/export', filename, params);
+      await downloadBlob('/customers/export', filename, params);
       toast.success('Data pelanggan 35 kolom berhasil diekspor ke Excel (.xlsx)');
     } catch (err: any) {
       toast.error(err.message || 'Gagal mengekspor data');
@@ -202,11 +229,12 @@ export const CustomerManagement: React.FC = () => {
     }
   };
 
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = async (format: 'xlsx' | 'csv' = 'xlsx') => {
     try {
-      toast.info('Mengunduh template impor Excel...');
-      await downloadBlob('/admin/customers/import-template', 'template-import-pelanggan.xlsx');
-      toast.success('Template import berhasil diunduh');
+      const ext = format === 'csv' ? 'csv' : 'xlsx';
+      toast.info(`Mengunduh template impor 35 kolom (${ext.toUpperCase()})...`);
+      await downloadBlob('/customers/import-template', `template-import-pelanggan-35-kolom.${ext}`, { format });
+      toast.success(`Template ${ext.toUpperCase()} berhasil diunduh`);
     } catch (err: any) {
       toast.error(err.message || 'Gagal mengunduh template');
     }
@@ -215,7 +243,7 @@ export const CustomerManagement: React.FC = () => {
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!importFile) {
-      toast.error('Pilih file Excel terlebih dahulu');
+      toast.error('Pilih berkas Excel atau CSV terlebih dahulu');
       return;
     }
 
@@ -223,9 +251,12 @@ export const CustomerManagement: React.FC = () => {
       setIsImporting(true);
       const formData = new FormData();
       formData.append('file', importFile);
+      if (isDryRunMode) {
+        formData.append('dry_run', '1');
+      }
 
       const token = getToken();
-      const res = await fetch(`${API_BASE_URL}/admin/customers/import`, {
+      const res = await fetch(`${API_BASE_URL}/customers/import`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -233,16 +264,18 @@ export const CustomerManagement: React.FC = () => {
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.message || 'Gagal memproses file Excel');
+        throw new Error(json.message || 'Gagal memproses berkas impor');
       }
 
-      toast.success(json.message || 'Import data pelanggan berhasil diselesaikan');
+      toast.success(json.message || 'Proses impor berhasil diselesaikan');
       setImportSummary(json.data);
-      queryClient.invalidateQueries({ queryKey: ['adminCustomers'] });
-      refetchStats();
-      refetch();
+      if (!isDryRunMode) {
+        queryClient.invalidateQueries({ queryKey: ['adminCustomers'] });
+        refetchStats();
+        refetch();
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Gagal memproses file Excel');
+      toast.error(err.message || 'Gagal memproses berkas impor');
     } finally {
       setIsImporting(false);
     }
@@ -252,7 +285,7 @@ export const CustomerManagement: React.FC = () => {
   const { data: statsData, refetch: refetchStats } = useQuery({
     queryKey: ['adminCustomers', 'stats'],
     queryFn: async () => {
-      const response = await apiClient.get<any>('/admin/customers/stats');
+      const response = await apiClient.get<any>('/customers/stats');
       return response.data || response;
     },
   });
@@ -280,7 +313,7 @@ export const CustomerManagement: React.FC = () => {
     queryKey: ['adminTeams', 'list'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<any>('/admin/teams');
+        const res = await apiClient.get<any>('/teams');
         return res.data || res;
       } catch {
         return [];
@@ -326,7 +359,7 @@ export const CustomerManagement: React.FC = () => {
       params.sort_by = sortBy;
       params.sort_dir = sortDir;
 
-      const response = await apiClient.get<any>('/admin/customers', { params });
+      const response = await apiClient.get<any>('/customers', { params });
       return response;
     },
   });
@@ -337,7 +370,7 @@ export const CustomerManagement: React.FC = () => {
   // Status Update Mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status, notes }: { id: number | string; status: string; notes: string }) => {
-      return await apiClient.patch(`/admin/customers/${id}/status`, { status, notes });
+      return await apiClient.patch(`/customers/${id}/status`, { status, notes });
     },
     onSuccess: (data: any) => {
       toast.success(data?.message || 'Status pelanggan berhasil diperbarui');
@@ -358,7 +391,7 @@ export const CustomerManagement: React.FC = () => {
   // Delete Mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number | string) => {
-      return await apiClient.delete(`/admin/customers/${id}`);
+      return await apiClient.delete(`/customers/${id}`);
     },
     onSuccess: () => {
       toast.success('Data pelanggan berhasil dihapus');
@@ -428,12 +461,14 @@ export const CustomerManagement: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs font-semibold"
-          >
-            <Plus className="w-4 h-4" /> Tambah Pelanggan
-          </Button>
+          {canCreate && (
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <Plus className="w-4 h-4" /> Tambah Pelanggan
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -445,24 +480,49 @@ export const CustomerManagement: React.FC = () => {
             Pilih Kolom ({visibleColumns.length}/35)
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-          >
-            <Upload className="w-3.5 h-3.5" /> Impor Excel
-          </Button>
+          {canImport && (
+            <Button
+              variant="outline"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            >
+              <Upload className="w-3.5 h-3.5" /> Impor Excel
+            </Button>
+          )}
 
-          <Button
-            variant="outline"
-            onClick={handleExportExcel}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-          >
-            {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            Ekspor Excel (35 Kolom)
-          </Button>
+          {canExport && (
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+            >
+              {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              Ekspor Excel (35 Kolom)
+            </Button>
+          )}
         </div>
+      </div>
+
+      {/* Tab Navigation Satu Pintu Pelanggan */}
+      <div className="flex border-b border-border space-x-2">
+        <button
+          type="button"
+          onClick={() => navigate('/customers')}
+          className="flex items-center space-x-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors border-primary text-primary"
+        >
+          <Users className="w-4 h-4" />
+          <span>Daftar Pelanggan</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/customers/submissions')}
+          className="flex items-center space-x-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors border-transparent text-muted-foreground hover:text-foreground"
+        >
+          <FileCheck className="w-4 h-4" />
+          <span>Pengajuan</span>
+        </button>
       </div>
 
       {/* KPI Stats Cards */}
@@ -992,26 +1052,28 @@ export const CustomerManagement: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/admin/customers/${c.id}`)}
+                            onClick={() => navigate(`/customers/${c.id}`)}
                             className="text-indigo-600 hover:text-indigo-800 p-1.5"
                             title="Buka Detail Pelanggan"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCustomerForStatus(c);
-                              setNewStatus(c.status || 'active');
-                              setStatusNotes('');
-                            }}
-                            className="text-slate-500 hover:text-slate-800 p-1.5"
-                            title="Ubah Status"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                          {isSuperadmin && (
+                          {canUpdate && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedCustomerForStatus(c);
+                                setNewStatus(c.status || 'active');
+                                setStatusNotes('');
+                              }}
+                              className="text-slate-500 hover:text-slate-800 p-1.5"
+                              title="Ubah Status"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1157,36 +1219,92 @@ export const CustomerManagement: React.FC = () => {
           </DialogHeader>
 
           <form onSubmit={handleImportSubmit} className="space-y-4 pt-2">
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center bg-slate-50/50">
-              <FileSpreadsheet className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+            <div className="border-2 border-dashed border-border rounded-xl p-5 text-center bg-muted/30">
+              <FileSpreadsheet className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
               />
-              <p className="text-[11px] text-slate-400 mt-2">Format didukung: .xlsx, .xls, .csv (Maksimal 10 MB)</p>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Format didukung: .xlsx, .xls, .csv (Maksimal 20 MB). Pemisah koma, titik koma, atau tab dideteksi otomatis.
+              </p>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadTemplate}
-                className="text-xs flex items-center gap-1.5 text-indigo-600 border-indigo-200"
-              >
-                <Download className="w-3.5 h-3.5" /> Unduh Template 35 Kolom
-              </Button>
+            {/* Checkbox Dry-Run */}
+            <div className="flex items-center gap-2 p-3 bg-muted/20 border border-border rounded-lg">
+              <input
+                type="checkbox"
+                id="dry_run_mode"
+                checked={isDryRunMode}
+                onChange={(e) => setIsDryRunMode(e.target.checked)}
+                className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+              />
+              <label htmlFor="dry_run_mode" className="text-xs text-foreground cursor-pointer font-medium select-none">
+                Mode Simulasi (Dry-Run): Uji validasi data dan bentrok port ODP tanpa menyimpan ke database
+              </label>
             </div>
 
-            {/* Error Report if any */}
-            {importSummary?.errors && importSummary.errors.length > 0 && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg max-h-36 overflow-y-auto space-y-1 text-xs">
-                <p className="font-semibold text-rose-800">Laporan Error Validasi:</p>
-                {importSummary.errors.map((err: string, i: number) => (
-                  <p key={i} className="text-rose-700 text-[11px]">{err}</p>
-                ))}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadTemplate('csv')}
+                  className="text-xs flex items-center gap-1.5 text-primary border-border"
+                >
+                  <Download className="w-3.5 h-3.5" /> Unduh CSV (35 Kolom)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadTemplate('xlsx')}
+                  className="text-xs flex items-center gap-1.5 text-primary border-border"
+                >
+                  <Download className="w-3.5 h-3.5" /> Unduh Excel (35 Kolom)
+                </Button>
+              </div>
+            </div>
+
+            {/* Rekap Hasil Impor / Dry-Run */}
+            {importSummary && (
+              <div className="p-3 bg-card border border-border rounded-lg space-y-2 text-xs">
+                <div className="flex items-center justify-between font-semibold border-b border-border pb-1">
+                  <span className="text-foreground">
+                    {importSummary.dry_run ? 'Hasil Simulasi (Dry-Run)' : 'Hasil Impor Data Pelanggan'}
+                  </span>
+                  <span className="text-muted-foreground">Total: {importSummary.total_processed} baris</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center pt-1">
+                  <div className="p-2 bg-emerald-500/10 rounded border border-emerald-500/20">
+                    <p className="text-[10px] text-muted-foreground uppercase">Pelanggan Baru</p>
+                    <p className="text-sm font-bold text-emerald-600">{importSummary.imported || 0}</p>
+                  </div>
+                  <div className="p-2 bg-blue-500/10 rounded border border-blue-500/20">
+                    <p className="text-[10px] text-muted-foreground uppercase">Diperbarui</p>
+                    <p className="text-sm font-bold text-blue-600">{importSummary.updated || 0}</p>
+                  </div>
+                  <div className="p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                    <p className="text-[10px] text-muted-foreground uppercase">Bentrok Port</p>
+                    <p className="text-sm font-bold text-amber-600">{importSummary.port_conflicts || 0}</p>
+                  </div>
+                  <div className="p-2 bg-rose-500/10 rounded border border-rose-500/20">
+                    <p className="text-[10px] text-muted-foreground uppercase">Dilewati / Galat</p>
+                    <p className="text-sm font-bold text-rose-600">{importSummary.skipped || 0}</p>
+                  </div>
+                </div>
+
+                {importSummary.errors && importSummary.errors.length > 0 && (
+                  <div className="mt-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded max-h-36 overflow-y-auto space-y-1">
+                    <p className="font-semibold text-rose-700 text-xs">Laporan Galat Validasi ({importSummary.errors.length}):</p>
+                    {importSummary.errors.map((err: string, i: number) => (
+                      <p key={i} className="text-rose-600 text-[11px] leading-tight">• {err}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1197,9 +1315,13 @@ export const CustomerManagement: React.FC = () => {
               <Button
                 type="submit"
                 disabled={isImporting || !importFile}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
-                {isImporting ? 'Mengimpor...' : 'Mulai Import'}
+                {isImporting
+                  ? 'Memproses...'
+                  : isDryRunMode
+                  ? 'Mulai Simulasi (Dry-Run)'
+                  : 'Mulai Impor Pelanggan'}
               </Button>
             </DialogFooter>
           </form>

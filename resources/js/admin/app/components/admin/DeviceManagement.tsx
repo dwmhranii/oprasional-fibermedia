@@ -26,7 +26,7 @@ export const DeviceManagement: React.FC = () => {
   const { data: devicesResponse, isLoading, refetch } = useQuery({
     queryKey: ['admin-devices', page, search, statusFilter],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/devices', {
+      const res = await apiClient.get<any>('/devices', {
         params: {
           page,
           search: search || undefined,
@@ -42,7 +42,7 @@ export const DeviceManagement: React.FC = () => {
 
   const approveMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.put(`/admin/devices/${id}/approve`);
+      return await apiClient.put(`/devices/${id}/approve`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-devices'] });
@@ -51,7 +51,7 @@ export const DeviceManagement: React.FC = () => {
 
   const revokeMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.put(`/admin/devices/${id}/revoke`);
+      return await apiClient.put(`/devices/${id}/revoke`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-devices'] });

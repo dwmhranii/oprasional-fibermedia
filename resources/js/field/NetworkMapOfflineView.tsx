@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { formatCoordinate, formatDistance } from '@shared/lib/formatters';
 import {
   Download,
@@ -48,10 +50,10 @@ export const NetworkMapOfflineView: React.FC<NetworkMapOfflineViewProps> = ({
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [isDownloadingMap, setIsDownloadingMap] = useState(false);
   const [offlineMapDownloaded, setOfflineMapDownloaded] = useState<boolean>(() => {
-    return Boolean(localStorage.getItem('fmp_offline_map_downloaded_at'));
+    return Boolean(localStorage.getItem('fm-pwa:offline_map_downloaded_at'));
   });
   const [mapVersion, setMapVersion] = useState<string | null>(() => {
-    return localStorage.getItem('fmp_offline_map_version');
+    return localStorage.getItem('fm-pwa:offline_map_version');
   });
 
   // Data ODP lokal
@@ -73,6 +75,149 @@ export const NetworkMapOfflineView: React.FC<NetworkMapOfflineViewProps> = ({
   const [trackName, setTrackName] = useState('');
   const [totalTrackDistance, setTotalTrackDistance] = useState(0);
   const watchIdRef = useRef<number | null>(null);
+
+  // Leaflet Map state & refs
+  const [leafletBasemap, setLeafletBasemap] = useState<'osm' | 'google' | 'google-sat'>('google');
+  const leafletContainerRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+
+  // Inisialisasi & sinkronisasi Leaflet map
+  useEffect(() => {
+    if (!leafletContainerRef.current || leafletMapRef.current) return;
+
+    const initialCenter: [number, number] = currentCoords
+      ? [currentCoords.lat, currentCoords.lng]
+      : [-8.081413, 112.637789];
+
+    const map = L.map(leafletContainerRef.current, {
+      center: initialCenter,
+      zoom: 15,
+      zoomControl: true,
+    });
+
+    const getTileUrl = (type: 'osm' | 'google' | 'google-sat') => {
+      switch (type) {
+        case 'google':
+          return 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        case 'google-sat':
+          return 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+        case 'osm':
+        default:
+          return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      }
+    };
+
+    const tileLayer = L.tileLayer(getTileUrl('google'), {
+      maxZoom: 20,
+      attribution: '&copy; Google Maps &bull; Fibermedia Ops',
+    }).addTo(map);
+
+    tileLayerRef.current = tileLayer;
+    markersGroupRef.current = L.layerGroup().addTo(map);
+    routePolylineRef.current = L.polyline([], { color: '#0284c7', weight: 4 }).addTo(map);
+    leafletMapRef.current = map;
+
+    const resizeTimer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+
+    return () => {
+      clearTimeout(resizeTimer);
+      map.remove();
+      leafletMapRef.current = null;
+    };
+  }, []);
+
+  // Update basemap tile layer
+  const handleSwitchBasemap = (type: 'osm' | 'google' | 'google-sat') => {
+    setLeafletBasemap(type);
+    const map = leafletMapRef.current;
+    if (!map || !tileLayerRef.current) return;
+
+    tileLayerRef.current.remove();
+
+    const getTileUrl = (t: 'osm' | 'google' | 'google-sat') => {
+      switch (t) {
+        case 'google':
+          return 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        case 'google-sat':
+          return 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+        case 'osm':
+        default:
+          return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      }
+    };
+
+    const newLayer = L.tileLayer(getTileUrl(type), {
+      maxZoom: 20,
+      attribution: type.startsWith('google') ? '&copy; Google Maps' : '&copy; OpenStreetMap',
+    }).addTo(map);
+
+    tileLayerRef.current = newLayer;
+  };
+
+  // Render Leaflet markers & technician pin
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    const markersGroup = markersGroupRef.current;
+    if (!map || !markersGroup) return;
+
+    markersGroup.clearLayers();
+
+    // 1. Technician GPS marker
+    if (currentCoords) {
+      const techIcon = L.divIcon({
+        className: 'custom-tech-pin',
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:#0284c7;border:3px solid white;box-shadow:0 0 10px rgba(2,132,199,0.8);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      L.marker([currentCoords.lat, currentCoords.lng], { icon: techIcon })
+        .bindPopup('<b>Posisi Anda Saat Ini</b><br/>Teknisi Lapangan')
+        .addTo(markersGroup);
+    }
+
+    // 2. ODP markers
+    odps.forEach((odp) => {
+      const capacity = odp.port_capacity || 8;
+      const usedPorts = odp.used_ports || [];
+      const remaining = capacity - usedPorts.length;
+      const isFull = remaining <= 0;
+
+      const odpIcon = L.divIcon({
+        className: 'custom-odp-pin',
+        html: `<div style="padding:2px 6px;border-radius:6px;background:${isFull ? '#e11d48' : '#059669'};color:white;font-weight:bold;font-size:10px;border:1.5px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap;">${odp.code}</div>`,
+        iconSize: [40, 20],
+        iconAnchor: [20, 10],
+      });
+
+      const marker = L.marker([odp.latitude, odp.longitude], { icon: odpIcon });
+      marker.bindPopup(`
+        <div style="font-size:12px;min-width:140px;">
+          <strong style="color:#0284c7;">${odp.code}</strong><br/>
+          <span>${odp.name}</span><br/>
+          <span style="font-size:11px;color:#64748b;">${odp.address || ''}</span><br/>
+          <span style="font-weight:bold;color:${isFull ? '#e11d48' : '#059669'};">
+            ${isFull ? 'Penuh (0 Port Sisa)' : `${remaining} Port Tersisa`}
+          </span>
+        </div>
+      `);
+      marker.on('click', () => {
+        setSelectedOdp(odp);
+      });
+      marker.addTo(markersGroup);
+    });
+  }, [odps, currentCoords]);
+
+  // Update real-time polyline while recording track
+  useEffect(() => {
+    if (!routePolylineRef.current) return;
+    const latLngs = recordedPoints.map((pt) => [pt[1], pt[0]] as [number, number]);
+    routePolylineRef.current.setLatLngs(latLngs);
+  }, [recordedPoints]);
 
   // Load Manifest
   useEffect(() => {
@@ -185,6 +330,11 @@ export const NetworkMapOfflineView: React.FC<NetworkMapOfflineViewProps> = ({
 
   // Handler Rekam Jalur Kabel
   const handleStartRecording = () => {
+    if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      alert('Perekaman GPS membutuhkan koneksi aman HTTPS atau localhost.');
+      return;
+    }
+
     if (!navigator.geolocation) {
       alert('Perangkat tidak mendukung geolokasi');
       return;
@@ -361,6 +511,56 @@ export const NetworkMapOfflineView: React.FC<NetworkMapOfflineViewProps> = ({
             Selesai Rekam ({Math.round(totalTrackDistance)}m &bull; {recordedPoints.length} titik)
           </button>
         )}
+      </div>
+
+      {/* 2b. Peta Interaktif Leaflet Lapangan */}
+      <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/60 text-xs">
+          <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-200">
+            <Compass className="w-4 h-4 text-blue-600" />
+            <span>Peta Visual Leaflet</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleSwitchBasemap('osm')}
+              className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                leafletBasemap === 'osm'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+              }`}
+            >
+              OSM
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchBasemap('google')}
+              className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                leafletBasemap === 'google'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+              }`}
+            >
+              Google Maps
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchBasemap('google-sat')}
+              className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                leafletBasemap === 'google-sat'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+              }`}
+            >
+              Google Satelit
+            </button>
+          </div>
+        </div>
+        <div ref={leafletContainerRef} className="w-full h-72 z-0" />
+        <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+          <span>&bull; Pin Biru: Posisi Anda &bull; Pin Hijau/Merah: ODP</span>
+          <span className="italic">Leaflet &bull; Google Maps Tile</span>
+        </div>
       </div>
 
       {/* 3. Daftar ODP Terdekat (Offline Haversine) */}

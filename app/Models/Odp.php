@@ -3,18 +3,36 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Odp extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = [
-        'odc_id', 'code', 'name', 'address', 'latitude', 'longitude',
-        'port_capacity', 'wilayah', 'notes', 'is_active',
-        'client_uuid', 'status', 'is_approved', 'proposed_latitude',
-        'proposed_longitude', 'created_by_id', 'operational_status',
+        'odc_id',
+        'code',
+        'name',
+        'address',
+        'latitude',
+        'longitude',
+        'port_capacity',
+        'wilayah',
+        'notes',
+        'is_active',
+        'client_uuid',
+        'status',
+        'operational_status',
+        'needs_review',
+        'is_approved',
+        'proposed_latitude',
+        'proposed_longitude',
+        'created_by_id',
+        'rev',
     ];
 
     protected $casts = [
@@ -25,9 +43,34 @@ class Odp extends Model
         'port_capacity' => 'integer',
         'is_active' => 'boolean',
         'is_approved' => 'boolean',
+        'needs_review' => 'boolean',
+        'rev' => 'integer',
     ];
 
-    public function odc()
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            if ($model->isDirty('status') && ! $model->isDirty('operational_status')) {
+                $model->operational_status = $model->status;
+            } elseif ($model->isDirty('operational_status') && ! $model->isDirty('status')) {
+                $model->status = $model->operational_status;
+            }
+        });
+
+        static::updating(function ($model) {
+            $model->rev = ($model->rev ?? 0) + 1;
+        });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'status', 'operational_status', 'latitude', 'longitude', 'is_approved'])
+            ->useLogName('network')
+            ->logOnlyDirty();
+    }
+
+    public function odc(): BelongsTo
     {
         return $this->belongsTo(Odc::class);
     }

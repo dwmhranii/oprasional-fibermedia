@@ -64,13 +64,16 @@ class CustomerResource extends JsonResource
             ]);
         }
 
+        $user = $request->user();
+        $canViewSecret = $user && $user->can('customers.view_secret');
+
         return [
             // Identitas
             'id' => $this->id,
             'customer_code' => $this->customer_code,
             'external_ref' => $this->external_ref,
             'name' => $this->name,
-            'nik' => $this->masked_nik, // Bertopeng (contoh: 3507••••••••1234)
+            'nik' => $this->masked_nik,
             'nik_masked' => $this->masked_nik,
             'phone' => $this->phone,
             'phone_normalized' => $this->phone_normalized,
@@ -85,27 +88,27 @@ class CustomerResource extends JsonResource
             'bras_name' => $this->bras?->name,
             'collector' => $this->collector,
             'username' => $this->username,
-            // Catatan keamanan: password TIDAK PERNAH dimuat di resource ini.
             'password_masked' => filled($this->password) ? '••••••••' : null,
             'package_id' => $this->package_id,
             'package' => $this->servicePackage?->name ?? $this->package,
             'package_name' => $this->servicePackage?->name ?? $this->package,
             'monthly_price' => (float) ($this->monthly_price ?: ($this->servicePackage?->price ?? 0)),
-            'local_address' => $this->local_address,
-            'remote_address' => $this->remote_address,
-            'parent_queue' => $this->parent_queue,
+            'local_address' => $canViewSecret ? $this->local_address : null,
+            'remote_address' => $canViewSecret ? $this->remote_address : null,
+            'parent_queue' => $canViewSecret ? $this->parent_queue : null,
             'rate_limit' => $this->rate_limit,
             'subscribed_at' => $this->subscribed_at?->format('Y-m-d'),
             'expires_at' => $this->expires_at?->format('Y-m-d'),
-            'status' => $this->status,
+            'status' => $this->status === 'held' ? 'terminated' : $this->status,
+            'is_port_held' => $this->status === 'held',
             'is_online' => (bool) $this->is_online,
             'last_online_at' => $formatDate($this->last_online_at),
             'last_offline_at' => $formatDate($this->last_offline_at),
-            'current_ip_address' => $this->current_ip_address,
-            'current_mac_address' => $this->current_mac_address,
+            'current_ip_address' => $canViewSecret ? $this->current_ip_address : null,
+            'current_mac_address' => $canViewSecret ? $this->current_mac_address : null,
             'session_uptime' => $this->session_uptime,
-            'session_id' => $this->session_id,
-            'onu_index' => $this->onu_index,
+            'session_id' => $canViewSecret ? $this->session_id : null,
+            'onu_index' => $canViewSecret ? $this->onu_index : null,
 
             // Jaringan
             'odp_id' => $this->odp_id,
@@ -166,7 +169,7 @@ class CustomerResource extends JsonResource
                 'provisioning_number' => $provisioning?->provisioning_number,
                 'task_number' => $task?->task_number,
                 'customer_code' => $this->customer_code,
-                'status' => $this->status,
+                'status' => $this->status === 'held' ? 'terminated' : $this->status,
             ],
             'created_at' => $formatDate($this->created_at),
             'updated_at' => $formatDate($this->updated_at),

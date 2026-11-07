@@ -31,21 +31,21 @@ class AuthorizationAuditTest extends TestCase
 
     public function test_unauthenticated_request_returns_401()
     {
-        $response = $this->getJson('/api/sales/submissions');
+        $response = $this->getJson('/api/submissions');
         $response->assertStatus(401);
     }
 
     public function test_sales_cannot_access_admin_routes()
     {
         $sales = $this->createUserWithRole('Sales');
-        $response = $this->actingAs($sales, 'sanctum')->getJson('/api/admin/submissions');
+        $response = $this->actingAs($sales, 'sanctum')->getJson('/api/roles');
         $response->assertStatus(403);
     }
 
     public function test_technician_cannot_access_admin_routes()
     {
         $teknisi = $this->createUserWithRole('Teknisi');
-        $response = $this->actingAs($teknisi, 'sanctum')->getJson('/api/admin/provisionings');
+        $response = $this->actingAs($teknisi, 'sanctum')->getJson('/api/roles');
         $response->assertStatus(403);
     }
 
@@ -56,7 +56,7 @@ class AuthorizationAuditTest extends TestCase
 
         $submission = Submission::factory()->create(['user_id' => $sales2->id]);
 
-        $response = $this->actingAs($sales1, 'sanctum')->getJson("/api/sales/submissions/{$submission->id}");
+        $response = $this->actingAs($sales1, 'sanctum')->getJson("/api/submissions/{$submission->id}");
         $response->assertStatus(403);
     }
 
@@ -67,7 +67,7 @@ class AuthorizationAuditTest extends TestCase
 
         $submission = Submission::factory()->create(['user_id' => $sales2->id]);
 
-        $response = $this->actingAs($sales1, 'sanctum')->putJson("/api/sales/submissions/{$submission->id}", [
+        $response = $this->actingAs($sales1, 'sanctum')->putJson("/api/submissions/{$submission->id}", [
             'customer_name' => 'Hacked',
         ]);
         $response->assertStatus(403);
@@ -80,7 +80,7 @@ class AuthorizationAuditTest extends TestCase
 
         $task = Task::factory()->create(['teknisi_id' => $teknisi2->id, 'status' => TaskStatus::ASSIGNED]);
 
-        $response = $this->actingAs($teknisi1, 'sanctum')->putJson("/api/teknisi/tasks/{$task->id}/status", [
+        $response = $this->actingAs($teknisi1, 'sanctum')->putJson("/api/tasks/{$task->id}/status", [
             'status' => TaskStatus::ON_THE_WAY->value,
         ]);
 
@@ -90,7 +90,7 @@ class AuthorizationAuditTest extends TestCase
     public function test_admin_cannot_access_superadmin_routes()
     {
         $admin = $this->createUserWithRole('Admin');
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/superadmin/users');
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/roles');
         $response->assertStatus(403);
     }
 
@@ -98,47 +98,45 @@ class AuthorizationAuditTest extends TestCase
     {
         $superadmin = $this->createUserWithRole('Superadmin');
 
-        // Admin route
-        $response1 = $this->actingAs($superadmin, 'sanctum')->getJson('/api/admin/submissions');
+        $response1 = $this->actingAs($superadmin, 'sanctum')->getJson('/api/submissions');
         $response1->assertStatus(200);
 
-        // Sales route (should have permission to view any submission)
-        $response2 = $this->actingAs($superadmin, 'sanctum')->getJson('/api/sales/submissions');
+        $response2 = $this->actingAs($superadmin, 'sanctum')->getJson('/api/roles');
         $response2->assertStatus(200);
     }
 
     public function test_unauthorized_requests_return_403()
     {
         $sales = $this->createUserWithRole('Sales');
-        $response = $this->actingAs($sales, 'sanctum')->getJson('/api/superadmin/roles');
+        $response = $this->actingAs($sales, 'sanctum')->getJson('/api/roles');
         $response->assertStatus(403);
     }
 
     public function test_validation_errors_return_422()
     {
         $superadmin = $this->createUserWithRole('Superadmin');
-        $response = $this->actingAs($superadmin, 'sanctum')->postJson('/api/superadmin/users', []); // Missing required fields
+        $response = $this->actingAs($superadmin, 'sanctum')->postJson('/api/users', []); // Missing required fields
         $response->assertStatus(422);
     }
 
     public function test_missing_resource_returns_404()
     {
         $superadmin = $this->createUserWithRole('Superadmin');
-        $response = $this->actingAs($superadmin, 'sanctum')->getJson('/api/superadmin/users/99999');
+        $response = $this->actingAs($superadmin, 'sanctum')->getJson('/api/users/99999');
         $response->assertStatus(404);
     }
 
     public function test_admin_can_access_sla_endpoints()
     {
         $admin = $this->createUserWithRole('Admin');
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/sla-breaches/summary');
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/sla-breaches/summary');
         $response->assertStatus(200);
     }
 
     public function test_superadmin_can_access_sla_endpoints()
     {
         $superadmin = $this->createUserWithRole('Superadmin');
-        $response = $this->actingAs($superadmin, 'sanctum')->getJson('/api/admin/sla-breaches');
+        $response = $this->actingAs($superadmin, 'sanctum')->getJson('/api/sla-breaches');
         $response->assertStatus(200);
     }
 }

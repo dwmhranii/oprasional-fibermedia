@@ -7,20 +7,21 @@ import { packages } from '../data/packages';
 export const userToFrontend = (apiUser: any): User => {
   let role: UserRole = 'sales';
   
-  if (apiUser.roles && apiUser.roles.length > 0) {
-    // Spatie Roles can be an array of strings or objects. Normalize both.
-    const roleItem = apiUser.roles[0];
-    const roleStr = (typeof roleItem === 'string' ? roleItem : roleItem.name || '').toLowerCase();
-    
-    if (roleStr.includes('superadmin') || roleStr.includes('super')) {
-      role = 'superadmin';
-    } else if (roleStr.includes('admin')) {
-      role = 'admin';
-    } else if (roleStr.includes('teknisi') || roleStr.includes('technician')) {
-      role = 'teknisi';
-    } else {
-      role = 'sales';
-    }
+  const rawRoleStr = Array.isArray(apiUser.roles) && apiUser.roles.length > 0
+    ? (typeof apiUser.roles[0] === 'string' ? apiUser.roles[0] : apiUser.roles[0].name || '')
+    : (typeof apiUser.role === 'string' ? apiUser.role : '');
+
+  const displayRole = rawRoleStr || (apiUser.is_superadmin ? 'Superadmin' : 'Staff');
+  const roleLower = displayRole.toLowerCase();
+
+  if (apiUser.is_superadmin || (typeof apiUser.email === 'string' && apiUser.email.toLowerCase() === 'superadmin@example.com') || roleLower.includes('superadmin')) {
+    role = 'superadmin';
+  } else if (roleLower.includes('admin') || roleLower.includes('cs') || roleLower.includes('noc') || roleLower.includes('dispatcher')) {
+    role = 'admin';
+  } else if (roleLower.includes('teknisi') || roleLower.includes('technician')) {
+    role = 'teknisi';
+  } else {
+    role = 'sales';
   }
 
   // Extract permissions from Spatie payload
@@ -37,7 +38,8 @@ export const userToFrontend = (apiUser: any): User => {
     status: apiUser.status || 'active',
     roles: Array.isArray(apiUser.roles) 
       ? apiUser.roles.map((r: any) => typeof r === 'string' ? r : r.name || '')
-      : [],
+      : (displayRole ? [displayRole] : []),
+    displayRole,
     permissions,
     role,
     avatar: apiUser.avatar,

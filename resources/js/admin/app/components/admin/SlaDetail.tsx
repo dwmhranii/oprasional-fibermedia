@@ -38,8 +38,8 @@ export const SlaDetail: React.FC = () => {
   } = useQuery({
     queryKey: ['sla', 'detail', breachId],
     queryFn: async () => {
-      const response = await apiClient.get<any>(`/admin/sla-breaches/${breachId}`);
-      return response.data;
+      const response = await apiClient.get<any>(`/sla-breaches/${breachId}`);
+      return response.data || response;
     },
     enabled: !!breachId,
   });
@@ -65,7 +65,7 @@ export const SlaDetail: React.FC = () => {
   if (isError) {
     return (
       <div className="space-y-6 pb-12">
-        <Button variant="ghost" onClick={() => navigate('/admin/sla-breaches')} className="mb-4">
+        <Button variant="ghost" onClick={() => navigate('/kpi')} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali
         </Button>
         <Alert variant="destructive">
@@ -84,7 +84,7 @@ export const SlaDetail: React.FC = () => {
     <div className="space-y-6 pb-12 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/sla-breaches')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/kpi')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>

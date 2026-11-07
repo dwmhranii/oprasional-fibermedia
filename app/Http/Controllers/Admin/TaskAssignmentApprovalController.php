@@ -26,7 +26,7 @@ class TaskAssignmentApprovalController extends Controller
     public function approve(TaskAssignment $assignment): JsonResponse
     {
         $user = Auth::user();
-        if (! $user->hasRole(['Superadmin', 'Admin'])) {
+        if (! $user || (! $user->can('workorders.view') && ! $user->can('tasks.update_status'))) {
             return $this->errorResponse('Unauthorized.', 403);
         }
 
@@ -114,7 +114,7 @@ class TaskAssignmentApprovalController extends Controller
     public function returnAssignment(Request $request, TaskAssignment $assignment): JsonResponse
     {
         $user = Auth::user();
-        if (! $user->hasRole(['Superadmin', 'Admin'])) {
+        if (! $user || (! $user->can('workorders.view') && ! $user->can('tasks.update_status'))) {
             return $this->errorResponse('Unauthorized.', 403);
         }
 

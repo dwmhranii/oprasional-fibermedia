@@ -329,7 +329,7 @@ export const EditSubmissionForm: React.FC = () => {
   const { data: apiData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['salesSubmissions', 'edit', id],
     queryFn: async () => {
-      const response = await apiClient.get<any>(`/sales/submissions/${id}`);
+      const response = await apiClient.get<any>(`/submissions/${id}`);
       // Handle both plain response and envelope {success, data}
       return response?.data ?? response;
     },
@@ -577,7 +577,7 @@ export const EditSubmissionForm: React.FC = () => {
       }
 
       // 1. PUT form data
-      await apiClient.put<any>(`/sales/submissions/${id}`, payload);
+      await apiClient.put<any>(`/submissions/${id}`, payload);
 
       // 2. Upload only new/replaced files
       const uploads = DOC_SLOTS
@@ -589,7 +589,7 @@ export const EditSubmissionForm: React.FC = () => {
         fd.append('document_type', slot.type);
         fd.append('file', file!);
         toast.info(`Mengunggah ${slot.label}...`);
-        await apiClient.upload<any>(`/sales/submissions/${id}/upload-document`, fd);
+        await apiClient.upload<any>(`/submissions/${id}/upload-document`, fd);
       }
 
       // 3. Invalidate queries

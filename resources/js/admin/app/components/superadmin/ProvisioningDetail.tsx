@@ -87,7 +87,7 @@ export const ProvisioningDetail: React.FC = () => {
   const { data: availableTechs = [] } = useQuery({
     queryKey: ['availableTechnicians'],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/technicians/available');
+      const res = await apiClient.get<any>('/teams/available');
       return res.data || res || [];
     },
     enabled: isSuperadmin && (isBfassModalOpen || isReassignModalOpen),
@@ -96,7 +96,7 @@ export const ProvisioningDetail: React.FC = () => {
   const { data: availableTeams = [] } = useQuery({
     queryKey: ['availableTeams'],
     queryFn: async () => {
-      const res = await apiClient.get<any>('/admin/teams/available');
+      const res = await apiClient.get<any>('/teams/available');
       return res.data || res || [];
     },
     enabled: isSuperadmin && (isBfassModalOpen || isReassignModalOpen),
@@ -117,7 +117,7 @@ export const ProvisioningDetail: React.FC = () => {
   // Fetch provisioning detail
   const { data: provisioning, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['adminProvisionings', 'detail', id],
-    queryFn: () => apiClient.get<any>(`/admin/provisionings/${id}`),
+    queryFn: () => apiClient.get<any>(`/provisionings/${id}`),
     enabled: !!id,
   });
 
@@ -214,7 +214,7 @@ export const ProvisioningDetail: React.FC = () => {
     }
 
     try {
-      await apiClient.put<any>(`/admin/provisionings/${id}/bfass-credentials`, payload);
+      await apiClient.put<any>(`/provisionings/${id}/bfass-credentials`, payload);
       setIsBfassModalOpen(false);
       
       // Invalidate queries to refresh lists
@@ -289,7 +289,7 @@ export const ProvisioningDetail: React.FC = () => {
 
     try {
       setIsReassigning(true);
-      await apiClient.patch<any>(`/admin/tasks/${primaryTask.id}/reassign`, payload);
+      await apiClient.patch<any>(`/work-orders/${primaryTask.id}/reassign`, payload);
       toast.success('Tugas teknisi berhasil dialihkan / ditugaskan ulang.');
       setIsReassignModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['adminProvisionings'] });
@@ -321,7 +321,7 @@ export const ProvisioningDetail: React.FC = () => {
     }
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/provisionings')} className="mb-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/psb')} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Manajemen Provisi
         </Button>
         <Alert variant="destructive">
@@ -455,7 +455,7 @@ export const ProvisioningDetail: React.FC = () => {
           {provisioning.tasks?.[0]?.id && (
             <Button 
               variant="outline"
-              onClick={() => navigate(`/admin/tasks/${provisioning.tasks[0].id}`)}
+              onClick={() => navigate(`/work-orders/${provisioning.tasks[0].id}`)}
               className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 flex items-center h-9"
             >
               <Users className="w-4 h-4 mr-2" />

@@ -69,7 +69,7 @@ export const TechnicianWorkOrdersView: React.FC<TechnicianWorkOrdersViewProps> =
     if (!token) return;
     setIsLoading(true);
     try {
-      const res = await fetch('/api/teknisi/work-orders?tab=all', {
+      const res = await fetch('/api/work-orders?tab=all', {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',

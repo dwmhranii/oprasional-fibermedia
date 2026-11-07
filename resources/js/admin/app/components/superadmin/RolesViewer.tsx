@@ -51,7 +51,7 @@ export const RolesViewer: React.FC = () => {
   const { data: roles, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['roles', 'list'],
     queryFn: async () => {
-      const response = await apiClient.get<{ data: RoleApiData[] }>('/superadmin/roles');
+      const response = await apiClient.get<{ data: RoleApiData[] }>('/roles');
       return response.data || [];
     },
   });

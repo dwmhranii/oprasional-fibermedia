@@ -7,36 +7,57 @@ export interface StatItem {
   title: string;
   value: string | number;
   subtitle?: string;
-  icon?: LucideIcon;
+  description?: string;
+  icon?: LucideIcon | any;
   variant?: SemanticVariant;
   trend?: {
     value: string | number;
-    isUp: boolean;
+    isUp?: boolean;
+    isPositive?: boolean;
     label?: string;
   };
   onClick?: () => void;
 }
 
 interface StatCardsProps {
-  items: StatItem[];
+  items?: StatItem[];
+  stats?: any[];
   columns?: 2 | 3 | 4;
   isLoading?: boolean;
+  loading?: boolean;
   className?: string;
 }
 
 export const StatCards: React.FC<StatCardsProps> = ({
   items,
+  stats,
   columns = 4,
-  isLoading = false,
+  isLoading,
+  loading,
   className = '',
 }) => {
+  const isCurrentlyLoading = isLoading ?? loading ?? false;
+  const rawList = items || stats || [];
+  const safeItems: StatItem[] = Array.isArray(rawList)
+    ? rawList.map((item: any) => ({
+        ...item,
+        subtitle: item.subtitle || item.description,
+        trend: item.trend
+          ? {
+              ...item.trend,
+              isUp: item.trend.isUp ?? item.trend.isPositive ?? true,
+            }
+          : undefined,
+      }))
+    : [];
+
   const colClass = {
     2: 'grid-cols-1 sm:grid-cols-2',
     3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
     4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
   }[columns];
 
-  if (isLoading) {
+  if (isCurrentlyLoading) {
     return (
       <div className={`grid ${colClass} gap-4 mb-6 ${className}`}>
         {[...Array(columns)].map((_, idx) => (
@@ -58,9 +79,9 @@ export const StatCards: React.FC<StatCardsProps> = ({
 
   return (
     <div className={`grid ${colClass} gap-4 mb-6 ${className}`}>
-      {items.map((item, idx) => {
-        const variant = item.variant || 'neutral';
-        const styles = TOKENS.semantic[variant];
+      {safeItems.map((item, idx) => {
+        const variant = (item.variant && item.variant in TOKENS.semantic) ? item.variant : 'neutral';
+        const styles = TOKENS.semantic[variant as keyof typeof TOKENS.semantic] || TOKENS.semantic.neutral;
         const Icon = item.icon;
 
         return (

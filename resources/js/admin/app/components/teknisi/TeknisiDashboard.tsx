@@ -43,7 +43,7 @@ export const TeknisiDashboard: React.FC = () => {
     refetch,
   } = useQuery({
     queryKey: ['tasks', 'list', user?.id, { limit: 100 }],
-    queryFn: () => apiClient.get<any>('/teknisi/tasks?per_page=100'),
+    queryFn: () => apiClient.get<any>('/tasks?per_page=100'),
     staleTime: 1000 * 30,
   });
 
@@ -130,7 +130,7 @@ export const TeknisiDashboard: React.FC = () => {
               Sync Tugas
             </Button>
             <Button
-              onClick={() => navigate('/teknisi/tasks')}
+              onClick={() => navigate('/work-orders')}
               className="bg-white text-amber-900 hover:bg-amber-50 font-bold text-xs h-10 px-4 shadow-md"
             >
               <ClipboardList className="w-4 h-4 mr-1.5 text-amber-700" />
@@ -259,7 +259,7 @@ export const TeknisiDashboard: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/teknisi/tasks')}
+                onClick={() => navigate('/work-orders')}
                 className="text-xs text-amber-700 hover:bg-amber-50"
               >
                 Semua Task
@@ -287,7 +287,7 @@ export const TeknisiDashboard: React.FC = () => {
                   {activeSchedule.map((task: any) => (
                     <div
                       key={task.id}
-                      onClick={() => navigate(`/teknisi/tasks/${task.id}`)}
+                      onClick={() => navigate(`/work-orders/${task.id}`)}
                       className="p-4 rounded-xl border border-gray-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer shadow-2xs space-y-3 flex flex-col justify-between group"
                     >
                       <div className="space-y-2">
@@ -332,7 +332,7 @@ export const TeknisiDashboard: React.FC = () => {
                           className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 px-3 ml-auto"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/teknisi/tasks/${task.id}`);
+                            navigate(`/work-orders/${task.id}`);
                           }}
                         >
                           Kerjakan
@@ -388,7 +388,7 @@ export const TeknisiDashboard: React.FC = () => {
                 Pastikan selalu mengambil foto Redup/Redundant ODP, foto bukti Modem terpasang, dan tanda tangan digital pelanggan sebelum menandai task sebagai 'Completed'.
               </p>
               <Button
-                onClick={() => navigate('/teknisi/tasks')}
+                onClick={() => navigate('/work-orders')}
                 className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs h-9 mt-2"
               >
                 Buka Semua Penugasan

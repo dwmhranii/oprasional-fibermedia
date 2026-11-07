@@ -50,7 +50,7 @@ export class FibermediaDatabase extends Dexie {
   cableTracks!: Table<LocalCableTrack, number>;
 
   constructor() {
-    super('FibermediaFieldDB');
+    super('fm_pwa');
     this.version(1).stores({
       offlineQueue: '++id, idempotencyKey, timestamp, status',
     });
@@ -281,7 +281,7 @@ export async function syncNetworkData(token?: string | null): Promise<{ added: n
   });
 
   if (data.sync_timestamp) {
-    localStorage.setItem('fmp_network_last_sync', data.sync_timestamp);
+    localStorage.setItem('fm-pwa:network_last_sync', data.sync_timestamp);
   }
 
   return { added, updated, deleted };
@@ -341,7 +341,7 @@ export async function downloadOfflineMap(
   // 4. Buat Blob dan simpan ke Cache Storage
   const blob = new Blob(chunks, { type: 'application/vnd.pmtiles' });
   if ('caches' in window) {
-    const cache = await caches.open('fibermedia-pmtiles-v1');
+    const cache = await caches.open('fm-pwa-tiles-v1');
     const cacheResponse = new Response(blob, {
       headers: {
         'Content-Type': 'application/vnd.pmtiles',
@@ -352,9 +352,9 @@ export async function downloadOfflineMap(
     await cache.put('/tiles/area.pmtiles', cacheResponse);
   }
 
-  localStorage.setItem('fmp_offline_map_version', manifest.version);
-  localStorage.setItem('fmp_offline_map_downloaded_at', new Date().toISOString());
-  localStorage.setItem('fmp_offline_map_size', manifest.size_formatted);
+  localStorage.setItem('fm-pwa:offline_map_version', manifest.version);
+  localStorage.setItem('fm-pwa:offline_map_downloaded_at', new Date().toISOString());
+  localStorage.setItem('fm-pwa:offline_map_size', manifest.size_formatted);
 
   return {
     success: true,
